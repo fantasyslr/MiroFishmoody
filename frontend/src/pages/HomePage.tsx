@@ -130,11 +130,10 @@ export function HomePage() {
           <AnimatePresence mode="popLayout">
             {plans.map((plan, index) => (
               <motion.div
-                layout
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2 }}
+                transition={{ duration: 0.15 }}
                 key={plan.id}
                 className="group relative rounded-2xl border border-stone-200 bg-white p-6 shadow-sm"
               >
@@ -162,25 +161,27 @@ export function HomePage() {
 
                 <div className="mb-6">
                   <label className="mb-2 block text-xs font-medium text-stone-500">品类</label>
-                  <div className="flex w-fit gap-2">
+                  <div className="inline-flex rounded-lg border border-stone-200 bg-stone-50 p-0.5">
                     <button
+                      type="button"
                       onClick={() => updatePlan(plan.id, { productLine: 'moodyplus' })}
                       className={cn(
-                        'rounded-lg border px-4 py-2 text-sm font-medium',
+                        'rounded-md px-4 py-1.5 text-sm font-medium',
                         plan.productLine === 'moodyplus'
-                          ? 'border-stone-900 bg-stone-900 text-white'
-                          : 'border-stone-200 bg-white text-stone-500 hover:border-stone-400 hover:text-stone-700',
+                          ? 'bg-stone-900 text-white shadow-sm'
+                          : 'text-stone-500 hover:text-stone-700',
                       )}
                     >
                       透明片
                     </button>
                     <button
+                      type="button"
                       onClick={() => updatePlan(plan.id, { productLine: 'colored_lenses' })}
                       className={cn(
-                        'rounded-lg border px-4 py-2 text-sm font-medium',
+                        'rounded-md px-4 py-1.5 text-sm font-medium',
                         plan.productLine === 'colored_lenses'
-                          ? 'border-stone-900 bg-stone-900 text-white'
-                          : 'border-stone-200 bg-white text-stone-500 hover:border-stone-400 hover:text-stone-700',
+                          ? 'bg-stone-900 text-white shadow-sm'
+                          : 'text-stone-500 hover:text-stone-700',
                       )}
                     >
                       彩片
