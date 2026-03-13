@@ -23,6 +23,7 @@ from ..services.campaign_scorer import CampaignScorer
 from ..services.summary_generator import SummaryGenerator
 from ..services.judge_calibration import JudgeCalibration
 from ..services.resolution_tracker import ResolutionTracker
+from ..services.brief_parser import BriefParser
 
 logger = get_logger('ranker.api.campaign')
 task_manager = TaskManager()
@@ -244,6 +245,33 @@ def _run_evaluation(task_id: str, campaign_set: CampaignSet):
         task_manager.fail_task(task_id, str(e))
 
 
+@campaign_bp.route('/parse-brief', methods=['POST'])
+def parse_brief():
+    """将自然语言 brief 解析为结构化 Campaign 字段"""
+    try:
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            return jsonify({"error": "请求体不能为空"}), 400
+
+        brief_text = data.get("brief_text", "").strip()
+        if not brief_text:
+            return jsonify({"error": "brief_text 不能为空"}), 400
+
+        product_line = data.get("product_line", "colored_lenses")
+        if product_line not in ("colored_lenses", "moodyplus"):
+            return jsonify({"error": "product_line 必须是 'colored_lenses' 或 'moodyplus'"}), 400
+
+        parser = BriefParser()
+        result = parser.parse(brief_text, product_line)
+        return jsonify(result)
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        logger.error(f"Brief 解析失败: {e}", exc_info=True)
+        return jsonify({"error": f"内部错误: {str(e)}"}), 500
+
+
 @campaign_bp.route('/evaluate', methods=['POST'])
 def evaluate():
     """提交 campaign 方案进行评审（异步）"""
@@ -256,6 +284,7 @@ def evaluate():
             return jsonify({"error": "请求体不能为空"}), 400
 
         campaign_set = _parse_campaigns(data)
+        submitted_by = data.get("submitted_by", "")
 
         # 防重复 set_id：检查内存和磁盘是否已有该 set_id 的结果
         if campaign_set.set_id in _evaluation_store or _load_result(campaign_set.set_id):
@@ -265,7 +294,13 @@ def evaluate():
 
         task_id = task_manager.create_task(
             "campaign_evaluation",
-            metadata={"set_id": campaign_set.set_id}
+            metadata={
+                "set_id": campaign_set.set_id,
+                "submitted_by": submitted_by,
+                "campaign_names": [c.name for c in campaign_set.campaigns],
+                "campaign_count": len(campaign_set.campaigns),
+                "submitted_at": datetime.now().strftime("%m/%d %H:%M"),
+            }
         )
 
         thread = threading.Thread(

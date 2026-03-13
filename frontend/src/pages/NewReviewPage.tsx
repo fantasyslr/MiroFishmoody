@@ -5,6 +5,7 @@ import { SectionCard } from '../components/ui/SectionCard'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import {
   evaluateCampaigns,
+  parseBrief,
   saveLatestReviewSession,
   type CampaignInput,
 } from '../lib/api'
@@ -52,6 +53,60 @@ export function NewReviewPage() {
   const [campaigns, setCampaigns] = useState(initialCampaignDrafts)
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [showErrors, setShowErrors] = useState(false)
+  const [briefMode, setBriefMode] = useState<Record<number, boolean>>({})
+  const [briefTexts, setBriefTexts] = useState<Record<number, string>>({})
+  const [parsingIndex, setParsingIndex] = useState<number | null>(null)
+  const [parseError, setParseError] = useState<Record<number, string>>({})
+
+  const isBriefMode = (index: number) => briefMode[index] !== false // default true
+  const toggleMode = (index: number) =>
+    setBriefMode((prev) => ({ ...prev, [index]: !isBriefMode(index) }))
+
+  const handleParseBrief = async (index: number) => {
+    const text = briefTexts[index]?.trim()
+    if (!text) return
+    setParsingIndex(index)
+    setParseError((prev) => ({ ...prev, [index]: '' }))
+    try {
+      const result = await parseBrief({
+        brief_text: text,
+        product_line: campaigns[index].productLine,
+      })
+      const p = result.parsed
+      setCampaigns((current) =>
+        current.map((c, i) =>
+          i === index
+            ? {
+                ...c,
+                name: p.name || c.name,
+                targetAudience: p.target_audience || c.targetAudience,
+                coreMessage: p.core_message || c.coreMessage,
+                channels: Array.isArray(p.channels) ? p.channels.join(', ') : (p.channels || c.channels),
+                creativeDirection: p.creative_direction || c.creativeDirection,
+                budgetRange: p.budget_range || c.budgetRange,
+                promoMechanic: p.promo_mechanic || c.promoMechanic,
+                kvDescription: p.kv_description || c.kvDescription,
+              }
+            : c,
+        ),
+      )
+      // Switch to advanced mode so user can review/edit parsed result
+      setBriefMode((prev) => ({ ...prev, [index]: false }))
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '解析失败，请切换到高级模式手动填写'
+      setParseError((prev) => ({ ...prev, [index]: msg }))
+    } finally {
+      setParsingIndex(null)
+    }
+  }
+
+  const fieldKey = (index: number, field: string) => `${index}-${field}`
+  const markTouched = (index: number, field: string) =>
+    setTouched((prev) => ({ ...prev, [fieldKey(index, field)]: true }))
+  const isFieldError = (index: number, field: string, value: string) =>
+    (touched[fieldKey(index, field)] || showErrors) && !value.trim()
 
   const campaignsWithEnoughInput = campaigns.filter(
     (campaign) =>
@@ -83,9 +138,9 @@ export function NewReviewPage() {
   }
 
   const submitReview = async () => {
-    if (!canSubmit || isSubmitting) {
-      return
-    }
+    setShowErrors(true)
+    if (!canSubmit) return
+    if (isSubmitting) return
 
     setIsSubmitting(true)
     setSubmitError('')
@@ -93,6 +148,7 @@ export function NewReviewPage() {
     try {
       const payload = {
         context: [reviewName.trim(), context.trim()].filter(Boolean).join('\n\n'),
+        submitted_by: '',  // P1 登录完成前暂时留空
         campaigns: campaigns.map(toPayloadCampaign),
       }
       const response = await evaluateCampaigns(payload)
@@ -216,12 +272,17 @@ export function NewReviewPage() {
                   </span>
                   <div>
                     <p className="section-label">方案 {index + 1}</p>
-                    <input
-                      className="mt-1.5 w-full border-none bg-transparent p-0 font-serif text-2xl font-semibold text-coffee placeholder:text-ink/35 focus:outline-none"
-                      value={campaign.name}
-                      onChange={(event) => updateCampaign(index, 'name', event.target.value)}
-                      placeholder="请输入方案名"
-                    />
+                    <div>
+                      <input
+                        className={`mt-1.5 w-full border-none bg-transparent p-0 font-serif text-2xl font-semibold text-coffee placeholder:text-ink/35 focus:outline-none ${isFieldError(index, 'name', campaign.name) ? 'border-b-2 !border-red-400' : ''}`}
+                        style={isFieldError(index, 'name', campaign.name) ? { borderBottom: '2px solid #f87171' } : undefined}
+                        value={campaign.name}
+                        onChange={(event) => updateCampaign(index, 'name', event.target.value)}
+                        onBlur={() => markTouched(index, 'name')}
+                        placeholder="请输入方案名"
+                      />
+                      {isFieldError(index, 'name', campaign.name) && <p className="text-xs text-red-500 mt-1">此项必填</p>}
+                    </div>
                   </div>
                 </div>
 
@@ -240,6 +301,13 @@ export function NewReviewPage() {
                     <option value="moodyplus">moodyPlus</option>
                     <option value="colored_lenses">colored lenses</option>
                   </select>
+                  <button
+                    className="secondary-button text-xs"
+                    type="button"
+                    onClick={() => toggleMode(index)}
+                  >
+                    {isBriefMode(index) ? '高级模式' : '简述模式'}
+                  </button>
                   {campaigns.length > 2 ? (
                     <button
                       className="secondary-button"
@@ -252,76 +320,111 @@ export function NewReviewPage() {
                 </div>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-2">
-                <label className="space-y-2">
-                  <span className="field-label">目标受众</span>
-                  <textarea
-                    className="field-textarea"
-                    rows={3}
-                    value={campaign.targetAudience}
-                    onChange={(event) => updateCampaign(index, 'targetAudience', event.target.value)}
-                  />
-                </label>
+              {isBriefMode(index) ? (
+                <div className="space-y-3">
+                  <label className="space-y-2">
+                    <span className="field-label">方案简述</span>
+                    <textarea
+                      className="field-textarea"
+                      rows={5}
+                      value={briefTexts[index] ?? ''}
+                      onChange={(e) => setBriefTexts((prev) => ({ ...prev, [index]: e.target.value }))}
+                      placeholder={'用自然语言描述你的方案，例如：\n"针对大学生群体推一波椰糖棕色的日抛，主打自然素颜感，在小红书上做种草，预算不高，想用学生价的促销来拉新客"'}
+                    />
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <button
+                      className="primary-button"
+                      type="button"
+                      disabled={!briefTexts[index]?.trim() || parsingIndex === index}
+                      onClick={() => handleParseBrief(index)}
+                    >
+                      {parsingIndex === index ? '解析中...' : '解析为结构化字段'}
+                    </button>
+                    <span className="text-xs text-ink/50">解析后会自动切换到高级模式供你确认和编辑</span>
+                  </div>
+                  {parseError[index] ? (
+                    <p className="text-sm text-wine">{parseError[index]}</p>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <label className="space-y-2">
+                    <span className="field-label">目标受众</span>
+                    <textarea
+                      className={`field-textarea ${isFieldError(index, 'targetAudience', campaign.targetAudience) ? 'border-red-400 ring-1 ring-red-300' : ''}`}
+                      rows={3}
+                      value={campaign.targetAudience}
+                      onChange={(event) => updateCampaign(index, 'targetAudience', event.target.value)}
+                      onBlur={() => markTouched(index, 'targetAudience')}
+                    />
+                    {isFieldError(index, 'targetAudience', campaign.targetAudience) && <p className="text-xs text-red-500 mt-1">此项必填</p>}
+                  </label>
 
-                <label className="space-y-2">
-                  <span className="field-label">核心信息</span>
-                  <textarea
-                    className="field-textarea"
-                    rows={3}
-                    value={campaign.coreMessage}
-                    onChange={(event) => updateCampaign(index, 'coreMessage', event.target.value)}
-                  />
-                </label>
+                  <label className="space-y-2">
+                    <span className="field-label">核心信息</span>
+                    <textarea
+                      className={`field-textarea ${isFieldError(index, 'coreMessage', campaign.coreMessage) ? 'border-red-400 ring-1 ring-red-300' : ''}`}
+                      rows={3}
+                      value={campaign.coreMessage}
+                      onChange={(event) => updateCampaign(index, 'coreMessage', event.target.value)}
+                      onBlur={() => markTouched(index, 'coreMessage')}
+                    />
+                    {isFieldError(index, 'coreMessage', campaign.coreMessage) && <p className="text-xs text-red-500 mt-1">此项必填</p>}
+                  </label>
 
-                <label className="space-y-2">
-                  <span className="field-label">渠道重点</span>
-                  <input
-                    className="field-input"
-                    value={campaign.channels}
-                    onChange={(event) => updateCampaign(index, 'channels', event.target.value)}
-                    placeholder="例如：小红书, 抖音, 天猫"
-                  />
-                </label>
+                  <label className="space-y-2">
+                    <span className="field-label">渠道重点</span>
+                    <input
+                      className="field-input"
+                      value={campaign.channels}
+                      onChange={(event) => updateCampaign(index, 'channels', event.target.value)}
+                      placeholder="例如：小红书, 抖音, 天猫"
+                    />
+                  </label>
 
-                <label className="space-y-2">
-                  <span className="field-label">创意方向</span>
-                  <input
-                    className="field-input"
-                    value={campaign.creativeDirection}
-                    onChange={(event) => updateCampaign(index, 'creativeDirection', event.target.value)}
-                  />
-                </label>
+                  <label className="space-y-2">
+                    <span className="field-label">创意方向</span>
+                    <input
+                      className={`field-input ${isFieldError(index, 'creativeDirection', campaign.creativeDirection) ? 'border-red-400 ring-1 ring-red-300' : ''}`}
+                      value={campaign.creativeDirection}
+                      onChange={(event) => updateCampaign(index, 'creativeDirection', event.target.value)}
+                      onBlur={() => markTouched(index, 'creativeDirection')}
+                    />
+                    {isFieldError(index, 'creativeDirection', campaign.creativeDirection) && <p className="text-xs text-red-500 mt-1">此项必填</p>}
+                  </label>
 
-                <label className="space-y-2">
-                  <span className="field-label">预算范围</span>
-                  <input
-                    className="field-input"
-                    value={campaign.budgetRange}
-                    onChange={(event) => updateCampaign(index, 'budgetRange', event.target.value)}
-                    placeholder="建议写成范围或待确认"
-                  />
-                </label>
+                  <label className="space-y-2">
+                    <span className="field-label">预算范围</span>
+                    <input
+                      className="field-input"
+                      value={campaign.budgetRange}
+                      onChange={(event) => updateCampaign(index, 'budgetRange', event.target.value)}
+                      placeholder="建议写成范围或待确认"
+                    />
+                  </label>
 
-                <label className="space-y-2">
-                  <span className="field-label">促销机制</span>
-                  <input
-                    className="field-input"
-                    value={campaign.promoMechanic}
-                    onChange={(event) => updateCampaign(index, 'promoMechanic', event.target.value)}
-                    placeholder="可留空"
-                  />
-                </label>
+                  <label className="space-y-2">
+                    <span className="field-label">促销机制</span>
+                    <input
+                      className="field-input"
+                      value={campaign.promoMechanic}
+                      onChange={(event) => updateCampaign(index, 'promoMechanic', event.target.value)}
+                      placeholder="可留空"
+                    />
+                  </label>
 
-                <label className="space-y-2 lg:col-span-2">
-                  <span className="field-label">KV 描述</span>
-                  <textarea
-                    className="field-textarea"
-                    rows={3}
-                    value={campaign.kvDescription}
-                    onChange={(event) => updateCampaign(index, 'kvDescription', event.target.value)}
-                  />
-                </label>
-              </div>
+                  <label className="space-y-2 lg:col-span-2">
+                    <span className="field-label">KV 描述</span>
+                    <textarea
+                      className="field-textarea"
+                      rows={3}
+                      value={campaign.kvDescription}
+                      onChange={(event) => updateCampaign(index, 'kvDescription', event.target.value)}
+                    />
+                  </label>
+                </div>
+              )}
             </article>
           ))}
         </div>
@@ -368,7 +471,7 @@ export function NewReviewPage() {
               disabled={!canSubmit || isSubmitting}
               onClick={submitReview}
             >
-              {isSubmitting ? '正在创建评审任务...' : '提交并进入运行状态'}
+              {isSubmitting ? '正在创建评审任务...' : showErrors && !canSubmit ? '请先完成必填项' : '提交并进入运行状态'}
             </button>
           </div>
         </SectionCard>

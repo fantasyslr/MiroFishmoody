@@ -48,6 +48,23 @@ export function DashboardPage() {
     }
   }, [])
 
+  const getTaskTitle = (task: TaskListItem) => {
+    const meta = task.metadata
+    if (meta?.campaign_names?.length) {
+      return meta.campaign_names.join(' vs ')
+    }
+    const resultSetId = (task.result as Record<string, unknown>)?.set_id
+    return resultSetId ? String(resultSetId) : task.task_id
+  }
+
+  const getTaskSubtitle = (task: TaskListItem) => {
+    const parts: string[] = []
+    const meta = task.metadata
+    if (meta?.submitted_by) parts.push(meta.submitted_by)
+    if (meta?.submitted_at) parts.push(meta.submitted_at)
+    return parts.join(' · ')
+  }
+
   const runningCount = tasks.filter((t) => t.status === 'processing' || t.status === 'pending').length
   const completedCount = tasks.filter((t) => t.status === 'completed').length
   const failedCount = tasks.filter((t) => t.status === 'failed').length
@@ -188,12 +205,13 @@ export function DashboardPage() {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-lg font-semibold text-coffee">
-                          {(task.result as Record<string, unknown>)?.set_id
-                            ? String((task.result as Record<string, unknown>).set_id)
-                            : task.task_id}
+                          {getTaskTitle(task)}
                         </h3>
                         <StatusBadge label={statusLabelMap[task.status]} tone={statusToneMap[task.status]} />
                       </div>
+                      {getTaskSubtitle(task) && (
+                        <p className="mt-1 text-sm text-ink/60">{getTaskSubtitle(task)}</p>
+                      )}
                       <div className="mt-2 flex flex-wrap gap-2 text-xs text-ink/70">
                         <span className="rounded-full border border-line bg-paper px-3 py-1">
                           {task.progress}%

@@ -99,9 +99,8 @@ export const reviewPreset: {
   checklist: string[]
   sideNotes: string[]
 } = {
-  reviewName: 'moodyPlus 夏季舒适感方向评审',
-  context:
-    '目标是从三套 campaign 方向里选出更适合首轮测试的版本。团队真正要做的决定不是“谁看起来更高级”，而是谁更适合直接进入执行测试。',
+  reviewName: '',
+  context: '',
   checklist: [
     '每个方案都要能看出清楚差异，不要只是在同一表述上换近义词。',
     '业务背景要写明这轮评审服务的决策，否则结果页只会变成漂亮摘要。',
@@ -117,27 +116,27 @@ export const reviewPreset: {
 export const initialCampaignDrafts: CampaignDraft[] = [
   {
     id: 'campaign-a',
-    name: '轻氧专业感',
+    name: '',
     productLine: 'moodyplus',
-    targetAudience: '对佩戴舒适度更敏感的上班族，关注长时间佩戴体验。',
-    coreMessage: '把轻负担与专业可信感放在同一句里，让舒适不是软性修饰词。',
-    channels: '小红书种草 + 天猫承接',
-    creativeDirection: '浅色留白、近距离眼部细节、专业但不冷。',
-    budgetRange: '首轮测试预算待确认，建议中等量级',
-    kvDescription: '模特半身近景，突出日常通勤场景中的轻松佩戴状态。',
-    promoMechanic: '老客加购券可选',
+    targetAudience: '',
+    coreMessage: '',
+    channels: '',
+    creativeDirection: '',
+    budgetRange: '',
+    kvDescription: '',
+    promoMechanic: '',
   },
   {
     id: 'campaign-b',
-    name: '通勤生活方式',
+    name: '',
     productLine: 'moodyplus',
-    targetAudience: '追求妆造完成度、但不想让镜片显得过分用力的都市女生。',
-    coreMessage: '强调自然融入通勤造型，让佩戴体验成为日常状态的一部分。',
-    channels: '抖音短视频 + 落地页内容承接',
-    creativeDirection: '生活流、节奏快、强调搭配与状态切换。',
-    budgetRange: '首轮测试预算待确认，建议小范围探索',
-    kvDescription: '地铁、办公桌、下班场景串联，突出自然切换感。',
-    promoMechanic: '限时组合装',
+    targetAudience: '',
+    coreMessage: '',
+    channels: '',
+    creativeDirection: '',
+    budgetRange: '',
+    kvDescription: '',
+    promoMechanic: '',
   },
 ]
 

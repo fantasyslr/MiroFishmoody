@@ -17,6 +17,7 @@ export type CampaignInput = {
 export type EvaluatePayload = {
   set_id?: string
   context: string
+  submitted_by?: string
   campaigns: CampaignInput[]
 }
 
@@ -82,6 +83,26 @@ export type EvaluationResult = {
     rationale_for_uncertainty: string
   }
   resolution_ready_fields?: Record<string, string>
+}
+
+export type ParseBriefPayload = {
+  brief_text: string
+  product_line: 'moodyplus' | 'colored_lenses'
+}
+
+export type ParseBriefResponse = {
+  parsed: {
+    name: string
+    product_line: string
+    target_audience: string
+    core_message: string
+    channels: string[]
+    creative_direction: string
+    budget_range: string
+    promo_mechanic: string
+    kv_description: string
+  }
+  confidence: 'high' | 'medium' | 'low'
 }
 
 export type ResolvePayload = {
@@ -173,6 +194,13 @@ export function getCalibration() {
   return request<CalibrationResponse>('/api/campaign/calibration')
 }
 
+export function parseBrief(payload: ParseBriefPayload) {
+  return request<ParseBriefResponse>('/api/campaign/parse-brief', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
 export function triggerRecalibrate() {
   return request<Record<string, unknown>>('/api/campaign/recalibrate', {
     method: 'POST',
@@ -189,6 +217,13 @@ export type TaskListItem = {
   message: string
   result?: Record<string, unknown> | null
   error?: string | null
+  metadata?: {
+    set_id?: string
+    submitted_by?: string
+    campaign_names?: string[]
+    campaign_count?: number
+    submitted_at?: string
+  }
 }
 
 export function getTasks() {
