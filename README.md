@@ -1,203 +1,150 @@
 <div align="center">
 
-<img src="./static/image/MiroFish_logo_compressed.jpeg" alt="MiroFish Logo" width="75%"/>
+<img src="./static/image/MiroFish_logo_compressed.jpeg" alt="MiroFishmoody Logo" width="60%"/>
 
-<a href="https://trendshift.io/repositories/16144" target="_blank"><img src="https://trendshift.io/api/badge/repositories/16144" alt="666ghj%2FMiroFish | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+# MiroFishmoody
 
-简洁通用的群体智能引擎，预测万物
-</br>
-<em>A Simple and Universal Swarm Intelligence Engine, Predicting Anything</em>
+**为 Moody Lenses 重构的电商 Campaign Choice Engine**
 
-<a href="https://www.shanda.com/" target="_blank"><img src="./static/image/shanda_logo.png" alt="666ghj%2MiroFish | Shanda" height="40"/></a>
+从“预测万物”的社会仿真，转向“上线前选更优方案”的电商决策引擎。
 
-[![GitHub Stars](https://img.shields.io/github/stars/666ghj/MiroFish?style=flat-square&color=DAA520)](https://github.com/666ghj/MiroFish/stargazers)
-[![GitHub Watchers](https://img.shields.io/github/watchers/666ghj/MiroFish?style=flat-square)](https://github.com/666ghj/MiroFish/watchers)
-[![GitHub Forks](https://img.shields.io/github/forks/666ghj/MiroFish?style=flat-square)](https://github.com/666ghj/MiroFish/network)
-[![Docker](https://img.shields.io/badge/Docker-Build-2496ED?style=flat-square&logo=docker&logoColor=white)](https://hub.docker.com/)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/666ghj/MiroFish)
-
-[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.com/channels/1469200078932545606/1469201282077163739)
-[![X](https://img.shields.io/badge/X-Follow-000000?style=flat-square&logo=x&logoColor=white)](https://x.com/mirofish_ai)
-[![Instagram](https://img.shields.io/badge/Instagram-Follow-E4405F?style=flat-square&logo=instagram&logoColor=white)](https://www.instagram.com/mirofish_ai/)
-
-[English](./README-EN.md) | [中文文档](./README.md)
+[English](./README-EN.md) | [中文](./README.md)
 
 </div>
 
-## ⚡ 项目概述
+## 项目定位
 
-**MiroFish** 是一款基于多智能体技术的新一代 AI 预测引擎。通过提取现实世界的种子信息（如突发新闻、政策草案、金融信号），自动构建出高保真的平行数字世界。在此空间内，成千上万个具备独立人格、长期记忆与行为逻辑的智能体进行自由交互与社会演化。你可透过「上帝视角」动态注入变量，精准推演未来走向——**让未来在数字沙盘中预演，助决策在百战模拟后胜出**。
+**MiroFishmoody** 是基于 [MiroFish](https://github.com/666ghj/MiroFish) 的一条产品化 fork，目标不是继续做重型舆情/社会模拟，而是服务于 **Moody Lenses** 的电商投放场景：
 
-> 你只需：上传种子材料（数据分析报告或者有趣的小说故事），并用自然语言描述预测需求</br>
-> MiroFish 将返回：一份详尽的预测报告，以及一个可深度交互的高保真数字世界
+- 在多个 campaign 方案之间做结构化对比
+- 在上线前找出更可能赢的 angle、hook 和 narrative
+- 把“经验判断”变成可复盘、可比较、可校准的评审流程
 
-### 我们的愿景
+它回答的不是“未来一定会怎样”，而是：
 
-MiroFish 致力于打造映射现实的群体智能镜像，通过捕捉个体互动引发的群体涌现，突破传统预测的局限：
+- `A / B / C` 三个方案里谁更值得上
+- 哪个方案更抓眼球、更可信、更适配目标受众
+- 哪些 objection、claim 风险或品牌表达问题会拖垮转化
+- 当前方案应当 `ship / revise / kill`
 
-- **于宏观**：我们是决策者的预演实验室，让政策与公关在零风险中试错
-- **于微观**：我们是个人用户的创意沙盘，无论是推演小说结局还是探索脑洞，皆可有趣、好玩、触手可及
+## 为什么做这个 fork
 
-从严肃预测到趣味仿真，我们让每一个如果都能看见结果，让预测万物成为可能。
+电商 campaign 的早期决策，常常在“好不好看”“会不会有用”“我觉得用户会喜欢”这种主观判断里打转。
 
-## 🌐 在线体验
+对 Moody 来说，这不够。
 
-欢迎访问在线 Demo 演示环境，体验我们为你准备的一次关于热点舆情事件的推演预测：[mirofish-live-demo](https://666ghj.github.io/mirofish-demo/)
+我们要的是一个 **campaign choice engine**：
 
-## 📸 系统截图
+- 不假装预测真实 ROAS / GMV
+- 不用一个人的经验覆盖全部用户反应
+- 不把“大家觉得不错”当成结论
+- 用多视角评审、方案对战和结构化结论，提升方案选择胜率
 
-<div align="center">
-<table>
-<tr>
-<td><img src="./static/image/Screenshot/运行截图1.png" alt="截图1" width="100%"/></td>
-<td><img src="./static/image/Screenshot/运行截图2.png" alt="截图2" width="100%"/></td>
-</tr>
-<tr>
-<td><img src="./static/image/Screenshot/运行截图3.png" alt="截图3" width="100%"/></td>
-<td><img src="./static/image/Screenshot/运行截图4.png" alt="截图4" width="100%"/></td>
-</tr>
-<tr>
-<td><img src="./static/image/Screenshot/运行截图5.png" alt="截图5" width="100%"/></td>
-<td><img src="./static/image/Screenshot/运行截图6.png" alt="截图6" width="100%"/></td>
-</tr>
-</table>
-</div>
+## Moody 业务语境
 
-## 🎬 演示视频
+这个 fork 面向 **Moody Lenses** 的真实业务场景设计：
 
-### 1. 武汉大学舆情推演预测 + MiroFish项目讲解
+- 两条产品线：`colored lenses` 与 `moodyPlus`
+- 品牌竞争点是 `function + aesthetics`，不是简单打折
+- `moodyPlus` 主要面向已有隐形眼镜佩戴者，重视自然感、舒适感与眼健康安心感
+- Meta、Google、influencer 等渠道的素材评审，需要先做方案筛选，再进入真实投放验证
 
-<div align="center">
-<a href="https://www.bilibili.com/video/BV1VYBsBHEMY/" target="_blank"><img src="./static/image/武大模拟演示封面.png" alt="MiroFish Demo Video" width="75%"/></a>
+## 这个系统重点评什么
 
-点击图片查看使用微舆BettaFish生成的《武大舆情报告》进行预测的完整演示视频
-</div>
+当前设计关注的是 **相对排序**，而不是绝对预测。
 
-### 2. 《红楼梦》失传结局推演预测
+核心评审维度包括：
 
-<div align="center">
-<a href="https://www.bilibili.com/video/BV1cPk3BBExq" target="_blank"><img src="./static/image/红楼梦模拟推演封面.jpg" alt="MiroFish Demo Video" width="75%"/></a>
+- Hook strength
+- Visual / aesthetic pull
+- Message clarity
+- Trust and claim believability
+- Audience fit
+- Objection pressure
+- Brand risk
 
-点击图片查看基于《红楼梦》前80回数十万字，MiroFish深度预测失传结局
-</div>
+最终输出应聚焦：
 
-> **金融方向推演预测**、**时政要闻推演预测**等示例陆续更新中...
+- ranking
+- pairwise comparison
+- audience-specific feedback
+- objections and revision directions
+- `ship / revise / kill`
 
-## 🔄 工作流程
+## 重构方向
 
-1. **图谱构建**：现实种子提取 & 个体与群体记忆注入 & GraphRAG构建
-2. **环境搭建**：实体关系抽取 & 人设生成 & 环境配置Agent注入仿真参数
-3. **开始模拟**：双平台并行模拟 & 自动解析预测需求 & 动态更新时序记忆
-4. **报告生成**：ReportAgent拥有丰富的工具集与模拟后环境进行深度交互
-5. **深度互动**：与模拟世界中的任意一位进行对话 & 与ReportAgent进行对话
+这个 fork 的重构原则很明确：
 
-## 🚀 快速开始
+**保留**
 
-### 一、源码部署（推荐）
+- 多视角 agent 评审
+- 多方案对战而不是单方案打分
+- 结构化总结与决策输出
 
-#### 前置要求
+**删除**
 
-| 工具 | 版本要求 | 说明 | 安装检查 |
-|------|---------|------|---------|
-| **Node.js** | 18+ | 前端运行环境，包含 npm | `node -v` |
-| **Python** | ≥3.11, ≤3.12 | 后端运行环境 | `python --version` |
-| **uv** | 最新版 | Python 包管理器 | `uv --version` |
+- Zep 图谱
+- GraphRAG
+- Twitter / Reddit 社交环境
+- 长时社会模拟
+- “预测万物”的泛化叙事
 
-#### 1. 配置环境变量
+**重写**
 
-```bash
-# 复制示例配置文件
-cp .env.example .env
+- Audience panel
+- Pairwise judge engine
+- Campaign scoring
+- Summary generation
+- 后续 calibration layer
 
-# 编辑 .env 文件，填入必要的 API 密钥
-```
+## 当前状态
 
-**必需的环境变量：**
+这是一个 **正在公开推进中的重构 fork**。
 
-```env
-# LLM API配置（支持 OpenAI SDK 格式的任意 LLM API）
-# 推荐使用阿里百炼平台qwen-plus模型：https://bailian.console.aliyun.com/
-# 注意消耗较大，可先进行小于40轮的模拟尝试
-LLM_API_KEY=your_api_key
-LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-LLM_MODEL_NAME=qwen-plus
+当前主线不是做“完整自治世界”，而是把原始 MiroFish 的重型结构压缩成一个更适合电商团队使用的选择器。
 
-# Zep Cloud 配置
-# 每月免费额度即可支撑简单使用：https://app.getzep.com/
-ZEP_API_KEY=your_zep_api_key
-```
+当前公开仓库的目标是：
 
-#### 2. 安装依赖
+1. 先完成对外叙事与方向对齐
+2. 再持续同步代码层的清理、重构和验证
+3. 最终把 fork 收敛成一个真正能用于 pre-launch campaign review 的系统
 
-```bash
-# 一键安装所有依赖（根目录 + 前端 + 后端）
-npm run setup:all
-```
+换句话说，这个仓库现在更适合被理解为：
 
-或者分步安装：
+> 一个围绕 Moody Lenses 场景重构中的 campaign evaluator，而不是原始 MiroFish 的简单换皮版本。
 
-```bash
-# 安装 Node 依赖（根目录 + 前端）
-npm run setup
+## 预期工作流
 
-# 安装 Python 依赖（后端，自动创建虚拟环境）
-npm run setup:backend
-```
+长期目标中的工作流大致如下：
 
-#### 3. 启动服务
+1. 输入多个 campaign 方案
+2. 选择产品线与目标受众
+3. 由 audience panel 做多视角评审
+4. 由 judge engine 做 pairwise 对战
+5. 生成 ranking、objections、summary 与建议动作
 
-```bash
-# 同时启动前后端（在项目根目录执行）
-npm run dev
-```
+## 适用场景
 
-**服务地址：**
-- 前端：`http://localhost:3000`
-- 后端 API：`http://localhost:5001`
+- Meta campaign angle 预筛选
+- 创意方向选择
+- LP angle 对比
+- Influencer script / brief 的早期评审
+- `colored lenses` 与 `moodyPlus` 的受众差异化判断
 
-**单独启动：**
+## 不解决什么
 
-```bash
-npm run backend   # 仅启动后端
-npm run frontend  # 仅启动前端
-```
+这个系统不应该被当成：
 
-### 二、Docker 部署
+- 真实利润预测器
+- 归因系统替代品
+- 媒体 buying engine
+- “一定会爆”的神谕工具
 
-```bash
-# 1. 配置环境变量（同源码部署）
-cp .env.example .env
+它首先是一个 **更可量化的方案选择器**。
 
-# 2. 拉取镜像并启动
-docker compose up -d
-```
+## 致谢
 
-默认会读取根目录下的 `.env`，并映射端口 `3000（前端）/5001（后端）`
+- 原始项目：[MiroFish](https://github.com/666ghj/MiroFish)
+- 原始社会仿真方向为这个 fork 提供了多 agent 推演的起点
 
-> 在 `docker-compose.yml` 中已通过注释提供加速镜像地址，可按需替换
-
-## 📬 更多交流
-
-<div align="center">
-<img src="./static/image/QQ群.png" alt="QQ交流群" width="60%"/>
-</div>
-
-&nbsp;
-
-MiroFish团队长期招募全职/实习，如果你对多Agent应用感兴趣，欢迎投递简历至：**mirofish@shanda.com**
-
-## 📄 致谢
-
-**MiroFish 得到了盛大集团的战略支持和孵化！**
-
-MiroFish 的仿真引擎由 **[OASIS](https://github.com/camel-ai/oasis)** 驱动，我们衷心感谢 CAMEL-AI 团队的开源贡献！
-
-## 📈 项目统计
-
-<a href="https://www.star-history.com/#666ghj/MiroFish&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=666ghj/MiroFish&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=666ghj/MiroFish&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=666ghj/MiroFish&type=date&legend=top-left" />
- </picture>
-</a>
+后续代码与文档会继续围绕 **Moody Lenses campaign choice engine** 这一目标收敛。
