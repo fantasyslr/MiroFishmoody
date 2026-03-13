@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, X, UploadCloud, ArrowRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
-import { cn } from '../utils'
+import { cn, uuid } from '../utils'
 import { useReviewStore } from '../store'
 import {
   evaluateCampaigns,
@@ -37,7 +37,7 @@ export function HomePage() {
     setSubmitError('')
 
     try {
-      const setId = crypto.randomUUID()
+      const setId = uuid()
 
       // Upload images per campaign
       for (const plan of plans) {

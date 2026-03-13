@@ -11,6 +11,7 @@ import {
   type CampaignInput,
 } from '../lib/api'
 import { initialCampaignDrafts, reviewPreset, type CampaignDraft } from '../data/campaignDecisionData'
+import { uuid } from '../utils'
 
 const emptyDraft = (index: number): CampaignDraft => ({
   id: `campaign-new-${index}`,
@@ -49,7 +50,7 @@ function toPayloadCampaign(campaign: CampaignDraft): CampaignInput {
 
 export function NewReviewPage() {
   const navigate = useNavigate()
-  const [draftSetId, setDraftSetId] = useState(() => crypto.randomUUID())
+  const [draftSetId, setDraftSetId] = useState(() => uuid())
   const [reviewName, setReviewName] = useState(reviewPreset.reviewName)
   const [context, setContext] = useState(reviewPreset.context)
   const [campaigns, setCampaigns] = useState(initialCampaignDrafts)
@@ -218,7 +219,7 @@ export function NewReviewPage() {
         reviewName: reviewName.trim(),
       })
 
-      setDraftSetId(crypto.randomUUID())
+      setDraftSetId(uuid())
       navigate(`/running?taskId=${response.task_id}&setId=${response.set_id}`)
     } catch (error) {
       const message = error instanceof Error ? error.message : '提交失败，请稍后再试'

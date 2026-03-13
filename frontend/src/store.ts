@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { uuid } from './utils'
 
 export interface Plan {
   id: string
@@ -23,7 +24,7 @@ interface ReviewStore {
 
 function makePlan(): Plan {
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     name: '',
     productLine: 'moodyplus',
     description: '',
