@@ -144,6 +144,100 @@
 
 > 一个围绕 Moody Lenses 场景重构中的 internal decision market，而不是原始 MiroFish 的简单换皮版本。
 
+## 如何试用
+
+### 前置要求
+
+| 工具 | 版本 | 说明 |
+|------|------|------|
+| Python | 3.11+ | 后端运行环境 |
+| Node.js | 18+ | 前端构建（Docker 部署可跳过） |
+| Docker | 最新版 | 推荐的部署方式 |
+
+### 方式一：Docker 部署（推荐）
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/fantasyslr/MiroFishmoody.git
+cd MiroFishmoody
+
+# 2. 配置环境变量
+cp .env.example .env
+# 编辑 .env，填入 LLM_API_KEY（支持任何 OpenAI 兼容接口）
+
+# 3. 构建并启动
+docker compose up -d --build
+
+# 4. 访问
+# http://localhost:5001
+```
+
+### 方式二：源码运行
+
+```bash
+# 1. 安装后端依赖
+cd backend && pip install -r requirements.txt
+
+# 2. 配置
+cp .env.example .env
+# 编辑 .env，填入 LLM_API_KEY
+
+# 3. 启动
+python run.py
+# http://localhost:5001
+```
+
+### 方式三：纯 API 试用
+
+```bash
+# 健康检查
+curl http://localhost:5001/health
+# {"service":"Campaign Ranker Engine","status":"ok"}
+
+# 提交评审（异步）
+curl -X POST http://localhost:5001/api/campaign/evaluate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "campaigns": [
+      {"name": "方案A", "core_message": "自然美瞳日抛新体验", "product_line": "colored_lenses"},
+      {"name": "方案B", "core_message": "硅水凝胶透氧黑科技", "product_line": "moodyplus"}
+    ]
+  }'
+# 返回 task_id 和 set_id
+
+# 查询进度
+curl http://localhost:5001/api/campaign/evaluate/status/<task_id>
+
+# 获取结果
+curl http://localhost:5001/api/campaign/result/<set_id>
+
+# 赛后结算（可选）
+curl -X POST http://localhost:5001/api/campaign/resolve \
+  -H "Content-Type: application/json" \
+  -d '{"set_id": "<set_id>", "winner_campaign_id": "campaign_1", "actual_metrics": {"ctr": 0.03}}'
+
+# 查看校准状态
+curl http://localhost:5001/api/campaign/calibration
+```
+
+### 环境变量
+
+| 变量 | 必填 | 说明 |
+|------|------|------|
+| `LLM_API_KEY` | 是 | LLM API 密钥 |
+| `LLM_BASE_URL` | 否 | OpenAI 兼容接口地址（默认 OpenAI） |
+| `LLM_MODEL_NAME` | 否 | 模型名（默认 gpt-4o-mini） |
+| `SECRET_KEY` | 建议 | Flask session 密钥 |
+
+详细部署说明见 [DEPLOY.md](./DEPLOY.md)，后端开发快速上手见 [backend/QUICKSTART.md](./backend/QUICKSTART.md)。
+
+## 技术栈
+
+- **后端**：Python 3.11+ / Flask / Gunicorn
+- **前端**：React + Vite + TypeScript
+- **部署**：Docker multi-stage build，单端口 5001
+- **LLM**：OpenAI 兼容接口（百炼/千问/OpenAI 均可）
+
 ## 一眼看懂
 
 ```mermaid
