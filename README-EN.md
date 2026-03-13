@@ -4,9 +4,9 @@
 
 # MiroFishmoody
 
-**A campaign choice engine fork being rebuilt for Moody Lenses**
+**An internal decision market being rebuilt for Moody Lenses**
 
-Shifting from "predict anything" social simulation to a pre-launch decision system for e-commerce campaigns.
+Shifting from "predict anything" social simulation to an internal market-style system for pricing campaign choices before launch.
 
 [English](./README-EN.md) | [中文](./README.md)
 
@@ -18,7 +18,7 @@ Shifting from "predict anything" social simulation to a pre-launch decision syst
 
 - compare multiple campaign concepts before launch
 - identify which angle is more likely to win
-- turn intuition-heavy creative debates into structured evaluation
+- turn intuition-heavy creative debates into a structured internal decision market
 
 This project is not trying to answer "what will the future be?"
 
@@ -28,6 +28,7 @@ It is trying to answer:
 - which option is more eye-catching, credible, and audience-fit
 - which objections or claim risks are likely to hurt conversion
 - whether a concept should be `ship / revise / kill`
+- which options do not have enough edge to deserve internal conviction
 
 ## Why this fork exists
 
@@ -39,12 +40,13 @@ Most early e-commerce campaign decisions still rely on taste, confidence, and in
 
 That is not reliable enough.
 
-For Moody, the real need is a **campaign choice engine**:
+For Moody, the real need is an **internal decision market**:
 
 - not a fake ROAS / GMV oracle
 - not a single operator's judgment disguised as strategy
 - not a giant simulation world for its own sake
 - but a system that increases the odds of choosing the better concept before money is spent
+- with probability outputs, sub-markets, and post-launch calibration
 
 ## Moody business context
 
@@ -57,7 +59,7 @@ This fork is being shaped around **Moody Lenses**:
 
 ## What the engine is meant to evaluate
 
-The decision logic should prioritize **relative ranking**, not absolute forecasting.
+The decision logic should prioritize **relative ranking + probability pricing**, not absolute forecasting.
 
 Core evaluation dimensions:
 
@@ -72,9 +74,13 @@ Core evaluation dimensions:
 Expected outputs:
 
 - ranking
+- probability board
+- sub-markets
 - pairwise comparison
+- spread / uncertainty
 - audience-specific feedback
 - objections and revision directions
+- resolution-ready fields
 - `ship / revise / kill`
 
 ## Rewrite direction
@@ -100,16 +106,20 @@ The rewrite is intentionally opinionated.
 - audience panel
 - pairwise judge engine
 - campaign scoring
+- probability aggregation
+- sub-market evaluation
+- resolution tracking
+- judge calibration
 - summary generation
-- calibration layer later on
+- deeper calibration layers over time
 
 ## Current status
 
 This repository is an **active public rewrite**.
 
-The direction is clear, but the fork is still being tightened into a focused campaign evaluator. The current public branch should be read as:
+The direction is clear, but the fork is still being tightened into a focused internal decision market. The current public branch should be read as:
 
-> a Moody-facing campaign decision system in transition, not a simple reskin of the original MiroFish.
+> a Moody-facing internal decision market in transition, not a simple reskin of the original MiroFish.
 
 The immediate priorities are:
 
@@ -125,7 +135,8 @@ The long-term workflow is straightforward:
 2. choose product line and target audience
 3. run audience panel reviews
 4. run pairwise judge comparisons
-5. generate ranking, objections, summary, and action recommendation
+5. generate probability board, sub-markets, ranking, objections, and action recommendation
+6. settle against real campaign results later for calibration
 
 ## Intended use cases
 
@@ -144,11 +155,14 @@ This should not be treated as:
 - a media buying system
 - a magical certainty machine
 
-It is first and foremost a **better campaign selection tool**.
+It is first and foremost a **better campaign selection tool / internal decision market**.
 
 ## Credits
 
 - Original project: [MiroFish](https://github.com/666ghj/MiroFish)
 - The original multi-agent simulation direction provided the starting point for this fork
+- This new direction also draws direct inspiration from **crypto-native prediction markets, event contracts, and forecasting communities**
+- What we borrow: `implied probability`, `sub-markets`, `resolution`, and `calibration`
+- What we explicitly do **not** borrow: tokens, onchain trading, or public speculation markets
 
-Future code and documentation updates will continue to narrow the repo around the **Moody Lenses campaign choice engine** direction.
+Future code and documentation updates will continue to narrow the repo around the **Moody Lenses internal decision market** direction.

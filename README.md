@@ -4,9 +4,9 @@
 
 # MiroFishmoody
 
-**为 Moody Lenses 重构的电商 Campaign Choice Engine**
+**为 Moody Lenses 重构的 Internal Decision Market**
 
-从“预测万物”的社会仿真，转向“上线前选更优方案”的电商决策引擎。
+从“预测万物”的社会仿真，转向“上线前给方案定价”的电商内部决策市场。
 
 [English](./README-EN.md) | [中文](./README.md)
 
@@ -18,7 +18,7 @@
 
 - 在多个 campaign 方案之间做结构化对比
 - 在上线前找出更可能赢的 angle、hook 和 narrative
-- 把“经验判断”变成可复盘、可比较、可校准的评审流程
+- 把“经验判断”变成可复盘、可比较、可校准的内部决策市场
 
 它回答的不是“未来一定会怎样”，而是：
 
@@ -26,6 +26,7 @@
 - 哪个方案更抓眼球、更可信、更适配目标受众
 - 哪些 objection、claim 风险或品牌表达问题会拖垮转化
 - 当前方案应当 `ship / revise / kill`
+- 哪些方案只是“看起来不错”，但没有足够 edge 值得下注
 
 ## 为什么做这个 fork
 
@@ -33,12 +34,12 @@
 
 对 Moody 来说，这不够。
 
-我们要的是一个 **campaign choice engine**：
+我们要的是一个 **internal decision market**：
 
 - 不假装预测真实 ROAS / GMV
 - 不用一个人的经验覆盖全部用户反应
 - 不把“大家觉得不错”当成结论
-- 用多视角评审、方案对战和结构化结论，提升方案选择胜率
+- 用多视角评审、方案对战、概率化输出和赛后校准，提升方案选择胜率
 
 ## Moody 业务语境
 
@@ -51,7 +52,7 @@
 
 ## 这个系统重点评什么
 
-当前设计关注的是 **相对排序**，而不是绝对预测。
+当前设计关注的是 **相对排序 + 概率定价**，而不是绝对预测。
 
 核心评审维度包括：
 
@@ -66,9 +67,13 @@
 最终输出应聚焦：
 
 - ranking
+- probability board
+- sub-markets
 - pairwise comparison
+- spread / uncertainty
 - audience-specific feedback
 - objections and revision directions
+- resolution-ready fields
 - `ship / revise / kill`
 
 ## 重构方向
@@ -94,14 +99,18 @@
 - Audience panel
 - Pairwise judge engine
 - Campaign scoring
+- Probability aggregation
+- Sub-market evaluation
+- Resolution tracking
+- Judge calibration
 - Summary generation
-- 后续 calibration layer
+- 后续 calibration layer 持续增强
 
 ## 当前状态
 
 这是一个 **正在公开推进中的重构 fork**。
 
-当前主线不是做“完整自治世界”，而是把原始 MiroFish 的重型结构压缩成一个更适合电商团队使用的选择器。
+当前主线不是做“完整自治世界”，而是把原始 MiroFish 的重型结构压缩成一个更适合电商团队使用的 **internal decision market**。
 
 当前公开仓库的目标是：
 
@@ -111,7 +120,7 @@
 
 换句话说，这个仓库现在更适合被理解为：
 
-> 一个围绕 Moody Lenses 场景重构中的 campaign evaluator，而不是原始 MiroFish 的简单换皮版本。
+> 一个围绕 Moody Lenses 场景重构中的 internal decision market，而不是原始 MiroFish 的简单换皮版本。
 
 ## 预期工作流
 
@@ -121,7 +130,8 @@
 2. 选择产品线与目标受众
 3. 由 audience panel 做多视角评审
 4. 由 judge engine 做 pairwise 对战
-5. 生成 ranking、objections、summary 与建议动作
+5. 生成 probability board、sub-markets、ranking、objections 与建议动作
+6. 赛后用真实投放结果做 resolution 与 calibration
 
 ## 适用场景
 
@@ -140,11 +150,14 @@
 - 媒体 buying engine
 - “一定会爆”的神谕工具
 
-它首先是一个 **更可量化的方案选择器**。
+它首先是一个 **更可量化的方案选择器 / 内部决策市场**。
 
 ## 致谢
 
 - 原始项目：[MiroFish](https://github.com/666ghj/MiroFish)
 - 原始社会仿真方向为这个 fork 提供了多 agent 推演的起点
+- 这套新方向也明确借鉴了 **crypto-native prediction markets / event contracts / forecasting communities** 的方法论
+- 我们借用的是：`implied probability`、`sub-markets`、`resolution`、`calibration`
+- 我们**不**借用的是：发币、链上交易、公开投机市场
 
-后续代码与文档会继续围绕 **Moody Lenses campaign choice engine** 这一目标收敛。
+后续代码与文档会继续围绕 **Moody Lenses internal decision market** 这一目标收敛。
