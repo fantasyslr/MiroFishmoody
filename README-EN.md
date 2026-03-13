@@ -149,6 +149,21 @@ The immediate priorities are:
 2. continue syncing code cleanup and evaluator-focused refactors
 3. converge on a pre-launch campaign review workflow that is actually usable
 
+## At A Glance
+
+```mermaid
+flowchart LR
+  A["Campaign Concepts"] --> B["Audience Panel"]
+  B --> C["Pairwise Judges"]
+  C --> D["Probability Board"]
+  D --> E["Sub-markets"]
+  E --> F["Ship / Revise / Kill"]
+  F --> G["Post-launch Resolution"]
+  G --> H["Judge Calibration"]
+```
+
+This is not a one-shot scoring tool. It is an internal decision loop that turns opinions into probabilities, then later settles those probabilities against reality.
+
 ## Intended workflow
 
 The long-term workflow is straightforward:

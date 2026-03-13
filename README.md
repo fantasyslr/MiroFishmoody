@@ -144,6 +144,21 @@
 
 > 一个围绕 Moody Lenses 场景重构中的 internal decision market，而不是原始 MiroFish 的简单换皮版本。
 
+## 一眼看懂
+
+```mermaid
+flowchart LR
+  A["Campaign 方案集"] --> B["Audience Panel"]
+  B --> C["Pairwise Judges"]
+  C --> D["Probability Board"]
+  D --> E["Sub-markets"]
+  E --> F["Ship / Revise / Kill"]
+  F --> G["Post-launch Resolution"]
+  G --> H["Judge Calibration"]
+```
+
+它不是一次性打分器，而是一个会把观点变成概率、再把概率和真实结果重新对账的内部决策回路。
+
 ## 预期工作流
 
 长期目标中的工作流大致如下：
