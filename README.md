@@ -155,6 +155,32 @@
 5. 生成 probability board、sub-markets、ranking、objections 与建议动作
 6. 赛后用真实投放结果做 resolution 与 calibration
 
+## 为什么币圈人会秒懂
+
+如果你来自 prediction market、event pricing、交易或赔率文化，这个项目的味道会很熟。
+
+因为它本质上做的是同一件事：
+
+- 不再问“你喜不喜欢这个方案”
+- 而是问“你愿意给它多少概率”
+- 不再只给观点
+- 而是给 `price`、`spread`、`edge`、`resolution`
+
+区别只在于，这里被定价的不是 election、macro event 或 token narrative，而是 **Moody 的 campaign concept**。
+
+## 为什么电商团队真的能用
+
+对电商团队来说，这不是一个“更会说话的创意 review 机器人”，而是一个把早期拍脑袋决策结构化的系统。
+
+它适合用来：
+
+- 在正式花预算前筛掉明显弱方案
+- 在多个 angle 之间找到更值得先测的那个
+- 把“我觉得会赢”拆成可讨论的子问题
+- 让创意、投放、品牌和落地页判断进入同一个决策面板
+
+它不替代真实投放测试，但能显著减少低质量测试进入媒体的概率。
+
 ## 适用场景
 
 - Meta campaign angle 预筛选

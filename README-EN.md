@@ -160,6 +160,32 @@ The long-term workflow is straightforward:
 5. generate probability board, sub-markets, ranking, objections, and action recommendation
 6. settle against real campaign results later for calibration
 
+## Why crypto people will recognize this instantly
+
+If you come from prediction markets, event pricing, trading, or odds culture, this project should feel familiar.
+
+Because underneath, it is doing the same thing:
+
+- stop asking "do you like this concept?"
+- start asking "what probability would you actually assign to it?"
+- stop producing opinions alone
+- start producing `price`, `spread`, `edge`, and `resolution`
+
+The only difference is that the thing being priced here is not an election, macro event, or token narrative. It is a **Moody campaign concept**.
+
+## Why an e-commerce team can actually use it
+
+For an e-commerce team, this is not just a more articulate creative-review bot. It is a way to structure early-stage decision-making before spend goes live.
+
+It is useful for:
+
+- filtering out obviously weak concepts before budget is spent
+- identifying which angle deserves to be tested first
+- decomposing "I think this will win" into smaller decision markets
+- putting creative, media, brand, and landing-page judgment into the same decision surface
+
+It does not replace real testing, but it should reduce the number of low-quality tests that ever reach paid media.
+
 ## Intended use cases
 
 - Meta campaign angle pre-screening
