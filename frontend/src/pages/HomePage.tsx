@@ -162,14 +162,14 @@ export function HomePage() {
 
                 <div className="mb-6">
                   <label className="mb-2 block text-xs font-medium text-stone-500">品类</label>
-                  <div className="flex w-fit rounded-lg bg-stone-100 p-1">
+                  <div className="flex w-fit gap-2">
                     <button
                       onClick={() => updatePlan(plan.id, { productLine: 'moodyplus' })}
                       className={cn(
-                        'rounded-md px-4 py-1.5 text-sm font-medium transition-all',
+                        'rounded-lg border px-4 py-2 text-sm font-medium',
                         plan.productLine === 'moodyplus'
-                          ? 'bg-white text-stone-900 shadow-sm'
-                          : 'text-stone-500 hover:text-stone-700',
+                          ? 'border-stone-900 bg-stone-900 text-white'
+                          : 'border-stone-200 bg-white text-stone-500 hover:border-stone-400 hover:text-stone-700',
                       )}
                     >
                       透明片
@@ -177,10 +177,10 @@ export function HomePage() {
                     <button
                       onClick={() => updatePlan(plan.id, { productLine: 'colored_lenses' })}
                       className={cn(
-                        'rounded-md px-4 py-1.5 text-sm font-medium transition-all',
+                        'rounded-lg border px-4 py-2 text-sm font-medium',
                         plan.productLine === 'colored_lenses'
-                          ? 'bg-white text-stone-900 shadow-sm'
-                          : 'text-stone-500 hover:text-stone-700',
+                          ? 'border-stone-900 bg-stone-900 text-white'
+                          : 'border-stone-200 bg-white text-stone-500 hover:border-stone-400 hover:text-stone-700',
                       )}
                     >
                       彩片
