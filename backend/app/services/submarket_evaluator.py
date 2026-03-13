@@ -1,8 +1,8 @@
 """
-Sub-Market Evaluator — 从 panel scores 提取 5 个子市场概率
+Dimension Evaluator — 从 panel scores 提取 5 个维度得分
 
-每个子市场映射到特定 persona 评分信号：
-- thumb_stop: beauty_first 的 score + strengths 关键词
+每个维度映射到特定 persona 评分信号：
+- thumb_stop: beauty_first 的 score 权重最大
 - clarity: 全部 persona 的 objections 中"不清楚/混乱/不懂"类
 - trust: eye_health + acuvue_switcher 的 score
 - conversion_readiness: price_conscious 的 score + promo 相关信号
@@ -16,9 +16,9 @@ from collections import defaultdict
 from ..utils.logger import get_logger
 from ..models.campaign import Campaign
 from ..models.evaluation import PanelScore
-from ..models.market import SubMarketProbability, SUB_MARKET_KEYS, SUB_MARKET_LABELS
+from ..models.scoreboard import DimensionScore, DIMENSION_KEYS, DIMENSION_LABELS
 
-logger = get_logger('ranker.submarket')
+logger = get_logger('ranker.dimension')
 
 # 信任相关关键词（中文）
 CLARITY_NEGATIVE_KEYWORDS = [
@@ -58,17 +58,17 @@ def _softmax_probs(scores: Dict[str, float], temperature: float = 1.5) -> Dict[s
     return {k: v / total for k, v in exp_vals.items()}
 
 
-class SubMarketEvaluator:
-    """子市场评估器"""
+class DimensionEvaluator:
+    """维度评估器"""
 
     def evaluate(
         self,
         campaigns: List[Campaign],
         panel_scores: List[PanelScore],
-    ) -> List[SubMarketProbability]:
+    ) -> List[DimensionScore]:
         """
-        计算每个子市场中每个 campaign 的概率。
-        返回 flat list of SubMarketProbability。
+        计算每个维度中每个 campaign 的得分。
+        返回 flat list of DimensionScore。
         """
         all_ids = [c.id for c in campaigns]
 
@@ -84,21 +84,21 @@ class SubMarketEvaluator:
 
         results = []
 
-        for market_key in SUB_MARKET_KEYS:
+        for dimension_key in DIMENSION_KEYS:
             raw_scores = {}
             for cid in all_ids:
                 raw_scores[cid] = self._compute_raw(
-                    market_key, cid, by_campaign.get(cid, []), by_persona,
+                    dimension_key, cid, by_campaign.get(cid, []), by_persona,
                 )
 
             probs = _softmax_probs(raw_scores, temperature=1.5)
 
             for cid in all_ids:
-                results.append(SubMarketProbability(
-                    market_key=market_key,
-                    market_label=SUB_MARKET_LABELS[market_key],
+                results.append(DimensionScore(
+                    dimension_key=dimension_key,
+                    dimension_label=DIMENSION_LABELS[dimension_key],
                     campaign_id=cid,
-                    probability=probs.get(cid, 0),
+                    score=probs.get(cid, 0),
                     raw_score=raw_scores.get(cid, 0),
                 ))
 
@@ -106,14 +106,14 @@ class SubMarketEvaluator:
 
     def _compute_raw(
         self,
-        market_key: str,
+        dimension_key: str,
         campaign_id: str,
         scores: List[PanelScore],
         by_persona: Dict[str, Dict[str, List[PanelScore]]],
     ) -> float:
-        """计算某个子市场某个 campaign 的原始分 (0-10)"""
+        """计算某个维度某个 campaign 的原始分 (0-10)"""
 
-        if market_key == "thumb_stop":
+        if dimension_key == "thumb_stop":
             # beauty_first persona 的 score 权重最大
             bf_scores = by_persona.get("beauty_first", {}).get(campaign_id, [])
             if bf_scores:
@@ -121,13 +121,13 @@ class SubMarketEvaluator:
             # fallback: 全体均分
             return sum(s.score for s in scores) / len(scores) if scores else 5.0
 
-        elif market_key == "clarity":
+        elif dimension_key == "clarity":
             # 反向：objection 中"不清楚"类关键词越少越好
             all_obj = [o for s in scores for o in s.objections]
             density = _keyword_density(all_obj, CLARITY_NEGATIVE_KEYWORDS)
             return 10.0 * (1.0 - density)
 
-        elif market_key == "trust":
+        elif dimension_key == "trust":
             # eye_health + acuvue_switcher 的 score
             trust_personas = ["eye_health", "acuvue_switcher"]
             trust_scores = []
@@ -138,7 +138,7 @@ class SubMarketEvaluator:
                 return sum(trust_scores) / len(trust_scores)
             return sum(s.score for s in scores) / len(scores) if scores else 5.0
 
-        elif market_key == "conversion_readiness":
+        elif dimension_key == "conversion_readiness":
             # price_conscious + daily_wearer 的 score
             conv_personas = ["price_conscious", "daily_wearer"]
             conv_scores = []
@@ -149,7 +149,7 @@ class SubMarketEvaluator:
                 return sum(conv_scores) / len(conv_scores)
             return sum(s.score for s in scores) / len(scores) if scores else 5.0
 
-        elif market_key == "claim_risk":
+        elif dimension_key == "claim_risk":
             # 反向：risk 关键词越多越差
             all_obj = [o for s in scores for o in s.objections]
             density = _keyword_density(all_obj, CLAIM_RISK_KEYWORDS)

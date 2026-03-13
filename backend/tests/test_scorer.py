@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.models.campaign import Campaign, ProductLine
 from app.models.evaluation import PanelScore, PairwiseResult, Verdict
-from app.models.market import SUB_MARKET_KEYS
+from app.models.scoreboard import DIMENSION_KEYS
 from app.services.campaign_scorer import CampaignScorer
 from app.services.judge_calibration import JudgeCalibration
 from app.services.resolution_tracker import ResolutionTracker
@@ -241,22 +241,22 @@ def test_probability_board_completeness():
 
     # board 基本属性
     assert len(board.campaigns) == 3
-    assert isinstance(board.spread, float)
-    assert isinstance(board.no_clear_edge, bool)
-    assert board.no_trade_band > 0
+    assert isinstance(board.lead_margin, float)
+    assert isinstance(board.too_close_to_call, bool)
+    assert board.confidence_threshold > 0
     assert board.rationale_for_uncertainty
 
-    # 每个 campaign view 有 sub_markets
+    # 每个 campaign view 有 dimensions
     for cmv in board.campaigns:
-        assert cmv.win_probability > 0
+        assert cmv.overall_score > 0
         assert cmv.verdict in ("ship", "revise", "kill")
         assert cmv.verdict_rationale
 
     # to_dict() 可序列化
     d = board.to_dict()
     assert "campaigns" in d
-    assert "spread" in d
-    assert "no_clear_edge" in d
+    assert "lead_margin" in d
+    assert "too_close_to_call" in d
     print("  PASS: probability board completeness")
 
 
@@ -281,13 +281,13 @@ def test_probability_sum_normalized():
 
     _, board = CampaignScorer().score(campaigns, panel, pairwise, bt)
 
-    total_prob = sum(c.win_probability for c in board.campaigns)
+    total_prob = sum(c.overall_score for c in board.campaigns)
     assert abs(total_prob - 1.0) < 0.01, f"Probabilities sum to {total_prob}, expected ~1.0"
     print("  PASS: probability sum ≈ 1.0")
 
 
 def test_no_clear_edge_when_close():
-    """top two very close → no_clear_edge=True, #1 gets REVISE"""
+    """top two very close → too_close_to_call=True, #1 gets REVISE"""
     campaigns = [
         make_campaign("a", "A"),
         make_campaign("b", "B"),
@@ -304,13 +304,13 @@ def test_no_clear_edge_when_close():
 
     rankings, board = CampaignScorer().score(campaigns, panel, pairwise, bt)
 
-    assert board.no_clear_edge, f"Expected no_clear_edge=True, spread={board.spread}"
+    assert board.too_close_to_call, f"Expected too_close_to_call=True, spread={board.lead_margin}"
     assert rankings[0].verdict == Verdict.REVISE
     print("  PASS: close scores → no_clear_edge + REVISE")
 
 
 def test_submarket_output_complete():
-    """sub_markets 覆盖所有 5 个维度"""
+    """dimensions 覆盖所有 5 个维度"""
     campaigns = [
         make_campaign("a", "A"),
         make_campaign("b", "B"),
@@ -332,13 +332,13 @@ def test_submarket_output_complete():
 
     _, board = CampaignScorer().score(campaigns, panel, pairwise, bt)
 
-    # sub_markets list should have entries for all 5 keys × 2 campaigns = 10
-    assert len(board.sub_markets) == 10, f"Expected 10 sub_market entries, got {len(board.sub_markets)}"
+    # dimensions list should have entries for all 5 keys × 2 campaigns = 10
+    assert len(board.dimension_scores) == 10, f"Expected 10 dimension entries, got {len(board.dimension_scores)}"
 
-    # Each campaign view should have all 5 sub_market keys
+    # Each campaign view should have all 5 dimension keys
     for cmv in board.campaigns:
-        for key in SUB_MARKET_KEYS:
-            assert key in cmv.sub_markets, f"Missing sub_market '{key}' for {cmv.campaign_id}"
+        for key in DIMENSION_KEYS:
+            assert key in cmv.dimension_scores, f"Missing dimension '{key}' for {cmv.campaign_id}"
     print("  PASS: sub-market output covers all 5 dimensions")
 
 
@@ -361,7 +361,7 @@ def test_claim_risk_penalty():
     _, board = CampaignScorer().score(campaigns, panel, pairwise, bt)
 
     # Find claim_risk sub-market probs
-    risk_prob = {sm.campaign_id: sm.probability for sm in board.sub_markets if sm.market_key == "claim_risk"}
+    risk_prob = {sm.campaign_id: sm.score for sm in board.dimension_scores if sm.dimension_key == "claim_risk"}
     assert risk_prob["risky"] < risk_prob["safe"], (
         f"Risky campaign should have lower claim_risk prob: risky={risk_prob['risky']:.3f}, safe={risk_prob['safe']:.3f}"
     )

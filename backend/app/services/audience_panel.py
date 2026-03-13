@@ -6,6 +6,8 @@ persona 基于 Moody Lenses 用户画像定制。
 """
 
 import json
+import base64
+import os
 from typing import List, Dict, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -146,7 +148,7 @@ class AudiencePanel:
             persona_description=persona["description"],
             evaluation_focus=persona["evaluation_focus"],
         )
-        user_msg = USER_PROMPT.format(
+        user_text = USER_PROMPT.format(
             name=campaign.name,
             product_line=_product_line_label(campaign.product_line),
             target_audience=campaign.target_audience,
@@ -156,16 +158,33 @@ class AudiencePanel:
             optional_fields=_format_optional_fields(campaign),
         )
 
-        messages = [
-            {"role": "system", "content": system_msg},
-            {"role": "user", "content": user_msg},
-        ]
+        system_message = {"role": "system", "content": system_msg}
 
-        result = self.llm.chat_json(
-            messages=messages,
-            temperature=Config.PANEL_TEMPERATURE,
-            max_tokens=1024,
-        )
+        # Build message with optional images
+        if hasattr(campaign, 'image_paths') and campaign.image_paths:
+            content_parts = [{"type": "text", "text": user_text + "\n\n请同时参考提供的素材图片进行评审。如果有图片，请基于你看到的视觉效果评判视觉吸引力、信息传达、品牌调性等维度。"}]
+            for img_path in campaign.image_paths[:5]:  # Max 5 images
+                if os.path.exists(img_path):
+                    with open(img_path, 'rb') as f:
+                        img_data = base64.b64encode(f.read()).decode()
+                    ext = img_path.rsplit('.', 1)[-1].lower()
+                    mime = 'image/jpeg' if ext in ('jpg', 'jpeg') else f'image/{ext}'
+                    content_parts.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime};base64,{img_data}"}
+                    })
+            user_message = {"role": "user", "content": content_parts}
+            result = self.llm.chat_multimodal_json(
+                messages=[system_message, user_message],
+                temperature=Config.PANEL_TEMPERATURE,
+            )
+        else:
+            user_message = {"role": "user", "content": user_text}
+            result = self.llm.chat_json(
+                messages=[system_message, user_message],
+                temperature=Config.PANEL_TEMPERATURE,
+                max_tokens=1024,
+            )
 
         return PanelScore(
             persona_id=persona["id"],

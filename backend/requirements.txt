@@ -13,6 +13,7 @@ flask-cors>=6.0.0
 openai>=1.0.0
 
 # ============= 文件处理 =============
+Pillow>=10.0.0
 PyMuPDF>=1.24.0
 charset-normalizer>=3.0.0
 chardet>=5.0.0

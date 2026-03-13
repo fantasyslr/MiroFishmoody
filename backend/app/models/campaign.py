@@ -26,6 +26,7 @@ class Campaign:
     budget_range: Optional[str] = None
     kv_description: Optional[str] = None
     promo_mechanic: Optional[str] = None
+    image_paths: List[str] = field(default_factory=list)
     extra: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -40,6 +41,7 @@ class Campaign:
             "budget_range": self.budget_range,
             "kv_description": self.kv_description,
             "promo_mechanic": self.promo_mechanic,
+            "image_paths": self.image_paths,
             "extra": self.extra,
         }
 

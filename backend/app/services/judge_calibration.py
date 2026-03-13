@@ -21,7 +21,7 @@ from collections import defaultdict
 from datetime import datetime
 
 from ..utils.logger import get_logger
-from ..models.market import JudgePerformanceStats, ResolutionRecord
+from ..models.scoreboard import JudgePerformanceStats, ResolutionRecord
 
 logger = get_logger('ranker.calibration')
 

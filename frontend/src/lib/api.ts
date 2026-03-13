@@ -139,6 +139,11 @@ export type LatestReviewSession = {
   reviewName?: string
 }
 
+export type AuthUser = {
+  username: string
+  display_name: string
+}
+
 export class ApiError extends Error {
   status: number
 
@@ -150,6 +155,7 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),
@@ -205,6 +211,23 @@ export function triggerRecalibrate() {
   return request<Record<string, unknown>>('/api/campaign/recalibrate', {
     method: 'POST',
   })
+}
+
+export function login(username: string, password: string) {
+  return request<AuthUser>('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  })
+}
+
+export function logout() {
+  return request<{ status: string }>('/api/auth/logout', {
+    method: 'POST',
+  })
+}
+
+export function getMe() {
+  return request<AuthUser>('/api/auth/me')
 }
 
 export type TaskListItem = {

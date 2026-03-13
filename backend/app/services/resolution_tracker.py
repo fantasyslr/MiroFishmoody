@@ -12,7 +12,7 @@ from typing import Dict, Optional
 from datetime import datetime
 
 from ..utils.logger import get_logger
-from ..models.market import ResolutionRecord
+from ..models.scoreboard import ResolutionRecord
 from .judge_calibration import JudgeCalibration
 
 logger = get_logger('ranker.resolution')

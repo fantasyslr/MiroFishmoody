@@ -1,9 +1,9 @@
 """
-Campaign Scoring Engine — market-aware 综合评分
+Campaign Scoring Engine — 综合评分
 
 输出：
 - CampaignRanking (with verdict)
-- ProbabilityBoard (win probabilities, sub-markets, spread, no_clear_edge)
+- ScoreBoard (overall scores, dimension scores, lead_margin, too_close_to_call)
 """
 
 import os
@@ -15,11 +15,11 @@ from ..models.campaign import Campaign
 from ..models.evaluation import (
     PanelScore, PairwiseResult, CampaignRanking, Verdict,
 )
-from ..models.market import (
-    ProbabilityBoard, CampaignMarketView, SubMarketProbability,
+from ..models.scoreboard import (
+    ScoreBoard, CampaignScoreView, DimensionScore,
 )
 from .probability_aggregator import ProbabilityAggregator
-from .submarket_evaluator import SubMarketEvaluator
+from .submarket_evaluator import DimensionEvaluator
 
 logger = get_logger('ranker.campaign_scorer')
 
@@ -29,13 +29,13 @@ SHIP_MAX_OBJECTION_DENSITY = float(os.environ.get('SHIP_MAX_OBJECTION_DENSITY', 
 KILL_PANEL_FLOOR = float(os.environ.get('KILL_PANEL_FLOOR', '2.5'))
 KILL_LOSS_RATE = float(os.environ.get('KILL_LOSS_RATE', '0.8'))
 
-# Market 参数
-NO_TRADE_BAND = float(os.environ.get('NO_TRADE_BAND', '0.10'))
-SHIP_MIN_PROBABILITY = float(os.environ.get('SHIP_MIN_PROBABILITY', '0.35'))
+# Scoring 参数
+CONFIDENCE_THRESHOLD = float(os.environ.get('CONFIDENCE_THRESHOLD', '0.10'))
+SHIP_MIN_SCORE = float(os.environ.get('SHIP_MIN_SCORE', '0.35'))
 
 
 class CampaignScorer:
-    """Market-aware 综合评分引擎"""
+    """综合评分引擎"""
 
     def __init__(
         self,
@@ -46,7 +46,7 @@ class CampaignScorer:
             judge_weights=judge_weights,
             persona_weights=persona_weights,
         )
-        self.submarket_eval = SubMarketEvaluator()
+        self.dimension_eval = DimensionEvaluator()
 
     def score(
         self,
@@ -54,9 +54,9 @@ class CampaignScorer:
         panel_scores: List[PanelScore],
         pairwise_results: List[PairwiseResult],
         bt_scores: Dict[str, float],
-    ) -> Tuple[List[CampaignRanking], ProbabilityBoard]:
+    ) -> Tuple[List[CampaignRanking], ScoreBoard]:
         """
-        综合评分，输出 (rankings, probability_board)。
+        综合评分，输出 (rankings, scoreboard)。
         """
         campaign_map = {c.id: c for c in campaigns}
         n = len(campaigns)
@@ -85,30 +85,30 @@ class CampaignScorer:
             total_obj = sum(len(s.objections) for s in scores)
             objection_density[cid] = total_obj / len(scores) if scores else 0
 
-        # --- Win probabilities ---
-        win_probs = self.prob_aggregator.aggregate(
+        # --- Overall scores ---
+        scores = self.prob_aggregator.aggregate(
             campaigns, panel_scores, pairwise_results, bt_scores,
         )
 
-        # --- Sub-markets ---
-        sub_market_results = self.submarket_eval.evaluate(campaigns, panel_scores)
+        # --- Dimension scores ---
+        dimension_results = self.dimension_eval.evaluate(campaigns, panel_scores)
 
-        # 按 campaign 分组子市场概率
-        sub_by_campaign: Dict[str, Dict[str, float]] = defaultdict(dict)
-        for sm in sub_market_results:
-            sub_by_campaign[sm.campaign_id][sm.market_key] = sm.probability
+        # 按 campaign 分组维度得分
+        dim_by_campaign: Dict[str, Dict[str, float]] = defaultdict(dict)
+        for ds in dimension_results:
+            dim_by_campaign[ds.campaign_id][ds.dimension_key] = ds.score
 
-        # --- 排序 by win_probability ---
-        sorted_ids = sorted(all_ids, key=lambda cid: win_probs.get(cid, 0), reverse=True)
+        # --- 排序 by overall_score ---
+        sorted_ids = sorted(all_ids, key=lambda cid: scores.get(cid, 0), reverse=True)
 
-        # --- Spread ---
-        sorted_probs = [win_probs.get(cid, 0) for cid in sorted_ids]
-        spread = (sorted_probs[0] - sorted_probs[1]) if len(sorted_probs) >= 2 else 1.0
-        no_clear_edge = spread < NO_TRADE_BAND
+        # --- Lead margin ---
+        sorted_scores = [scores.get(cid, 0) for cid in sorted_ids]
+        lead_margin = (sorted_scores[0] - sorted_scores[1]) if len(sorted_scores) >= 2 else 1.0
+        too_close_to_call = lead_margin < CONFIDENCE_THRESHOLD
 
-        # --- Verdict (market-aware) ---
+        # --- Verdict ---
         rankings = []
-        market_views = []
+        score_views = []
 
         for rank, cid in enumerate(sorted_ids, 1):
             scores_for = panel_by_campaign.get(cid, [])
@@ -121,30 +121,30 @@ class CampaignScorer:
             losses = losses_count.get(cid, 0)
             panel_avg = panel_avgs.get(cid, 0)
             obj_density = objection_density.get(cid, 0)
-            win_prob = win_probs.get(cid, 0)
+            overall_score = scores.get(cid, 0)
             win_rate = wins / total_matchups if total_matchups > 0 else 0
             loss_rate = losses / total_matchups if total_matchups > 0 else 0
 
-            # Spread to next
+            # Lead margin to next
             if rank < n:
                 next_cid = sorted_ids[rank]  # rank is 1-based, index is rank
-                spread_to_next = win_prob - win_probs.get(next_cid, 0)
+                lead_margin_to_next = overall_score - scores.get(next_cid, 0)
             else:
-                spread_to_next = None
+                lead_margin_to_next = None
 
             verdict, rationale = self._decide_verdict(
                 rank=rank, n=n,
                 win_rate=win_rate, loss_rate=loss_rate,
                 panel_avg=panel_avg, obj_density=obj_density,
-                win_prob=win_prob, spread=spread,
-                no_clear_edge=no_clear_edge,
+                overall_score=overall_score, lead_margin=lead_margin,
+                too_close_to_call=too_close_to_call,
             )
 
             rankings.append(CampaignRanking(
                 campaign_id=cid,
                 campaign_name=campaign_map[cid].name,
                 rank=rank,
-                composite_score=win_prob * 10,  # scale to 0-10 for backward compat
+                composite_score=overall_score * 10,  # scale to 0-10 for backward compat
                 panel_avg=panel_avg,
                 pairwise_wins=wins,
                 pairwise_losses=losses,
@@ -153,35 +153,35 @@ class CampaignScorer:
                 top_strengths=top_str,
             ))
 
-            market_views.append(CampaignMarketView(
+            score_views.append(CampaignScoreView(
                 campaign_id=cid,
                 campaign_name=campaign_map[cid].name,
-                win_probability=win_prob,
-                sub_markets=dict(sub_by_campaign.get(cid, {})),
+                overall_score=overall_score,
+                dimension_scores=dict(dim_by_campaign.get(cid, {})),
                 rank=rank,
                 verdict=verdict.value,
-                spread_to_next=spread_to_next,
+                lead_margin_to_next=lead_margin_to_next,
                 verdict_rationale=rationale,
             ))
 
         # --- Uncertainty rationale ---
-        if no_clear_edge:
+        if too_close_to_call:
             rationale_uncertainty = (
-                f"前两名概率差距仅 {spread:.1%}，低于 no-trade 阈值 {NO_TRADE_BAND:.0%}。"
+                f"前两名得分差距仅 {lead_margin:.1%}，低于置信阈值 {CONFIDENCE_THRESHOLD:.0%}。"
                 f"建议进一步优化方案或收集更多信号后再做决策。"
             )
         else:
             rationale_uncertainty = (
-                f"排名第一的方案概率领先 {spread:.1%}，具有一定优势。"
+                f"排名第一的方案得分领先 {lead_margin:.1%}，具有一定优势。"
             )
 
-        board = ProbabilityBoard(
-            campaigns=market_views,
-            spread=spread,
-            no_clear_edge=no_clear_edge,
-            no_trade_band=NO_TRADE_BAND,
+        board = ScoreBoard(
+            campaigns=score_views,
+            lead_margin=lead_margin,
+            too_close_to_call=too_close_to_call,
+            confidence_threshold=CONFIDENCE_THRESHOLD,
             rationale_for_uncertainty=rationale_uncertainty,
-            sub_markets=sub_market_results,
+            dimension_scores=dimension_results,
         )
 
         return rankings, board
@@ -191,13 +191,13 @@ class CampaignScorer:
         rank: int, n: int,
         win_rate: float, loss_rate: float,
         panel_avg: float, obj_density: float,
-        win_prob: float, spread: float,
-        no_clear_edge: bool,
+        overall_score: float, lead_margin: float,
+        too_close_to_call: bool,
     ) -> Tuple[Verdict, str]:
         """
-        Market-aware verdict:
-        - 新增 spread / win_prob 条件
-        - no_clear_edge 时 #1 只能 REVISE
+        Verdict 决策:
+        - 新增 lead_margin / overall_score 条件
+        - too_close_to_call 时 #1 只能 REVISE
         """
         # KILL: 绝对分过低
         if panel_avg < KILL_PANEL_FLOOR:
@@ -209,19 +209,19 @@ class CampaignScorer:
 
         # SHIP 条件: 排名第一 + 有明确优势 + 胜率足够
         if rank == 1:
-            if no_clear_edge:
+            if too_close_to_call:
                 return Verdict.REVISE, (
-                    f"排名第一但与第二名差距仅 {spread:.1%}，"
-                    f"低于 no-trade 阈值 {NO_TRADE_BAND:.0%}，建议优化后再 ship"
+                    f"排名第一但与第二名差距仅 {lead_margin:.1%}，"
+                    f"低于置信阈值 {CONFIDENCE_THRESHOLD:.0%}，建议优化后再 ship"
                 )
             if win_rate < SHIP_WIN_RATE:
                 return Verdict.REVISE, f"排名第一但 pairwise 胜率仅 {win_rate:.0%}"
             if obj_density > SHIP_MAX_OBJECTION_DENSITY:
                 return Verdict.REVISE, f"排名第一但 objection 密度 {obj_density:.1f} 过高"
-            if win_prob < SHIP_MIN_PROBABILITY:
-                return Verdict.REVISE, f"排名第一但 win probability {win_prob:.1%} 偏低"
+            if overall_score < SHIP_MIN_SCORE:
+                return Verdict.REVISE, f"排名第一但 overall score {overall_score:.1%} 偏低"
             return Verdict.SHIP, (
-                f"排名第一，概率 {win_prob:.1%}，领先 {spread:.1%}，"
+                f"排名第一，得分 {overall_score:.1%}，领先 {lead_margin:.1%}，"
                 f"pairwise 胜率 {win_rate:.0%}"
             )
 

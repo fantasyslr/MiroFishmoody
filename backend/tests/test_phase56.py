@@ -8,7 +8,7 @@ import json
 import tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from app.models.market import ResolutionRecord
+from app.models.scoreboard import ResolutionRecord
 from app.services.judge_calibration import JudgeCalibration
 from app.api.campaign import _parse_campaigns
 
@@ -254,10 +254,10 @@ def test_resolve_rejects_duplicate_set_id():
             result_data = {
                 "set_id": "resolve-dup-test",
                 "rankings": [],
-                "probability_board": {
+                "scoreboard": {
                     "campaigns": [
-                        {"campaign_id": "a", "win_probability": 0.6},
-                        {"campaign_id": "b", "win_probability": 0.4},
+                        {"campaign_id": "a", "overall_score": 0.6},
+                        {"campaign_id": "b", "overall_score": 0.4},
                     ]
                 },
             }
@@ -274,6 +274,8 @@ def test_resolve_rejects_duplicate_set_id():
                     MockRT.return_value = real_tracker
 
                     client = app.test_client()
+                    with client.session_transaction() as sess:
+                        sess['user'] = {"username": "tester", "display_name": "Tester"}
 
                     resp1 = client.post('/api/campaign/resolve', json={
                         "set_id": "resolve-dup-test",
@@ -318,6 +320,8 @@ def test_evaluate_rejects_duplicate_set_id():
 
             try:
                 client = app.test_client()
+                with client.session_transaction() as sess:
+                    sess['user'] = {"username": "tester", "display_name": "Tester"}
                 resp = client.post('/api/campaign/evaluate', json={
                     "set_id": "existing-set",
                     "campaigns": [
@@ -352,6 +356,8 @@ def test_evaluate_rejects_duplicate_set_id_in_memory():
 
         try:
             client = app.test_client()
+            with client.session_transaction() as sess:
+                sess['user'] = {"username": "tester", "display_name": "Tester"}
             resp = client.post('/api/campaign/evaluate', json={
                 "set_id": "mem-set",
                 "campaigns": [

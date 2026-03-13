@@ -5,12 +5,15 @@ Campaign API — 方案提交 + 评审 + 结算 + 校准
 import uuid
 import json
 import os
+import base64
 import threading
 from collections import defaultdict
 from datetime import datetime
 from flask import request, jsonify
+from werkzeug.utils import secure_filename
 
 from . import campaign_bp
+from ..auth import login_required, get_current_user
 from ..config import Config
 from ..utils.logger import get_logger
 from ..utils.llm_client import LLMClient
@@ -93,6 +96,7 @@ def _parse_campaigns(data: dict) -> CampaignSet:
             budget_range=c.get("budget_range"),
             kv_description=c.get("kv_description"),
             promo_mechanic=c.get("promo_mechanic"),
+            image_paths=c.get("image_paths", []),
             extra=c.get("extra", {}),
         ))
 
@@ -183,23 +187,23 @@ def _run_evaluation(task_id: str, campaign_set: CampaignSet):
             )
         task_manager.update_task(task_id, progress=80, message="对决完成")
 
-        # Phase 3: Market Scoring
-        task_manager.update_task(task_id, progress=85, message="Market scoring...")
+        # Phase 3: Scoring
+        task_manager.update_task(task_id, progress=85, message="Scoring...")
         scorer = CampaignScorer(
             judge_weights=judge_weights,
             persona_weights=persona_weights,
         )
-        rankings, probability_board = scorer.score(
+        rankings, scoreboard = scorer.score(
             campaigns, panel_scores, pairwise_results, bt_scores,
         )
 
         # Phase 5.1: 持久化 per-persona / per-judge 预测
-        win_probs = {c.campaign_id: c.win_probability for c in probability_board.campaigns}
+        overall_scores = {c.campaign_id: c.overall_score for c in scoreboard.campaigns}
         calibration.save_predictions(
             set_id=campaign_set.set_id,
             persona_predictions=_build_persona_predictions(panel_scores, campaigns),
             judge_predictions=_build_judge_predictions(pairwise_results),
-            campaign_win_probabilities=win_probs,
+            campaign_win_probabilities=overall_scores,
         )
 
         # Phase 4: Summary
@@ -221,7 +225,7 @@ def _run_evaluation(task_id: str, campaign_set: CampaignSet):
             summary=summary_data["summary"],
             assumptions=summary_data["assumptions"],
             confidence_notes=summary_data["confidence_notes"],
-            probability_board=probability_board.to_dict(),
+            scoreboard=scoreboard.to_dict(),
             resolution_ready_fields=resolver.get_resolution_ready_fields(),
         )
 
@@ -229,15 +233,15 @@ def _run_evaluation(task_id: str, campaign_set: CampaignSet):
         _evaluation_store[campaign_set.set_id] = result_dict
         _save_result(campaign_set.set_id, result_dict)
 
-        top = probability_board.campaigns[0] if probability_board.campaigns else None
+        top = scoreboard.campaigns[0] if scoreboard.campaigns else None
         task_manager.complete_task(task_id, result={
             "set_id": campaign_set.set_id,
             "campaign_count": len(campaigns),
             "top_campaign": top.campaign_name if top else None,
             "top_verdict": top.verdict if top else None,
-            "top_win_probability": round(top.win_probability, 3) if top else None,
-            "no_clear_edge": probability_board.no_clear_edge,
-            "spread": round(probability_board.spread, 3),
+            "top_overall_score": round(top.overall_score, 3) if top else None,
+            "too_close_to_call": scoreboard.too_close_to_call,
+            "lead_margin": round(scoreboard.lead_margin, 3),
         })
 
     except Exception as e:
@@ -245,7 +249,67 @@ def _run_evaluation(task_id: str, campaign_set: CampaignSet):
         task_manager.fail_task(task_id, str(e))
 
 
+ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
+IMAGES_DIR = os.path.join(Config.UPLOAD_FOLDER, 'images')
+os.makedirs(IMAGES_DIR, exist_ok=True)
+
+
+def _allowed_image(filename: str) -> bool:
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
+
+
+@campaign_bp.route('/upload-image', methods=['POST'])
+def upload_image():
+    """上传 campaign 素材图片"""
+    if 'file' not in request.files:
+        return jsonify({"error": "没有文件"}), 400
+
+    file = request.files['file']
+    if not file.filename or not _allowed_image(file.filename):
+        return jsonify({"error": "只支持 JPG、PNG、WEBP 格式"}), 400
+
+    # Read and check size
+    file_data = file.read()
+    if len(file_data) > MAX_IMAGE_SIZE:
+        return jsonify({"error": "图片不能超过 5MB"}), 400
+
+    # Try to resize if PIL available
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(file_data))
+        max_dim = 1024
+        if max(img.size) > max_dim:
+            ratio = max_dim / max(img.size)
+            new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
+            img = img.resize(new_size, Image.LANCZOS)
+            buf = io.BytesIO()
+            fmt = 'JPEG' if file.filename.lower().endswith(('.jpg', '.jpeg')) else 'PNG'
+            img.save(buf, format=fmt, quality=85)
+            file_data = buf.getvalue()
+    except ImportError:
+        pass  # PIL not available, use original
+
+    # Save
+    set_id = request.form.get('set_id', 'unsorted')
+    save_dir = os.path.join(IMAGES_DIR, secure_filename(set_id))
+    os.makedirs(save_dir, exist_ok=True)
+
+    filename = secure_filename(file.filename)
+    save_path = os.path.join(save_dir, filename)
+    with open(save_path, 'wb') as f:
+        f.write(file_data)
+
+    return jsonify({
+        "image_id": filename,
+        "path": save_path,
+        "size": len(file_data),
+    })
+
+
 @campaign_bp.route('/parse-brief', methods=['POST'])
+@login_required
 def parse_brief():
     """将自然语言 brief 解析为结构化 Campaign 字段"""
     try:
@@ -273,6 +337,7 @@ def parse_brief():
 
 
 @campaign_bp.route('/evaluate', methods=['POST'])
+@login_required
 def evaluate():
     """提交 campaign 方案进行评审（异步）"""
     try:
@@ -284,7 +349,8 @@ def evaluate():
             return jsonify({"error": "请求体不能为空"}), 400
 
         campaign_set = _parse_campaigns(data)
-        submitted_by = data.get("submitted_by", "")
+        current_user = get_current_user()
+        submitted_by = current_user["display_name"] if current_user else data.get("submitted_by", "")
 
         # 防重复 set_id：检查内存和磁盘是否已有该 set_id 的结果
         if campaign_set.set_id in _evaluation_store or _load_result(campaign_set.set_id):
@@ -347,6 +413,7 @@ def get_result(set_id: str):
 
 
 @campaign_bp.route('/resolve', methods=['POST'])
+@login_required
 def resolve():
     """
     提交赛后结算
@@ -379,13 +446,13 @@ def resolve():
         if already_resolved:
             return jsonify({"error": f"评审集 '{set_id}' 已结算，不允许重复结算"}), 409
 
-        # 尝试从内存获取 predicted probabilities
+        # 尝试从内存获取 predicted scores
         predicted = None
         stored = _evaluation_store.get(set_id)
         if stored:
-            board = stored.get("probability_board", {})
+            board = stored.get("scoreboard", {})
             predicted = {
-                c["campaign_id"]: c["win_probability"]
+                c["campaign_id"]: c["overall_score"]
                 for c in board.get("campaigns", [])
             }
 
@@ -511,6 +578,7 @@ def get_calibration():
 
 
 @campaign_bp.route('/recalibrate', methods=['POST'])
+@login_required
 def recalibrate():
     """
     触发 judge/persona 校准

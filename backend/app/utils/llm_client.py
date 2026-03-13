@@ -101,3 +101,41 @@ class LLMClient:
         except json.JSONDecodeError:
             raise ValueError(f"LLM返回的JSON格式无效: {cleaned_response}")
 
+    def chat_multimodal(
+        self,
+        messages: list,
+        temperature: float = 0.7,
+        max_tokens: int = 4096,
+        response_format: dict | None = None,
+    ) -> str:
+        """支持图文混合的聊天请求（OpenAI Vision 格式）"""
+        kwargs = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if response_format:
+            kwargs["response_format"] = response_format
+        response = self.client.chat.completions.create(**kwargs)
+        content = response.choices[0].message.content
+        content = re.sub(r'<think>[\s\S]*?</think>', '', content).strip()
+        return content
+
+    def chat_multimodal_json(
+        self,
+        messages: list,
+        temperature: float = 0.3,
+        max_tokens: int = 4096,
+    ) -> dict:
+        """支持图文混合的 JSON 模式请求"""
+        raw = self.chat_multimodal(
+            messages, temperature, max_tokens,
+            response_format={"type": "json_object"},
+        )
+        raw = re.sub(r'^```(?:json)?\s*', '', raw)
+        raw = re.sub(r'\s*```$', '', raw)
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"LLM 返回了无法解析的 JSON: {e}\n原始内容: {raw[:500]}")

@@ -7,8 +7,8 @@ from .campaign import Campaign, CampaignSet, ProductLine
 from .evaluation import (
     Verdict, PanelScore, PairwiseResult, CampaignRanking, EvaluationResult,
 )
-from .market import (
-    ProbabilityBoard, CampaignMarketView, SubMarketProbability,
+from .scoreboard import (
+    ScoreBoard, CampaignScoreView, DimensionScore,
     ResolutionRecord, JudgePerformanceStats,
 )
 
@@ -16,6 +16,6 @@ __all__ = [
     'TaskManager', 'TaskStatus',
     'Campaign', 'CampaignSet', 'ProductLine',
     'Verdict', 'PanelScore', 'PairwiseResult', 'CampaignRanking', 'EvaluationResult',
-    'ProbabilityBoard', 'CampaignMarketView', 'SubMarketProbability',
+    'ScoreBoard', 'CampaignScoreView', 'DimensionScore',
     'ResolutionRecord', 'JudgePerformanceStats',
 ]

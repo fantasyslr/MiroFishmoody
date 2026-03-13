@@ -1,5 +1,5 @@
 """
-Decision Market 数据模型 — prediction-market-inspired 结构
+ScoreBoard 数据模型 — 评分面板结构
 """
 
 from typing import List, Dict, Any, Optional
@@ -7,8 +7,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 
-# 5 个子市场维度
-SUB_MARKET_KEYS = [
+# 5 个评分维度
+DIMENSION_KEYS = [
     "thumb_stop",          # 停留吸引力
     "clarity",             # 信息清晰度
     "trust",               # 信任感
@@ -16,7 +16,7 @@ SUB_MARKET_KEYS = [
     "claim_risk",          # 声称风险（高 = 差）
 ]
 
-SUB_MARKET_LABELS = {
+DIMENSION_LABELS = {
     "thumb_stop": "停留吸引力",
     "clarity": "信息清晰度",
     "trust": "信任感",
@@ -26,37 +26,37 @@ SUB_MARKET_LABELS = {
 
 
 @dataclass
-class SubMarketProbability:
-    """单个子市场中某 campaign 的概率"""
-    market_key: str
-    market_label: str
+class DimensionScore:
+    """单个维度中某 campaign 的得分"""
+    dimension_key: str
+    dimension_label: str
     campaign_id: str
-    probability: float  # 0-1, 该方案在此维度上为最优的相对概率
+    score: float  # 0-1, 该方案在此维度上为最优的相对得分
     raw_score: float    # 归一化前的原始分
 
 
 @dataclass
-class CampaignMarketView:
-    """单个 campaign 的完整 market view"""
+class CampaignScoreView:
+    """单个 campaign 的完整 score view"""
     campaign_id: str
     campaign_name: str
-    win_probability: float               # 总体胜出概率 (0-1)
-    sub_markets: Dict[str, float]        # market_key → probability
+    overall_score: float               # 总体得分 (0-1)
+    dimension_scores: Dict[str, float]  # dimension_key → score
     rank: int
     verdict: str                         # ship / revise / kill
-    spread_to_next: Optional[float]      # 与下一名的概率差距
+    lead_margin_to_next: Optional[float]  # 与下一名的得分差距
     verdict_rationale: str               # 判定理由
 
 
 @dataclass
-class ProbabilityBoard:
-    """完整概率面板"""
-    campaigns: List[CampaignMarketView]
-    spread: float                        # #1 vs #2 的概率差距
-    no_clear_edge: bool                  # spread 低于阈值
-    no_trade_band: float                 # 当前 no-trade 阈值
+class ScoreBoard:
+    """完整评分面板"""
+    campaigns: List[CampaignScoreView]
+    lead_margin: float                    # #1 vs #2 的得分差距
+    too_close_to_call: bool               # lead_margin 低于阈值
+    confidence_threshold: float           # 当前置信阈值
     rationale_for_uncertainty: str       # 不确定性说明
-    sub_markets: List[SubMarketProbability]  # 所有子市场详情
+    dimension_scores: List[DimensionScore]  # 所有维度详情
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -64,20 +64,20 @@ class ProbabilityBoard:
                 {
                     "campaign_id": c.campaign_id,
                     "campaign_name": c.campaign_name,
-                    "win_probability": round(c.win_probability, 3),
-                    "sub_markets": {
-                        k: round(v, 3) for k, v in c.sub_markets.items()
+                    "overall_score": round(c.overall_score, 3),
+                    "dimension_scores": {
+                        k: round(v, 3) for k, v in c.dimension_scores.items()
                     },
                     "rank": c.rank,
                     "verdict": c.verdict,
-                    "spread_to_next": round(c.spread_to_next, 3) if c.spread_to_next is not None else None,
+                    "lead_margin_to_next": round(c.lead_margin_to_next, 3) if c.lead_margin_to_next is not None else None,
                     "verdict_rationale": c.verdict_rationale,
                 }
                 for c in self.campaigns
             ],
-            "spread": round(self.spread, 3),
-            "no_clear_edge": self.no_clear_edge,
-            "no_trade_band": self.no_trade_band,
+            "lead_margin": round(self.lead_margin, 3),
+            "too_close_to_call": self.too_close_to_call,
+            "confidence_threshold": self.confidence_threshold,
             "rationale_for_uncertainty": self.rationale_for_uncertainty,
         }
 

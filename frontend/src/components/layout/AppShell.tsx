@@ -1,8 +1,18 @@
 import { NavLink, Outlet } from 'react-router-dom'
 
+import { logout as logoutApi, type AuthUser } from '../../lib/api'
 import { navigation } from '../../data/campaignDecisionData'
 
-export function AppShell() {
+export function AppShell({ user, onLogout }: { user?: AuthUser; onLogout?: () => void }) {
+  const handleLogout = async () => {
+    try {
+      await logoutApi()
+    } catch {
+      // ignore
+    }
+    onLogout?.()
+  }
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-cream text-coffee">
       <div className="ambient-orb ambient-orb-left" />
@@ -26,10 +36,24 @@ export function AppShell() {
               </p>
             </div>
 
-            <div className="hidden flex-wrap gap-2 text-xs text-ink/80 sm:flex">
-              <span className="rounded-full border border-line bg-cream px-3 py-2">中文优先</span>
-              <span className="rounded-full border border-line bg-cream px-3 py-2">联调中</span>
-              <span className="rounded-full border border-line bg-cream px-3 py-2">React + Tailwind</span>
+            <div className="flex items-center gap-4">
+              <div className="hidden flex-wrap gap-2 text-xs text-ink/80 sm:flex">
+                <span className="rounded-full border border-line bg-cream px-3 py-2">中文优先</span>
+                <span className="rounded-full border border-line bg-cream px-3 py-2">联调中</span>
+                <span className="rounded-full border border-line bg-cream px-3 py-2">React + Tailwind</span>
+              </div>
+              {user && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-ink/70">{user.display_name}</span>
+                  <button
+                    className="secondary-button text-xs"
+                    type="button"
+                    onClick={handleLogout}
+                  >
+                    退出
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

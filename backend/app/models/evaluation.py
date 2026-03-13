@@ -61,7 +61,7 @@ class EvaluationResult:
     summary: str
     assumptions: List[str]
     confidence_notes: List[str]
-    probability_board: Optional[Dict[str, Any]] = None
+    scoreboard: Optional[Dict[str, Any]] = None
     resolution_ready_fields: Optional[Dict[str, str]] = None
 
     def to_dict(self) -> Dict[str, Any]:
@@ -108,8 +108,8 @@ class EvaluationResult:
             "assumptions": self.assumptions,
             "confidence_notes": self.confidence_notes,
         }
-        if self.probability_board is not None:
-            result["probability_board"] = self.probability_board
+        if self.scoreboard is not None:
+            result["scoreboard"] = self.scoreboard
         if self.resolution_ready_fields is not None:
             result["resolution_ready_fields"] = self.resolution_ready_fields
         return result

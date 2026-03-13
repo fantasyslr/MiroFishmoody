@@ -148,7 +148,6 @@ export function NewReviewPage() {
     try {
       const payload = {
         context: [reviewName.trim(), context.trim()].filter(Boolean).join('\n\n'),
-        submitted_by: '',  // P1 登录完成前暂时留空
         campaigns: campaigns.map(toPayloadCampaign),
       }
       const response = await evaluateCampaigns(payload)

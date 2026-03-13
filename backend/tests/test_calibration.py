@@ -117,7 +117,7 @@ def test_recalibrate_insufficient():
 
         # 只创建 2 个结算（需要 5 个）
         for i in range(2):
-            from app.models.market import ResolutionRecord
+            from app.models.scoreboard import ResolutionRecord
             cal.record_resolution(ResolutionRecord(
                 set_id=f"set-{i:03d}", campaign_id="a",
                 resolved_at="2026-01-01", actual_metrics={},
@@ -162,7 +162,7 @@ def test_recalibrate_generates_stats():
             ], {"a": 0.65, "b": 0.35})
 
             # A 是赢家
-            from app.models.market import ResolutionRecord
+            from app.models.scoreboard import ResolutionRecord
             cal.record_resolution(ResolutionRecord(
                 set_id=set_id, campaign_id="a",
                 resolved_at="2026-01-01", actual_metrics={"ctr": 0.03},
@@ -227,7 +227,7 @@ def test_get_weights_after_calibration():
                  "winner_pick": "A", "dimensions": {}},
             ], {"a": 0.65, "b": 0.35})
 
-            from app.models.market import ResolutionRecord
+            from app.models.scoreboard import ResolutionRecord
             cal.record_resolution(ResolutionRecord(
                 set_id=set_id, campaign_id="a",
                 resolved_at="2026-01-01", actual_metrics={},
@@ -278,7 +278,7 @@ def test_weights_affect_scoring():
     # Baseline: 无权重
     scorer_base = CampaignScorer()
     _, board_base = scorer_base.score(campaigns, panel, pairwise, bt)
-    prob_a_base = next(c.win_probability for c in board_base.campaigns if c.campaign_id == "a")
+    prob_a_base = next(c.overall_score for c in board_base.campaigns if c.campaign_id == "a")
 
     # With weights: 大幅提高 p2 权重（偏好 B），大幅提高 j2 权重（选 B）
     scorer_w = CampaignScorer(
@@ -286,7 +286,7 @@ def test_weights_affect_scoring():
         persona_weights={"p1": 0.3, "p2": 2.0},
     )
     _, board_w = scorer_w.score(campaigns, panel, pairwise, bt)
-    prob_a_weighted = next(c.win_probability for c in board_w.campaigns if c.campaign_id == "a")
+    prob_a_weighted = next(c.overall_score for c in board_w.campaigns if c.campaign_id == "a")
 
     # A's probability should decrease when B-favoring judges/personas are weighted up
     assert prob_a_weighted < prob_a_base, (

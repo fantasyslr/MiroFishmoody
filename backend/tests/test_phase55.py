@@ -11,7 +11,7 @@ import json
 import tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from app.models.market import ResolutionRecord
+from app.models.scoreboard import ResolutionRecord
 from app import create_app
 from app.services.judge_calibration import JudgeCalibration
 from app.services.resolution_tracker import ResolutionTracker
@@ -73,10 +73,10 @@ def test_get_result_without_evaluation_store():
             result = {
                 "set_id": "restart-set",
                 "rankings": [{"campaign_id": "a", "rank": 1, "verdict": "ship"}],
-                "probability_board": {
+                "scoreboard": {
                     "campaigns": [
-                        {"campaign_id": "a", "win_probability": 0.65},
-                        {"campaign_id": "b", "win_probability": 0.35},
+                        {"campaign_id": "a", "overall_score": 0.65},
+                        {"campaign_id": "b", "overall_score": 0.35},
                     ]
                 },
             }
@@ -91,7 +91,7 @@ def test_get_result_without_evaluation_store():
             body = resp.get_json()
 
             assert body["set_id"] == "restart-set"
-            assert body["probability_board"]["campaigns"][0]["campaign_id"] == "a"
+            assert body["scoreboard"]["campaigns"][0]["campaign_id"] == "a"
             assert campaign_api._evaluation_store["restart-set"]["set_id"] == "restart-set"
             print("  PASS: result endpoint works without _evaluation_store (fallback to disk)")
         finally:

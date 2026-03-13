@@ -61,7 +61,7 @@ class ProbabilityAggregator:
         bt_scores: Dict[str, float],
     ) -> Dict[str, float]:
         """
-        聚合三路信号，输出 campaign_id → win_probability (sum=1)。
+        聚合三路信号，输出 campaign_id → overall_score (sum=1)。
 
         judge_weights 通过重算加权 BT 生效：
         - 如果 judge_weights 非空，从 pairwise_results.votes 重算

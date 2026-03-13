@@ -8,7 +8,7 @@ from .pairwise_judge import PairwiseJudge
 from .campaign_scorer import CampaignScorer
 from .summary_generator import SummaryGenerator
 from .probability_aggregator import ProbabilityAggregator
-from .submarket_evaluator import SubMarketEvaluator
+from .submarket_evaluator import DimensionEvaluator
 from .judge_calibration import JudgeCalibration
 from .resolution_tracker import ResolutionTracker
 
@@ -19,7 +19,7 @@ __all__ = [
     'CampaignScorer',
     'SummaryGenerator',
     'ProbabilityAggregator',
-    'SubMarketEvaluator',
+    'DimensionEvaluator',
     'JudgeCalibration',
     'ResolutionTracker',
 ]

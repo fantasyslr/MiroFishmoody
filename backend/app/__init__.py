@@ -36,7 +36,7 @@ def create_app(config_class=Config):
         logger.info("Campaign Ranker Engine 启动中...")
         logger.info("=" * 50)
 
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
     @app.before_request
     def log_request():
@@ -52,6 +52,9 @@ def create_app(config_class=Config):
     # 注册蓝图
     from .api import campaign_bp
     app.register_blueprint(campaign_bp, url_prefix='/api/campaign')
+
+    from .api.auth import auth_bp
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
     @app.route('/health')
     def health():
