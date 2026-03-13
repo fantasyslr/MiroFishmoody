@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./static/image/MiroFish_logo_compressed.jpeg" alt="MiroFishmoody Logo" width="60%"/>
+<img src="./static/image/MiroFishmoody_logo.png" alt="MiroFishmoody Logo" width="60%"/>
 
 # MiroFishmoody
 
