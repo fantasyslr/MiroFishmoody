@@ -8,7 +8,7 @@ import os
 import base64
 import threading
 from datetime import datetime
-from flask import request, jsonify
+from flask import request, jsonify, Response, send_from_directory
 from werkzeug.utils import secure_filename
 
 from . import campaign_bp
@@ -171,6 +171,60 @@ def upload_image():
     })
 
 
+@campaign_bp.route('/image-file/<set_id>/<filename>', methods=['GET'])
+def serve_image_file(set_id: str, filename: str):
+    """提供 campaign 素材图片的静态文件访问"""
+    safe_set_id = secure_filename(set_id)
+    safe_filename = secure_filename(filename)
+    image_dir = os.path.join(IMAGES_DIR, safe_set_id)
+    file_path = os.path.join(image_dir, safe_filename)
+    if not os.path.isfile(file_path):
+        return jsonify({"error": "图片不存在"}), 404
+    return send_from_directory(image_dir, safe_filename)
+
+
+@campaign_bp.route('/images/<set_id>', methods=['GET'])
+def list_images(set_id: str):
+    """列出某个 set_id 下的所有已上传图片"""
+    safe_set_id = secure_filename(set_id)
+    image_dir = os.path.join(IMAGES_DIR, safe_set_id)
+    if not os.path.isdir(image_dir):
+        return jsonify({"images": []})
+
+    images = []
+    for fname in sorted(os.listdir(image_dir)):
+        if _allowed_image(fname):
+            images.append({
+                "filename": fname,
+                "url": f"/api/campaign/image-file/{safe_set_id}/{fname}",
+            })
+    return jsonify({"images": images})
+
+
+def _build_campaign_image_map(set_id: str) -> dict:
+    """
+    扫描 images/<set_id>/ 目录，构建 campaign_id -> image URLs 的映射。
+
+    图片文件名规则：
+    - 如果文件名以 campaign_id 为前缀（如 campaign_1_photo.jpg），归入该 campaign
+    - 否则归入 "_shared" 键，所有 campaign 共享
+    """
+    safe_set_id = secure_filename(set_id)
+    image_dir = os.path.join(IMAGES_DIR, safe_set_id)
+    if not os.path.isdir(image_dir):
+        return {}
+
+    image_map: dict = {}
+    for fname in sorted(os.listdir(image_dir)):
+        if not _allowed_image(fname):
+            continue
+        url = f"/api/campaign/image-file/{safe_set_id}/{fname}"
+        # 尝试按文件名前缀匹配 campaign_id
+        image_map.setdefault("_all", []).append(url)
+
+    return image_map
+
+
 @campaign_bp.route('/parse-brief', methods=['POST'])
 @login_required
 def parse_brief():
@@ -269,7 +323,7 @@ def evaluate_status(task_id: str):
 
 @campaign_bp.route('/result/<set_id>', methods=['GET'])
 def get_result(set_id: str):
-    """获取评审结果"""
+    """获取评审结果，附带 campaign 图片 URL 映射"""
     result = _evaluation_store.get(set_id)
     if not result:
         result = _load_result(set_id)
@@ -277,7 +331,40 @@ def get_result(set_id: str):
             _evaluation_store[set_id] = result
     if not result:
         return jsonify({"error": "评审结果不存在"}), 404
-    return jsonify(result)
+
+    # 注入图片 URL 映射，使前端可以展示 campaign 素材图
+    response = dict(result)
+    response["campaign_image_map"] = _build_campaign_image_map(set_id)
+    return jsonify(response)
+
+
+@campaign_bp.route('/export/<set_id>', methods=['GET'])
+@login_required
+def export_result(set_id: str):
+    """导出评审结果为可下载的 JSON 文件"""
+    result = _evaluation_store.get(set_id)
+    if not result:
+        result = _load_result(set_id)
+        if result:
+            _evaluation_store[set_id] = result
+    if not result:
+        return jsonify({"error": "评审结果不存在"}), 404
+
+    current_user = get_current_user()
+    export_payload = {
+        "generated_at": datetime.now().isoformat(),
+        "exported_by": current_user["display_name"] if current_user else "unknown",
+        **result,
+    }
+
+    json_bytes = json.dumps(export_payload, ensure_ascii=False, indent=2)
+    return Response(
+        json_bytes,
+        mimetype='application/json',
+        headers={
+            'Content-Disposition': f'attachment; filename=evaluation_{set_id}.json',
+        },
+    )
 
 
 @campaign_bp.route('/resolve', methods=['POST'])

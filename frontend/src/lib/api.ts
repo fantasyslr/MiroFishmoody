@@ -69,6 +69,20 @@ export type ScoreBoardCampaign = {
   verdict_rationale: string
 }
 
+export type DimensionDetail = {
+  dimension_key: string
+  dimension_label: string
+  campaign_id: string
+  score: number
+  raw_score: number
+}
+
+export type CampaignImageMap = {
+  /** All images for this set (key "_all"), or per-campaign keyed by campaign_id */
+  _all?: string[]
+  [campaignId: string]: string[] | undefined
+}
+
 export type EvaluationResult = {
   set_id: string
   rankings: Ranking[]
@@ -81,8 +95,10 @@ export type EvaluationResult = {
     too_close_to_call: boolean
     confidence_threshold: number
     rationale_for_uncertainty: string
+    dimension_details?: DimensionDetail[]
   }
   resolution_ready_fields?: Record<string, string>
+  campaign_image_map?: CampaignImageMap
 }
 
 export type ParseBriefPayload = {
@@ -279,6 +295,47 @@ export async function uploadImage(file: File, setId?: string): Promise<ImageUplo
   }
 
   return data as ImageUploadResponse
+}
+
+export type CampaignImageListItem = {
+  filename: string
+  url: string
+}
+
+export function getCampaignImages(setId: string) {
+  return request<{ images: CampaignImageListItem[] }>(`/api/campaign/images/${setId}`)
+}
+
+/**
+ * Build the full URL for a campaign image path returned by the API.
+ * Handles both absolute URLs and relative paths like "/api/campaign/image-file/...".
+ */
+export function campaignImageUrl(path: string): string {
+  if (path.startsWith('http://') || path.startsWith('https://')) return path
+  return `${API_BASE}${path}`
+}
+
+export async function exportResult(setId: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/campaign/export/${setId}`, {
+    credentials: 'include',
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    const data = text ? JSON.parse(text) : null
+    const message = data?.error ?? `Export failed: ${response.status}`
+    throw new ApiError(response.status, message)
+  }
+
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `evaluation_${setId}.json`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 export function saveLatestReviewSession(session: LatestReviewSession) {

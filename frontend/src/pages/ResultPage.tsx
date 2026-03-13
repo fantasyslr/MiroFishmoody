@@ -4,6 +4,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { SectionCard } from '../components/ui/SectionCard'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import {
+  campaignImageUrl,
+  exportResult,
   getLatestReviewSession,
   getResult,
   saveLatestReviewSession,
@@ -99,6 +101,20 @@ export function ResultPage() {
     return result?.scoreboard?.campaigns ?? []
   }, [result])
 
+  /** All image URLs from the set, available for every campaign */
+  const imageUrls = useMemo(() => {
+    return result?.campaign_image_map?._all ?? []
+  }, [result])
+
+  /** Build a lookup: `${campaignId}::${dimensionKey}` → dimension_label */
+  const dimensionLabelMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const d of result?.scoreboard?.dimension_details ?? []) {
+      map.set(`${d.campaign_id}::${d.dimension_key}`, d.dimension_label)
+    }
+    return map
+  }, [result])
+
   if (!setId) {
     return (
       <SectionCard
@@ -177,6 +193,17 @@ export function ResultPage() {
             <Link className="primary-button justify-center" to={`/history?setId=${result.set_id}`}>
               去做结算
             </Link>
+            <button
+              type="button"
+              className="secondary-button justify-center"
+              onClick={() => {
+                void exportResult(result.set_id).catch((err) => {
+                  alert(err instanceof Error ? err.message : '导出失败')
+                })
+              }}
+            >
+              导出报告
+            </button>
             <Link className="secondary-button justify-center" to={`/running?taskId=${latest?.taskId ?? ''}&setId=${result.set_id}`}>
               回运行状态
             </Link>
@@ -254,6 +281,30 @@ export function ResultPage() {
                     </div>
                   </div>
                 </div>
+
+                {imageUrls.length > 0 && (
+                  <div className="mt-4">
+                    <p className="field-label">素材图片</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {imageUrls.map((url) => (
+                        <a
+                          key={url}
+                          href={campaignImageUrl(url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block overflow-hidden rounded-xl border border-line/70 transition-shadow hover:shadow-md"
+                        >
+                          <img
+                            src={campaignImageUrl(url)}
+                            alt="campaign 素材"
+                            className="h-20 w-20 object-cover sm:h-24 sm:w-24"
+                            loading="lazy"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </article>
             ))}
           </div>
@@ -324,7 +375,7 @@ export function ResultPage() {
                     {Object.entries(item.dimension_scores ?? {}).map(([dimension, value]) => (
                       <div key={dimension} className="rounded-3xl border border-line/70 bg-paper px-4 py-3">
                         <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-semibold text-coffee">{dimension}</p>
+                          <p className="text-sm font-semibold text-coffee">{dimensionLabelMap.get(`${item.campaign_id}::${dimension}`) ?? dimension}</p>
                           <LevelMeter level={probabilityToLevel(value)} />
                         </div>
                         <p className="mt-2 text-sm leading-6 text-ink/80">{percent(value)}</p>

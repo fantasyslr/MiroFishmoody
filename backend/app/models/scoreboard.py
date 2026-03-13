@@ -79,6 +79,16 @@ class ScoreBoard:
             "too_close_to_call": self.too_close_to_call,
             "confidence_threshold": self.confidence_threshold,
             "rationale_for_uncertainty": self.rationale_for_uncertainty,
+            "dimension_details": [
+                {
+                    "dimension_key": ds.dimension_key,
+                    "dimension_label": ds.dimension_label,
+                    "campaign_id": ds.campaign_id,
+                    "score": round(ds.score, 3),
+                    "raw_score": round(ds.raw_score, 3),
+                }
+                for ds in self.dimension_scores
+            ],
         }
 
 
