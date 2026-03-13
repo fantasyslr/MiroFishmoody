@@ -1,0 +1,489 @@
+{
+  "assumptions": [],
+  "confidence_notes": [],
+  "pairwise_results": [
+    {
+      "campaign_a_id": "mp_health",
+      "campaign_b_id": "mp_lifestyle",
+      "dimensions": {
+        "brand_alignment": "mp_lifestyle",
+        "conversion_potential": "mp_lifestyle",
+        "feasibility": "mp_lifestyle",
+        "reach_potential": "mp_lifestyle",
+        "risk_level": "mp_lifestyle"
+      },
+      "votes": [
+        {
+          "dimensions": {
+            "brand_alignment": "B",
+            "conversion_potential": "B",
+            "feasibility": "B",
+            "reach_potential": "B",
+            "risk_level": "B"
+          },
+          "judge_id": "strategist",
+          "judge_name": "策略视角",
+          "reasoning": "方案 B 更契合 Moody 的潮流品牌基因，利用抖音视频渠道实现更广触达且合规风险更低。方案 A 的医疗宣称存在监管隐患且受众局限，而 B 通过生活场景能有效拉动新客增长。综合来看，B 在战略增长与品牌一致性上更优。",
+          "winner": "B"
+        },
+        {
+          "dimensions": {
+            "brand_alignment": "B",
+            "conversion_potential": "B",
+            "feasibility": "B",
+            "reach_potential": "B",
+            "risk_level": "B"
+          },
+          "judge_id": "consumer",
+          "judge_name": "用户视角",
+          "reasoning": "方案 B 更契合'moody'品牌的情感化调性，通过生活场景降低决策门槛，易于在抖音等平台引发冲动消费。相比之下，方案 A 的医疗专业感虽建立信任，但合规风险高且渠道触达受限，不利于规模化增长。",
+          "winner": "B"
+        },
+        {
+          "dimensions": {
+            "brand_alignment": "A",
+            "conversion_potential": "A",
+            "feasibility": "B",
+            "reach_potential": "B",
+            "risk_level": "A"
+          },
+          "judge_id": "brand_guardian",
+          "judge_name": "品牌视角",
+          "reasoning": "方案 A 精准契合 moodyPlus 专业功能线定位，通过临床数据建立技术壁垒，巩固品牌“功能 + 美学”中的专业支柱。方案 B 虽触达更广，但过度侧重生活方式可能模糊专业线与美妆线界限，不利于长期品牌资产积累。",
+          "winner": "A"
+        }
+      ],
+      "winner_id": "mp_lifestyle"
+    },
+    {
+      "campaign_a_id": "mp_switch",
+      "campaign_b_id": "mp_lifestyle",
+      "dimensions": {
+        "brand_alignment": "mp_lifestyle",
+        "conversion_potential": "mp_switch",
+        "feasibility": "mp_lifestyle",
+        "reach_potential": "mp_lifestyle",
+        "risk_level": "mp_lifestyle"
+      },
+      "votes": [
+        {
+          "dimensions": {
+            "brand_alignment": "B",
+            "conversion_potential": "B",
+            "feasibility": "B",
+            "reach_potential": "B",
+            "risk_level": "B"
+          },
+          "judge_id": "strategist",
+          "judge_name": "策略视角",
+          "reasoning": "方案 B 在渠道选择上更契合美妆品类的内容电商属性（小红书/抖音是核心阵地），且避免了方案 A 直接竞品对比可能引发的法律合规风险及品牌格调损伤。从长期主义看，B 方案通过生活方式内容构建品牌资产，比 A 方案的流量收割更具战略可持续性。",
+          "winner": "B"
+        },
+        {
+          "dimensions": {
+            "brand_alignment": "B",
+            "conversion_potential": "A",
+            "feasibility": "B",
+            "reach_potential": "B",
+            "risk_level": "B"
+          },
+          "judge_id": "consumer",
+          "judge_name": "用户视角",
+          "reasoning": "方案 B 整体更优，因为它规避了方案 A 直接使用竞品名称可能引发的法律与平台合规风险，且更符合 Moody 年轻化、社交化的品牌调性。尽管方案 A 的促销机制在短期转化上更具冲击力，但方案 B 通过生活方式场景建立的情感共鸣更能降低用户认知门槛，利于长期品牌资产积累。",
+          "winner": "B"
+        },
+        {
+          "dimensions": {
+            "brand_alignment": "B",
+            "conversion_potential": "A",
+            "feasibility": "B",
+            "reach_potential": "B",
+            "risk_level": "B"
+          },
+          "judge_id": "brand_guardian",
+          "judge_name": "品牌视角",
+          "reasoning": "方案 B 更契合 Moody“功能 + 美学”的高端定位，通过生活方式内容构建品牌溢价，避免了方案 A 对比式营销和促销机制带来的低价风险。虽然 A 在短期转化上可能更具侵略性，但 B 更能维护品牌长期价值和用户心智，符合不打价格战的核心原则。",
+          "winner": "B"
+        }
+      ],
+      "winner_id": "mp_lifestyle"
+    },
+    {
+      "campaign_a_id": "mp_health",
+      "campaign_b_id": "mp_switch",
+      "dimensions": {
+        "brand_alignment": "mp_health",
+        "conversion_potential": "mp_switch",
+        "feasibility": "mp_health",
+        "reach_potential": "mp_health",
+        "risk_level": "mp_health"
+      },
+      "votes": [
+        {
+          "dimensions": {
+            "brand_alignment": "A",
+            "conversion_potential": "B",
+            "feasibility": "A",
+            "reach_potential": "A",
+            "risk_level": "A"
+          },
+          "judge_id": "strategist",
+          "judge_name": "策略视角",
+          "reasoning": "方案 A 通过健康心智建设巩固品牌溢价，符合",
+          "winner": "A"
+        },
+        {
+          "dimensions": {
+            "brand_alignment": "A",
+            "conversion_potential": "B",
+            "feasibility": "A",
+            "reach_potential": "A",
+            "risk_level": "A"
+          },
+          "judge_id": "consumer",
+          "judge_name": "用户视角",
+          "reasoning": "方案 A 胜出，因为眼健康品类用户决策核心是信任而非价格，A 的专业视觉与国内主流渠道更能建立安全感且符合品牌长期利益。方案 B 虽试戴促销能降低尝试门槛，但对比广告易引发合规风险，且海外渠道与人民币定价产品的市场严重错配。",
+          "winner": "A"
+        },
+        {
+          "dimensions": {
+            "brand_alignment": "A",
+            "conversion_potential": "B",
+            "feasibility": "A",
+            "reach_potential": "A",
+            "risk_level": "A"
+          },
+          "judge_id": "brand_guardian",
+          "judge_name": "品牌视角",
+          "reasoning": "方案 B 的降价促销直接违背 Moody“不打价格战”的核心原则，易将品牌拉入低端替代品的认知陷阱，损害长期价值。方案 A 聚焦临床级透氧率的专业价值教育，符合 moodyPlus 功能线定位，有利于构建品牌护城河而非短期销量。",
+          "winner": "A"
+        }
+      ],
+      "winner_id": "mp_health"
+    }
+  ],
+  "panel_scores": [
+    {
+      "campaign_id": "mp_health",
+      "objections": [
+        "全程没提价格和优惠？‘临床级’听起来就很贵，不敢点进去",
+        "没有囤货机制或者新人试用，我凭什么换掉现在用的便宜牌子",
+        "目标受众写 25-35 岁，我才 24 岁，感觉这牌子不是给我的",
+        "光摆透氧数据太枯燥了，我更关心戴一整天会不会磨眼、会不会涨价",
+        "没有复购激励（如订阅制、买赠），我下次可能就去别家蹲促销了"
+      ],
+      "persona_id": "price_conscious",
+      "persona_name": "价格敏感用户",
+      "reasoning": "作为哪划算买哪家的价格敏感型用户，这个方案只谈健康不谈钱，完全没给我下单的理由。‘专业医疗感’反而让我担心溢价太高，没有促销机制根本无法触发首次尝试和复购。",
+      "score": 3.0,
+      "strengths": [
+        "硅水凝胶材质确实是刚需，上班盯屏幕眼睛容易干，这点能打动我",
+        "小红书渠道对了，我买之前习惯上去搜测评和比价"
+      ]
+    },
+    {
+      "campaign_id": "mp_health",
+      "objections": [
+        "“临床级透氧率”具体是多少 Dk/t？不敢放数据对比就是在耍流氓，Acuvue Oasys 的数值我可是背得出来的",
+        "我是冲着自然放大效果来的，你推透明片是想让我上班戴透明、下班戴美瞳？那你的彩色镜片有没有这个技术？",
+        "白色 + 蓝色太像药店卖的药了，我是上小红书找美的，不是找医生的，视觉太冷没有购买欲",
+        "没说价格，如果比 Acuvue 还贵或者差不多，我为什么要冒险换品牌？"
+      ],
+      "persona_id": "acuvue_switcher",
+      "persona_name": "Acuvue Define 现有用户",
+      "reasoning": "健康痛点抓得准，但“临床级”缺乏具体数据支撑，很难让我放弃强生的医疗信任背书。作为美瞳用户，我更关心这项硅水凝胶技术能否用在彩色镜片上，纯透明片无法解决我想要“自然放大”的核心需求。",
+      "score": 5.0,
+      "strengths": [
+        "硅水凝胶材质确实是我这种长期佩戴者需要的，这点没画饼",
+        "投放眼科渠道能稍微增加一点信任感，毕竟敢进医院说明有点底气",
+        "强调透氧率切中了我戴 Acuvue 久了容易干涩的痛点"
+      ]
+    },
+    {
+      "campaign_id": "mp_health",
+      "objections": [
+        "“临床级透氧”太模糊，具体 DK 值多少？有没有三类医疗器械注册证号可查？",
+        "Moody 做美瞳起家，专业度敢不敢跟强生安视优比？我怕只是营销噱头",
+        "“裸眼 vs 佩戴”怎么体现透氧？难道是拍眼球红血丝？这种图很容易修图造假，我不信"
+      ],
+      "persona_id": "daily_wearer",
+      "persona_name": "日抛隐形眼镜老用户",
+      "reasoning": "方向对了，但作为 5 年老用户，我不吃虚的健康概念，要看硬参数和真实口碑。如果拿不出过硬的医疗背书，我只会把它当普通美瞳看，不会为了“健康”溢价买单。",
+      "score": 6.0,
+      "strengths": [
+        "终于不讲花色讲透氧了，硅水凝胶确实是老佩戴者的刚需，这点很懂我",
+        "小红书渠道对口，我会去搜真实测评而不是只看官方广告",
+        "医疗感视觉比花哨包装更能让我安心，至少看起来不像纯化妆品"
+      ]
+    },
+    {
+      "campaign_id": "mp_health",
+      "objections": [
+        "我是为了化妆好看才想买美瞳，透明片没法放大瞳孔，对我来说没吸引力",
+        "什么“临床级透氧率”、“硅水凝胶”，太专业了，看不懂只觉得麻烦，不想做功课",
+        "视觉太像药品广告了，白色蓝色冷冰冰的，没有小红书那种精致的妆容种草感",
+        "目标受众写 25-35 岁，我才 22 岁，感觉这是给上班族抗疲劳用的，不是给我变美的",
+        "没有看到直径、花色这些我最关心的参数，根本不知道上眼效果怎么样"
+      ],
+      "persona_id": "beauty_first",
+      "persona_name": "美瞳新用户（颜值驱动）",
+      "reasoning": "这方案完全没戳中我想变美的痛点，像是在卖药而不是卖美妆。作为新手，我更想看佩戴后的妆容效果，而不是一堆健康数据，这种专业感反而让我觉得门槛很高。",
+      "score": 2.0,
+      "strengths": [
+        "“自由呼吸”这个词听起来挺舒服的，可能暗示不会干涩，稍微缓解了我怕疼的顾虑",
+        "毕竟是 moody 旗下的，感觉比纯医疗品牌时尚一点，没那么可怕"
+      ]
+    },
+    {
+      "campaign_id": "mp_health",
+      "objections": [
+        "“临床级透氧率”具体数值是多少？没有 Dk/t 数据支撑就是空话，我需要看到具体数字",
+        "作为美妆品牌出身，生产线是否通过医疗器械严格认证？需要更透明的供应链信息",
+        "角膜炎康复后眼睛敏感，只谈透氧不谈保湿和沉淀物抵抗不够全面，怕戴久了干涩"
+      ],
+      "persona_id": "eye_health",
+      "persona_name": "眼健康关注者",
+      "reasoning": "方向对了，不再只谈花色而是谈材质，这点很加分。但“临床级”这种词太模糊，我需要看到具体的 Dk/t 数值和第三方检测报告，否则不敢把眼睛交给一个主打美妆的品牌。如果能提供试戴装和医生背书，我会更愿意尝试。",
+      "score": 7.0,
+      "strengths": [
+        "明确标注硅水凝胶材质，帮我节省了筛选成本，不用在详情页翻找半天",
+        "投放渠道包含眼科渠道，增加了专业信任背书，比纯网红推荐靠谱",
+        "视觉风格克制，白蓝色调医疗感强，没有过度美化，符合我对功能镜片的预期"
+      ]
+    },
+    {
+      "campaign_id": "mp_switch",
+      "objections": [
+        "我不翻墙，Meta 和 Google 广告我根本看不到，渠道完全错位",
+        "美瞳品牌做医疗器械，安全性信任度远不如强生，'临床级'说法太模糊缺乏第三方背书",
+        "30 元优惠对长期佩戴成本影响不大，不足以让我放弃惯用品牌去承担眼部健康风险"
+      ],
+      "persona_id": "daily_wearer",
+      "persona_name": "日抛隐形眼镜老用户",
+      "reasoning": "投放渠道完全没触达我的日常浏览场景，且作为医疗器械，我对美妆背景品牌的专业性存疑。除非在小红书看到大量真实素人长期佩戴反馈，否则不会轻易换品牌。",
+      "score": 3.0,
+      "strengths": [
+        "试戴装降低了尝试门槛，让我敢先体验舒适度再决定",
+        "直接针对透氧率痛点，确实是我每天佩戴 8 小时以上最关心的问题"
+      ]
+    },
+    {
+      "campaign_id": "mp_switch",
+      "objections": [
+        "渠道完全不对：我平时只刷抖音和小红书，根本不用 Google 搜索，Meta 我也很少登，这广告我压根看不到",
+        "产品没吸引力：我是被美瞳妆容吸引才想买的，想要彩色片改变眼神，moodyPlus 是透明片，对我来说没必要",
+        "创意太硬核：什么透氧率参数对比我看不懂也不想看，我只想看戴上好不好看、眼睛显不显大",
+        "人群定位错：方案说是针对 Acuvue 老用户，但我第一次买美瞳，根本不是 Acuvue 用户，这跟我有什么关系",
+        "30 元优惠不够：为了省 30 块换一个没见过的牌子还要冒险试戴，不如直接买网红款稳妥"
+      ],
+      "persona_id": "beauty_first",
+      "persona_name": "美瞳新用户（颜值驱动）",
+      "reasoning": "这个方案完全没戳中我的需求，我要的是彩色美瞳的颜值，不是透明镜片的功能参数。投放渠道和我日常活跃平台完全脱节，创意内容也太枯燥，无法激发我的购买欲。",
+      "score": 2.0,
+      "strengths": [
+        "附赠试戴装这点还行，毕竟我第一次戴，最怕不舒服，能先试试会降低我的顾虑",
+        "首购立减 30 元有点吸引力，学生党对价格还是敏感的"
+      ]
+    },
+    {
+      "campaign_id": "mp_switch",
+      "objections": [
+        "宣称“更高透氧”必须有 NMPA 注册证和第三方检测报告佐证，否则我会认为是碰瓷营销",
+        "投放渠道 Meta/Google 对我来说不常用，我更信任小红书上的真实素人反馈而非硬广",
+        "30 元优惠力度太小，不足以弥补我放弃熟悉品牌的安全感成本"
+      ],
+      "persona_id": "acuvue_switcher",
+      "persona_name": "Acuvue Define 现有用户",
+      "reasoning": "我想换品牌是因为 Acuvue 选择少，但眼睛健康是底线，不敢轻易当小白鼠。除非能看到硬核的医疗器械注册证和真实透氧数据，否则我宁愿继续用 Acuvue。",
+      "score": 6.0,
+      "strengths": [
+        "“更多花色选择”直接击中我嫌 Acuvue 款式太少的痛点，自然放大效果也是我刚需",
+        "参数并列对比符合我买隐形眼镜前必查 Dk/t 值的习惯，显得品牌够硬核",
+        "有试戴装降低了我的试错成本，毕竟舒适度不敢盲买"
+      ]
+    },
+    {
+      "campaign_id": "mp_switch",
+      "objections": [
+        "KOL 合作具体是谁？如果是美妆博主而非眼科医生或专业测评人，我会直接忽略",
+        "Meta 广告对我来说信任度太低，像是纯商业推广，不如放在专业垂类社区或搜索引擎的专业测评里",
+        "“真人佩戴对比”过于侧重美学效果，我更想看佩戴前后的眼部健康状态对比或 slit-lamp 检查图",
+        "声称“更高透氧”是否有具体 Dk/t 数值对比？没有临床数据支撑的对比对我来说只是营销话术",
+        "30 元优惠对我没有吸引力，眼健康产品我不会因为这点差价冒险"
+      ],
+      "persona_id": "eye_health",
+      "persona_name": "眼健康关注者",
+      "reasoning": "方案核心卖点触及了我的健康需求，但渠道和创意执行仍带有太重的美妆营销色彩，缺乏医疗专业背书。对于有过角膜炎经历的我，没有具体的临床数据公示或医生推荐，很难仅凭广告就相信‘更高透氧’的安全性和真实性。",
+      "score": 6.0,
+      "strengths": [
+        "直接强调“更高透氧率”，击中我最核心的眼健康痛点",
+        "提供试戴装，让我能在确认舒适度后再决定是否长期使用，降低风险",
+        "参数并列展示体现了品牌对材质透明度的自信，符合我对信息透明的要求"
+      ]
+    },
+    {
+      "campaign_id": "mp_switch",
+      "objections": [
+        "透明镜片宣称“自然放大”是逻辑硬伤，让我怀疑品牌专业性甚至觉得是虚假宣传",
+        "投放渠道 Meta/Google 在国内无法访问，除非我翻墙，否则根本看不到广告",
+        "首购立减 30 元对复购没帮助，我每月都要买，更关心囤货价或会员折扣",
+        "没有直接标明单片价格，如果日常价比 Acuvue 还贵，立减后也不划算"
+      ],
+      "persona_id": "price_conscious",
+      "persona_name": "价格敏感用户",
+      "reasoning": "文案自相矛盾（透明 vs 放大）严重消耗信任感，渠道投放也与国内用户脱节。作为高频复购用户，一次性优惠不足以让我切换品牌，除非能看到明确的长期价格优势。",
+      "score": 4.0,
+      "strengths": [
+        "附赠试戴装很实在，避免我整盒买入后发现不舒服浪费钱",
+        "强调高透氧率切中我职场长时间办公怕眼睛干涩的痛点"
+      ]
+    },
+    {
+      "campaign_id": "mp_lifestyle",
+      "objections": [
+        "透明镜片主打‘看得见的自然’？文案让我困惑，到底是功能片还是美瞳，感觉定位不清",
+        "‘轻生活方式’听起来太软了，硅水凝胶我应该更关心透氧率 Dk/t 具体数值，而不是生活方式",
+        "没有看到临床数据或认证背书，只说‘舒适’太像夸张宣传，很难让我放弃现在用的强生"
+      ],
+      "persona_id": "daily_wearer",
+      "persona_name": "日抛隐形眼镜老用户",
+      "reasoning": "渠道和场景切入不错，但核心信息太模糊，缺乏让我信任的技术参数。作为老用户，我要的是硬核的健康保障，不是虚无缥缈的生活感。",
+      "score": 5.0,
+      "strengths": [
+        "投放渠道选对了，我确实主要在小红书搜测评和真实反馈",
+        "办公和约会场景贴合我的实际佩戴痛点，尤其是下午眼睛干涩的问题"
+      ]
+    },
+    {
+      "campaign_id": "mp_lifestyle",
+      "objections": [
+        "我是 Acuvue Define 用户，核心需求是自然放大，moodyPlus 是透明片，这怎么替代？方案没解释如何弥补放大效果的缺失",
+        "“看得见的自然”对于透明镜片来说文案不知所云，是在暗示有色差吗？反而让我担心透明度",
+        "只说“临床级透氧率”太虚，不敢拿眼睛冒险，必须直接列出 Dk/t 具体数值跟 Acuvue 对比",
+        "不打价格战？如果比 Acuvue 还贵，又没有品牌背书，我完全没有转换理由"
+      ],
+      "persona_id": "acuvue_switcher",
+      "persona_name": "Acuvue Define 现有用户",
+      "reasoning": "方案太像卖彩妆而不是医疗器械，缺乏硬核参数支撑信任感，无法说服我拿眼睛做实验。根本没解决我想要“自然放大”的核心诉求，透明片只能作为备用而非主力替换。",
+      "score": 3.0,
+      "strengths": [
+        "投放渠道选对了，小红书是我查参数和看真实测评的主要阵地",
+        "办公/运动场景覆盖了我佩戴时长较久的痛点，全天舒适是我需要的"
+      ]
+    },
+    {
+      "campaign_id": "mp_lifestyle",
+      "objections": [
+        "方案完全没提价格和促销，‘不打价格战’对我来说等于‘贵’，没有首单优惠或试用装很难尝试",
+        "透明片本来就是隐形的，强调‘自然’有点废话，我更关心透氧率具体数据和是否真的不干涩",
+        "品牌忠诚度低，没有对比大牌（如强生）的优势证明或价格优势，我为什么要换？",
+        "临床级透氧率是营销词还是硬指标？没有具体参数对比，感觉是在收智商税"
+      ],
+      "persona_id": "price_conscious",
+      "persona_name": "价格敏感用户",
+      "reasoning": "作为比价党，看不到具体优惠和价格锚点，我很难产生首购动力。生活方式内容太同质化，没能解决‘为什么比大牌值得’的核心疑虑。除非有试用装或明显性价比，否则我只是划过。",
+      "score": 4.0,
+      "strengths": [
+        "办公/运动场景切中了我长时间佩戴怕干涩的痛点",
+        "投放渠道（小红书/抖音）是我日常种草和比价的主要平台"
+      ]
+    },
+    {
+      "campaign_id": "mp_lifestyle",
+      "objections": [
+        "我是为了妆容效果才想买美瞳，透明片戴上跟没戴一样，那我还买它干嘛？",
+        "你们说的'自然'对我来说等于没效果，我想要放大瞳孔、改变眼色，能出片才是重点",
+        "办公和运动场景离我太远了，我是学生，更关心约会、拍照好不好看",
+        "硅水凝胶、透氧率这些技术参数我听不懂，也不关心，我只关心上眼美不美"
+      ],
+      "persona_id": "beauty_first",
+      "persona_name": "美瞳新用户（颜值驱动）",
+      "reasoning": "这个方案完全没戳中我想变美的核心痛点，透明镜片对我这种第一次想尝试妆容效果的人来说几乎没有吸引力。除非你告诉我戴这个能让彩色美瞳更舒服，否则我为什么要买一个'看不见'的产品？",
+      "score": 3.0,
+      "strengths": [
+        "投放渠道是对的，抖音和小红书确实是我平时刷种草攻略的地方",
+        "强调'舒适'能稍微缓解我第一次戴隐形怕疼、怕不舒服的顾虑"
+      ]
+    },
+    {
+      "campaign_id": "mp_lifestyle",
+      "objections": [
+        "“看得见的自然”这话术像美瞳，作为医疗器械我更想看见具体的 Dk/t 透氧率数值和含水量数据",
+        "生活方式场景（运动/约会）无法证明医疗级安全，我需要看到临床报告或眼科医生背书",
+        "缺乏材质透明度的具体展示，硅水凝胶的具体工艺和保湿技术没有解释，难以建立信任"
+      ],
+      "persona_id": "eye_health",
+      "persona_name": "眼健康关注者",
+      "reasoning": "作为角膜炎康复者，我更关注医疗级安全数据而非生活方式滤镜。方案缺乏硬核参数公示和临床背书，无法消除我对健康风险的顾虑，反而让我怀疑是否为了“自然美”妥协了功能性。",
+      "score": 5.0,
+      "strengths": [
+        "明确区分了 moodyPlus 功能线，没有和彩片混为一谈",
+        "办公场景的提及切中了我长时间面对屏幕需要高透氧的痛点"
+      ]
+    }
+  ],
+  "rankings": [
+    {
+      "campaign_id": "mp_lifestyle",
+      "campaign_name": "moodyPlus 轻生活方式",
+      "composite_score": 4.75,
+      "pairwise_losses": 0,
+      "pairwise_wins": 2,
+      "panel_avg": 4.0,
+      "rank": 1,
+      "top_objections": [
+        "透明镜片主打‘看得见的自然’？文案让我困惑，到底是功能片还是美瞳，感觉定位不清",
+        "‘轻生活方式’听起来太软了，硅水凝胶我应该更关心透氧率 Dk/t 具体数值，而不是生活方式",
+        "没有看到临床数据或认证背书，只说‘舒适’太像夸张宣传，很难让我放弃现在用的强生"
+      ],
+      "top_strengths": [
+        "投放渠道选对了，我确实主要在小红书搜测评和真实反馈",
+        "办公和约会场景贴合我的实际佩戴痛点，尤其是下午眼睛干涩的问题",
+        "投放渠道选对了，小红书是我查参数和看真实测评的主要阵地"
+      ],
+      "verdict": "revise"
+    },
+    {
+      "campaign_id": "mp_health",
+      "campaign_name": "moodyPlus 眼健康守护计划",
+      "composite_score": 0.5,
+      "pairwise_losses": 1,
+      "pairwise_wins": 1,
+      "panel_avg": 4.6,
+      "rank": 2,
+      "top_objections": [
+        "全程没提价格和优惠？‘临床级’听起来就很贵，不敢点进去",
+        "没有囤货机制或者新人试用，我凭什么换掉现在用的便宜牌子",
+        "目标受众写 25-35 岁，我才 24 岁，感觉这牌子不是给我的"
+      ],
+      "top_strengths": [
+        "硅水凝胶材质确实是刚需，上班盯屏幕眼睛容易干，这点能打动我",
+        "小红书渠道对了，我买之前习惯上去搜测评和比价",
+        "硅水凝胶材质确实是我这种长期佩戴者需要的，这点没画饼"
+      ],
+      "verdict": "revise"
+    },
+    {
+      "campaign_id": "mp_switch",
+      "campaign_name": "Acuvue 用户转换计划",
+      "composite_score": 0.18,
+      "pairwise_losses": 2,
+      "pairwise_wins": 0,
+      "panel_avg": 4.2,
+      "rank": 3,
+      "top_objections": [
+        "我不翻墙，Meta 和 Google 广告我根本看不到，渠道完全错位",
+        "美瞳品牌做医疗器械，安全性信任度远不如强生，'临床级'说法太模糊缺乏第三方背书",
+        "30 元优惠对长期佩戴成本影响不大，不足以让我放弃惯用品牌去承担眼部健康风险"
+      ],
+      "top_strengths": [
+        "试戴装降低了尝试门槛，让我敢先体验舒适度再决定",
+        "直接针对透氧率痛点，确实是我每天佩戴 8 小时以上最关心的问题",
+        "附赠试戴装这点还行，毕竟我第一次戴，最怕不舒服，能先试试会降低我的顾虑"
+      ],
+      "verdict": "kill"
+    }
+  ],
+  "set_id": "5faa93ea-0ef9-445f-a6ab-bac804f2a496",
+  "summary": "确认"
+}

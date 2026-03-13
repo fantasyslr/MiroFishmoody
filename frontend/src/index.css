@@ -1,0 +1,103 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=Noto+Serif+SC:wght@600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    min-width: 320px;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(223, 231, 234, 0.85), transparent 34%),
+      radial-gradient(circle at right 15%, rgba(140, 97, 103, 0.08), transparent 28%),
+      linear-gradient(180deg, #fffdf8 0%, #f6f1e8 100%);
+    color: #2f241d;
+    font-family: 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+@layer components {
+  .ambient-orb {
+    @apply pointer-events-none fixed rounded-full blur-3xl;
+    width: 26rem;
+    height: 26rem;
+  }
+
+  .ambient-orb-left {
+    top: -8rem;
+    left: -8rem;
+    background: rgba(223, 231, 234, 0.9);
+  }
+
+  .ambient-orb-right {
+    top: 8rem;
+    right: -9rem;
+    background: rgba(140, 97, 103, 0.08);
+  }
+
+  .section-label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.28em] text-mist;
+  }
+
+  .field-label {
+    @apply text-xs font-semibold uppercase tracking-[0.24em] text-mist;
+  }
+
+  .field-input {
+    @apply w-full rounded-[22px] border border-line bg-paper px-4 py-3 text-sm text-coffee outline-none transition placeholder:text-ink/45 focus:border-mist focus:ring-2 focus:ring-mist/20;
+  }
+
+  .field-textarea {
+    @apply field-input min-h-[7rem] resize-y leading-6;
+  }
+
+  .field-select {
+    @apply w-full rounded-[22px] border border-line bg-paper px-4 py-3 text-sm text-coffee outline-none transition focus:border-mist focus:ring-2 focus:ring-mist/20;
+  }
+
+  .primary-button {
+    @apply inline-flex items-center rounded-full border border-coffee bg-coffee px-5 py-3 text-sm font-semibold text-paper transition hover:bg-ink;
+  }
+
+  .secondary-button {
+    @apply inline-flex items-center rounded-full border border-line bg-paper px-5 py-3 text-sm font-semibold text-coffee transition hover:border-mist hover:text-coffee;
+  }
+
+  .tag-chip {
+    @apply inline-flex items-center rounded-full border border-mist/25 bg-mist-soft/45 px-3 py-1.5 text-xs font-semibold text-ink;
+  }
+
+  .tag-chip-warning {
+    @apply border-wine/20 bg-wine/10 text-wine;
+  }
+}
