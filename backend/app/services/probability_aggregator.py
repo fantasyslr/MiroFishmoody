@@ -1,15 +1,19 @@
 """
-Probability Aggregator — 从 panel/pairwise/objection 信号聚合胜出概率
+Probability Aggregator — 从 panel/pairwise 信号聚合胜出概率
 
 核心思路：
 - 概率 = 模型内相对胜率，不是真实世界概率
-- 聚合三路信号：BT strength, panel average, objection penalty
+- 聚合两路信号：BT strength, panel average (含 objection 惩罚)
 - 权重可配置，支持 judge calibration 覆盖
 - 输出归一化到 sum=1 的概率分布
 
 Phase 5.3 更新：
 - judge_weights 真正作用于 pairwise 信号：
   按 judge_weight 加权投票重算 BT，而非使用等权 BT
+
+P2-1 更新：
+- 移除独立 objection 信号，改为 panel 信号内置 objection 惩罚
+- 权重调整：W_PAIRWISE=0.55, W_PANEL=0.45
 """
 
 import os
@@ -23,10 +27,9 @@ from ..models.evaluation import PanelScore, PairwiseResult
 
 logger = get_logger('ranker.probability')
 
-# 信号权重
-W_PAIRWISE = float(os.environ.get('PROB_W_PAIRWISE', '0.45'))
-W_PANEL = float(os.environ.get('PROB_W_PANEL', '0.35'))
-W_OBJECTION = float(os.environ.get('PROB_W_OBJECTION', '0.20'))
+# 信号权重（2 路信号）
+W_PAIRWISE = float(os.environ.get('PROB_W_PAIRWISE', '0.55'))
+W_PANEL = float(os.environ.get('PROB_W_PANEL', '0.45'))
 
 
 def _softmax(values: Dict[str, float], temperature: float = 1.0) -> Dict[str, float]:
@@ -81,7 +84,7 @@ class ProbabilityAggregator:
 
         bt_probs = _softmax(bt_for_softmax, temperature=1.0)
 
-        # --- Signal 2: Weighted panel average ---
+        # --- Signal 2: Weighted panel average with objection penalty ---
         panel_by_campaign: Dict[str, List[PanelScore]] = defaultdict(list)
         for ps in panel_scores:
             panel_by_campaign[ps.campaign_id].append(ps)
@@ -92,36 +95,26 @@ class ProbabilityAggregator:
             if not scores:
                 panel_signal[cid] = 5.0
                 continue
-            weighted_sum = 0.0
-            weight_sum = 0.0
-            for s in scores:
-                w = self.persona_weights.get(s.persona_id, 1.0)
-                weighted_sum += s.score * w
-                weight_sum += w
-            panel_signal[cid] = weighted_sum / weight_sum if weight_sum > 0 else 5.0
+
+            weighted_sum = sum(s.score * self.persona_weights.get(s.persona_id, 1.0) for s in scores)
+            weight_sum = sum(self.persona_weights.get(s.persona_id, 1.0) for s in scores)
+            base_avg = weighted_sum / weight_sum if weight_sum > 0 else 5.0
+
+            # Objection penalty: each objection per persona costs a bit, capped at 30%
+            total_obj = sum(len(s.objections) for s in scores)
+            obj_density = total_obj / len(scores)
+            penalty = min(0.30, obj_density * 0.05)
+
+            panel_signal[cid] = base_avg * (1.0 - penalty)
 
         panel_probs = _softmax(panel_signal, temperature=2.0)
 
-        # --- Signal 3: Objection penalty (inverted) ---
-        obj_signal = {}
-        for cid in all_ids:
-            scores = panel_by_campaign.get(cid, [])
-            if not scores:
-                obj_signal[cid] = 5.0
-                continue
-            total_obj = sum(len(s.objections) for s in scores)
-            density = total_obj / len(scores)
-            obj_signal[cid] = max(0.0, 10.0 - density)
-
-        obj_probs = _softmax(obj_signal, temperature=2.0)
-
-        # --- Blend ---
+        # --- Blend (2 signals) ---
         blended = {}
         for cid in all_ids:
             blended[cid] = (
                 W_PAIRWISE * bt_probs.get(cid, 0)
                 + W_PANEL * panel_probs.get(cid, 0)
-                + W_OBJECTION * obj_probs.get(cid, 0)
             )
 
         # Re-normalize to sum=1

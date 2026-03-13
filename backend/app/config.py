@@ -30,6 +30,9 @@ class Config:
     PANEL_TEMPERATURE = float(os.environ.get('PANEL_TEMPERATURE', '0.4'))
     MAX_CAMPAIGNS = int(os.environ.get('MAX_CAMPAIGNS', '6'))
 
+    # Market-Making Judge（实验性，默认关闭）
+    USE_MARKET_JUDGE = os.environ.get('USE_MARKET_JUDGE', 'false').lower() == 'true'
+
     # 文件上传配置
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024
     UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), '../uploads')

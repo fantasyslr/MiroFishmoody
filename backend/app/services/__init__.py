@@ -11,11 +11,13 @@ from .probability_aggregator import ProbabilityAggregator
 from .submarket_evaluator import DimensionEvaluator
 from .judge_calibration import JudgeCalibration
 from .resolution_tracker import ResolutionTracker
+from .market_judge import MarketJudge
 
 __all__ = [
     'TextProcessor',
     'AudiencePanel',
     'PairwiseJudge',
+    'MarketJudge',
     'CampaignScorer',
     'SummaryGenerator',
     'ProbabilityAggregator',

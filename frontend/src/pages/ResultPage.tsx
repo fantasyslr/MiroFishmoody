@@ -17,9 +17,9 @@ const verdictTone = {
 } as const
 
 const verdictLabel = {
-  ship: '建议优先测试',
-  revise: '建议继续优化',
-  kill: '建议停止推进',
+  ship: '建议：上线',
+  revise: '建议：优化后再上',
+  kill: '建议：不上',
 } as const
 
 function percent(value: number) {
@@ -95,8 +95,8 @@ export function ResultPage() {
     }
   }, [latest?.reviewName, latest?.taskId, setId])
 
-  const probabilityRows = useMemo(() => {
-    return result?.probability_board?.campaigns ?? []
+  const scoreboardRows = useMemo(() => {
+    return result?.scoreboard?.campaigns ?? []
   }, [result])
 
   if (!setId) {
@@ -154,7 +154,7 @@ export function ResultPage() {
     )
   }
 
-  const lead = probabilityRows[0]
+  const lead = scoreboardRows[0]
 
   return (
     <div className="space-y-8">
@@ -166,7 +166,7 @@ export function ResultPage() {
               <StatusBadge label="真实结果" tone="done" />
             </div>
             <h2 className="mt-3 font-serif text-3xl font-semibold text-coffee sm:text-4xl">
-              {lead ? `建议优先测试 ${lead.campaign_name}` : '评审结果已生成'}
+              {lead ? `建议：上线 ${lead.campaign_name}` : '评审结果已生成'}
             </h2>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-ink/85">
               {result.summary}
@@ -192,15 +192,15 @@ export function ResultPage() {
             <p className="mt-3 text-sm font-semibold text-coffee">{result.set_id}</p>
           </div>
           <div className="rounded-panel border border-line/70 bg-cream px-4 py-4">
-            <p className="field-label">领先方案概率</p>
+            <p className="field-label">领先方案综合评分</p>
             <p className="mt-3 text-sm font-semibold text-coffee">
-              {lead ? percent(lead.win_probability) : '暂无'}
+              {lead ? `${Math.round(lead.overall_score * 100)} 分` : '暂无'}
             </p>
           </div>
           <div className="rounded-panel border border-line/70 bg-cream px-4 py-4">
             <p className="field-label">不确定性提示</p>
             <p className="mt-3 text-sm leading-6 text-ink/80">
-              {result.probability_board?.rationale_for_uncertainty ?? '暂无'}
+              {result.scoreboard?.rationale_for_uncertainty ?? '暂无'}
             </p>
           </div>
         </div>
@@ -293,16 +293,16 @@ export function ResultPage() {
 
       <div className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
         <SectionCard
-          title="概率差异"
+          title="评分差异"
           eyebrow="相对强弱"
-          description="这里直接读后端 probability board；不把相对概率包装成经营真值。"
+          description="这里直接读后端 scoreboard；不把相对评分包装成经营真值。"
         >
           <div className="space-y-3">
-            {probabilityRows.map((item) => (
+            {scoreboardRows.map((item) => (
               <div key={item.campaign_id} className="rounded-3xl border border-line/70 bg-cream px-4 py-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="font-semibold text-coffee">{item.campaign_name}</p>
-                  <StatusBadge label={`${percent(item.win_probability)} 胜出概率`} tone={verdictTone[item.verdict]} />
+                  <StatusBadge label={`综合评分：${Math.round(item.overall_score * 100)} 分`} tone={verdictTone[item.verdict]} />
                 </div>
                 <p className="mt-2 text-sm leading-6 text-ink/80">{item.verdict_rationale}</p>
               </div>
@@ -312,19 +312,19 @@ export function ResultPage() {
 
         <div className="space-y-6">
           <SectionCard
-            title="子市场概率"
+            title="维度评分"
             eyebrow="辅助阅读"
-            description="用三档强弱展示子市场概率，方便非技术同事快速看差异。"
+            description="用三档强弱展示各维度评分，方便非技术同事快速看差异。"
           >
             <div className="space-y-3">
-              {probabilityRows.map((item) => (
+              {scoreboardRows.map((item) => (
                 <div key={item.campaign_id} className="rounded-3xl border border-line/70 bg-cream px-4 py-4">
                   <p className="font-semibold text-coffee">{item.campaign_name}</p>
                   <div className="mt-3 space-y-3">
-                    {Object.entries(item.sub_markets ?? {}).map(([market, value]) => (
-                      <div key={market} className="rounded-3xl border border-line/70 bg-paper px-4 py-3">
+                    {Object.entries(item.dimension_scores ?? {}).map(([dimension, value]) => (
+                      <div key={dimension} className="rounded-3xl border border-line/70 bg-paper px-4 py-3">
                         <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-semibold text-coffee">{market}</p>
+                          <p className="text-sm font-semibold text-coffee">{dimension}</p>
                           <LevelMeter level={probabilityToLevel(value)} />
                         </div>
                         <p className="mt-2 text-sm leading-6 text-ink/80">{percent(value)}</p>

@@ -264,8 +264,10 @@ def test_resolve_rejects_duplicate_set_id():
             campaign_api._save_result("resolve-dup-test", result_data)
             campaign_api._evaluation_store["resolve-dup-test"] = result_data
 
-            # Patch JudgeCalibration 在 campaign API 模块中，使其始终使用临时目录
-            with patch('app.api.campaign.JudgeCalibration', lambda **kw: cal):
+            # Patch _calibration module-level singleton to use temp dir
+            old_calibration = campaign_api._calibration
+            campaign_api._calibration = cal
+            try:
                 # 同时 patch ResolutionTracker 使其也用同一个 calibration
                 with patch('app.api.campaign.ResolutionTracker') as MockRT:
                     from app.services.resolution_tracker import ResolutionTracker as RealRT
@@ -295,6 +297,8 @@ def test_resolve_rejects_duplicate_set_id():
                     body2 = resp2.get_json()
                     assert "已结算" in body2["error"]
                     print("  PASS: duplicate resolve rejected with 409")
+            finally:
+                campaign_api._calibration = old_calibration
 
             campaign_api._RESULTS_DIR = old_results_dir
             campaign_api._evaluation_store.clear()
@@ -373,10 +377,11 @@ def test_evaluate_rejects_duplicate_set_id_in_memory():
 
 
 def test_run_evaluation_fails_on_empty_panel():
-    """panel_scores 为空时 _run_evaluation 应 fail task"""
+    """panel_scores 为空时 orchestrator.run 应 fail task"""
     from unittest.mock import patch, MagicMock
     from app.api import campaign as campaign_api
     from app.models.campaign import Campaign, CampaignSet, ProductLine
+    from app.services.evaluation_orchestrator import EvaluationOrchestrator
 
     campaigns = [
         Campaign(id="a", name="A", product_line=ProductLine.COLORED,
@@ -387,13 +392,19 @@ def test_run_evaluation_fails_on_empty_panel():
     cs = CampaignSet(set_id="fail-panel", campaigns=campaigns, context="", created_at="now")
     task_id = campaign_api.task_manager.create_task("campaign_evaluation")
 
+    orchestrator = EvaluationOrchestrator(
+        task_manager=campaign_api.task_manager,
+        evaluation_store=campaign_api._evaluation_store,
+        save_result_fn=campaign_api._save_result,
+    )
+
     # Mock LLMClient so it doesn't need a real key
     mock_llm = MagicMock()
     # Mock AudiencePanel.evaluate_all to return empty (simulating all LLM calls failing)
-    with patch('app.api.campaign.LLMClient', return_value=mock_llm):
-        with patch('app.api.campaign.AudiencePanel') as MockPanel:
+    with patch('app.services.evaluation_orchestrator.LLMClient', return_value=mock_llm):
+        with patch('app.services.evaluation_orchestrator.AudiencePanel') as MockPanel:
             MockPanel.return_value.evaluate_all.return_value = []
-            campaign_api._run_evaluation(task_id, cs)
+            orchestrator.run(task_id, cs)
 
     task = campaign_api.task_manager.get_task(task_id)
     assert task.status.value == "failed", f"Expected failed, got {task.status.value}"
@@ -403,11 +414,12 @@ def test_run_evaluation_fails_on_empty_panel():
 
 
 def test_run_evaluation_fails_on_empty_pairwise():
-    """pairwise_results 为空时 _run_evaluation 应 fail task"""
+    """pairwise_results 为空时 orchestrator.run 应 fail task"""
     from unittest.mock import patch, MagicMock
     from app.api import campaign as campaign_api
     from app.models.campaign import Campaign, CampaignSet, ProductLine
     from app.models.evaluation import PanelScore
+    from app.services.evaluation_orchestrator import EvaluationOrchestrator
 
     campaigns = [
         Campaign(id="a", name="A", product_line=ProductLine.COLORED,
@@ -418,18 +430,24 @@ def test_run_evaluation_fails_on_empty_pairwise():
     cs = CampaignSet(set_id="fail-pairwise", campaigns=campaigns, context="", created_at="now")
     task_id = campaign_api.task_manager.create_task("campaign_evaluation")
 
+    orchestrator = EvaluationOrchestrator(
+        task_manager=campaign_api.task_manager,
+        evaluation_store=campaign_api._evaluation_store,
+        save_result_fn=campaign_api._save_result,
+    )
+
     # Panel returns valid scores, but pairwise returns empty
     fake_panel = [
         PanelScore("p1", "P1", "a", 7.0, ["obj"], ["str"], "ok"),
         PanelScore("p1", "P1", "b", 5.0, ["obj"], ["str"], "ok"),
     ]
     mock_llm = MagicMock()
-    with patch('app.api.campaign.LLMClient', return_value=mock_llm):
-        with patch('app.api.campaign.AudiencePanel') as MockPanel:
+    with patch('app.services.evaluation_orchestrator.LLMClient', return_value=mock_llm):
+        with patch('app.services.evaluation_orchestrator.AudiencePanel') as MockPanel:
             MockPanel.return_value.evaluate_all.return_value = fake_panel
-            with patch('app.api.campaign.PairwiseJudge') as MockJudge:
+            with patch('app.services.evaluation_orchestrator.PairwiseJudge') as MockJudge:
                 MockJudge.return_value.evaluate_all.return_value = ([], {})
-                campaign_api._run_evaluation(task_id, cs)
+                orchestrator.run(task_id, cs)
 
     task = campaign_api.task_manager.get_task(task_id)
     assert task.status.value == "failed", f"Expected failed, got {task.status.value}"

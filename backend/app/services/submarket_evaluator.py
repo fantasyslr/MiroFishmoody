@@ -68,6 +68,8 @@ class DimensionEvaluator:
     ) -> List[DimensionScore]:
         """
         计算每个维度中每个 campaign 的得分。
+        优先使用 PanelScore 中的 dimension_scores（由 LLM 直接输出），
+        当 dimension_scores 为空时回退到关键词匹配启发式方法。
         返回 flat list of DimensionScore。
         """
         all_ids = [c.id for c in campaigns]
@@ -77,7 +79,13 @@ class DimensionEvaluator:
         for ps in panel_scores:
             by_campaign[ps.campaign_id].append(ps)
 
-        # 按 persona 分组
+        # 检查是否有任何 panel score 包含 dimension_scores
+        has_llm_dimensions = any(
+            getattr(ps, 'dimension_scores', None)
+            for ps in panel_scores
+        )
+
+        # 按 persona 分组（回退路径需要）
         by_persona: Dict[str, Dict[str, List[PanelScore]]] = defaultdict(lambda: defaultdict(list))
         for ps in panel_scores:
             by_persona[ps.persona_id][ps.campaign_id].append(ps)
@@ -87,9 +95,14 @@ class DimensionEvaluator:
         for dimension_key in DIMENSION_KEYS:
             raw_scores = {}
             for cid in all_ids:
-                raw_scores[cid] = self._compute_raw(
-                    dimension_key, cid, by_campaign.get(cid, []), by_persona,
-                )
+                if has_llm_dimensions:
+                    raw_scores[cid] = self._compute_from_llm_dimensions(
+                        dimension_key, by_campaign.get(cid, []),
+                    )
+                else:
+                    raw_scores[cid] = self._compute_raw(
+                        dimension_key, cid, by_campaign.get(cid, []), by_persona,
+                    )
 
             probs = _softmax_probs(raw_scores, temperature=1.5)
 
@@ -103,6 +116,25 @@ class DimensionEvaluator:
                 ))
 
         return results
+
+    def _compute_from_llm_dimensions(
+        self,
+        dimension_key: str,
+        scores: List[PanelScore],
+    ) -> float:
+        """从 PanelScore.dimension_scores 中提取维度得分（取所有 persona 的平均值）"""
+        values = []
+        for s in scores:
+            ds = getattr(s, 'dimension_scores', None) or {}
+            if dimension_key in ds:
+                try:
+                    values.append(float(ds[dimension_key]))
+                except (ValueError, TypeError):
+                    pass
+        if values:
+            return sum(values) / len(values)
+        # 回退到全体 panel score 均值
+        return sum(s.score for s in scores) / len(scores) if scores else 5.0
 
     def _compute_raw(
         self,

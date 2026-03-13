@@ -271,7 +271,7 @@ export function RunningStatusPage() {
               <div className="rounded-3xl border border-line/70 bg-cream px-4 py-4">
                 <p className="font-semibold text-coffee">领先幅度</p>
                 <p className="mt-2 text-sm leading-6 text-ink/80">
-                  {task?.result?.spread !== undefined ? `${Math.round(task.result.spread * 100)}%` : '尚未产出'}
+                  {task?.result?.lead_margin !== undefined ? `${Math.round(task.result.lead_margin * 100)}%` : '尚未产出'}
                 </p>
               </div>
             </div>

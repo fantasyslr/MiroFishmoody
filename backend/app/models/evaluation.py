@@ -24,6 +24,7 @@ class PanelScore:
     objections: List[str]
     strengths: List[str]
     reasoning: str
+    dimension_scores: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -91,6 +92,7 @@ class EvaluationResult:
                     "objections": ps.objections,
                     "strengths": ps.strengths,
                     "reasoning": ps.reasoning,
+                    "dimension_scores": ps.dimension_scores,
                 }
                 for ps in self.panel_scores
             ],

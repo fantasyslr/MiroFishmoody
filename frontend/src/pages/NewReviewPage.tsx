@@ -7,6 +7,7 @@ import {
   evaluateCampaigns,
   parseBrief,
   saveLatestReviewSession,
+  uploadImage,
   type CampaignInput,
 } from '../lib/api'
 import { initialCampaignDrafts, reviewPreset, type CampaignDraft } from '../data/campaignDecisionData'
@@ -59,6 +60,25 @@ export function NewReviewPage() {
   const [briefTexts, setBriefTexts] = useState<Record<number, string>>({})
   const [parsingIndex, setParsingIndex] = useState<number | null>(null)
   const [parseError, setParseError] = useState<Record<number, string>>({})
+  const [campaignImages, setCampaignImages] = useState<Record<number, File[]>>({})
+
+  const handleImageUpload = (index: number, files: FileList | null) => {
+    if (!files) return
+    const validFiles = Array.from(files).filter(f =>
+      ['image/jpeg', 'image/png', 'image/webp'].includes(f.type)
+    ).slice(0, 5)
+    setCampaignImages(prev => ({
+      ...prev,
+      [index]: [...(prev[index] || []), ...validFiles].slice(0, 5)
+    }))
+  }
+
+  const removeImage = (campaignIndex: number, imageIndex: number) => {
+    setCampaignImages(prev => ({
+      ...prev,
+      [campaignIndex]: (prev[campaignIndex] || []).filter((_, i) => i !== imageIndex)
+    }))
+  }
 
   const isBriefMode = (index: number) => briefMode[index] !== false // default true
   const toggleMode = (index: number) =>
@@ -146,9 +166,30 @@ export function NewReviewPage() {
     setSubmitError('')
 
     try {
+      const payloadCampaigns = campaigns.map(toPayloadCampaign)
+
+      // Upload images first
+      for (let i = 0; i < campaigns.length; i++) {
+        const images = campaignImages[i]
+        if (images?.length) {
+          const paths: string[] = []
+          for (const file of images) {
+            try {
+              const result = await uploadImage(file)
+              paths.push(result.path)
+            } catch {
+              // Image upload failure is non-fatal
+            }
+          }
+          if (paths.length) {
+            payloadCampaigns[i] = { ...payloadCampaigns[i], image_paths: paths } as CampaignInput & { image_paths: string[] }
+          }
+        }
+      }
+
       const payload = {
         context: [reviewName.trim(), context.trim()].filter(Boolean).join('\n\n'),
-        campaigns: campaigns.map(toPayloadCampaign),
+        campaigns: payloadCampaigns,
       }
       const response = await evaluateCampaigns(payload)
 
@@ -422,6 +463,40 @@ export function NewReviewPage() {
                       onChange={(event) => updateCampaign(index, 'kvDescription', event.target.value)}
                     />
                   </label>
+
+                  <div className="lg:col-span-2 space-y-2">
+                    <span className="field-label">素材图片（可选，最多 5 张）</span>
+                    <div className="flex flex-wrap gap-3">
+                      {(campaignImages[index] || []).map((file, imgIdx) => (
+                        <div key={imgIdx} className="relative group">
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={file.name}
+                            className="h-20 w-20 rounded-xl object-cover border border-line/50"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index, imgIdx)}
+                            className="absolute -top-1.5 -right-1.5 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-wine text-white text-xs"
+                          >
+                            x
+                          </button>
+                        </div>
+                      ))}
+                      {(campaignImages[index] || []).length < 5 && (
+                        <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-line/50 text-ink/30 hover:border-mist/50 hover:text-ink/50 transition-colors">
+                          <span className="text-2xl">+</span>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            multiple
+                            className="hidden"
+                            onChange={(e) => handleImageUpload(index, e.target.files)}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </article>

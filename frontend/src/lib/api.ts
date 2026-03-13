@@ -39,9 +39,9 @@ export type TaskStatusResponse = {
     campaign_count: number
     top_campaign?: string | null
     top_verdict?: string | null
-    top_win_probability?: number | null
-    no_clear_edge?: boolean
-    spread?: number
+    top_overall_score?: number | null
+    too_close_to_call?: boolean
+    lead_margin?: number
   } | null
 }
 
@@ -58,14 +58,14 @@ export type Ranking = {
   top_strengths: string[]
 }
 
-export type ProbabilityBoardCampaign = {
+export type ScoreBoardCampaign = {
   campaign_id: string
   campaign_name: string
-  win_probability: number
-  sub_markets?: Record<string, number>
+  overall_score: number
+  dimension_scores?: Record<string, number>
   rank: number
   verdict: 'ship' | 'revise' | 'kill'
-  spread_to_next: number | null
+  lead_margin_to_next: number | null
   verdict_rationale: string
 }
 
@@ -75,11 +75,11 @@ export type EvaluationResult = {
   summary: string
   assumptions: string[]
   confidence_notes: string[]
-  probability_board?: {
-    campaigns: ProbabilityBoardCampaign[]
-    spread: number
-    no_clear_edge: boolean
-    no_trade_band: number
+  scoreboard?: {
+    campaigns: ScoreBoardCampaign[]
+    lead_margin: number
+    too_close_to_call: boolean
+    confidence_threshold: number
     rationale_for_uncertainty: string
   }
   resolution_ready_fields?: Record<string, string>
@@ -251,6 +251,34 @@ export type TaskListItem = {
 
 export function getTasks() {
   return request<{ tasks: TaskListItem[] }>('/api/campaign/tasks')
+}
+
+export type ImageUploadResponse = {
+  image_id: string
+  path: string
+  size: number
+}
+
+export async function uploadImage(file: File, setId?: string): Promise<ImageUploadResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (setId) formData.append('set_id', setId)
+
+  const response = await fetch(`${API_BASE}/api/campaign/upload-image`, {
+    method: 'POST',
+    body: formData,
+    credentials: 'include',
+  })
+
+  const text = await response.text()
+  const data = text ? JSON.parse(text) : null
+
+  if (!response.ok) {
+    const message = data?.error ?? `Upload failed: ${response.status}`
+    throw new ApiError(response.status, message)
+  }
+
+  return data as ImageUploadResponse
 }
 
 export function saveLatestReviewSession(session: LatestReviewSession) {

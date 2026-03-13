@@ -7,7 +7,6 @@ import json
 import os
 import base64
 import threading
-from collections import defaultdict
 from datetime import datetime
 from flask import request, jsonify
 from werkzeug.utils import secure_filename
@@ -27,9 +26,11 @@ from ..services.summary_generator import SummaryGenerator
 from ..services.judge_calibration import JudgeCalibration
 from ..services.resolution_tracker import ResolutionTracker
 from ..services.brief_parser import BriefParser
+from ..services.evaluation_orchestrator import EvaluationOrchestrator
 
 logger = get_logger('ranker.api.campaign')
 task_manager = TaskManager()
+_calibration = JudgeCalibration()
 
 # 内存存储（MVP 阶段）
 _evaluation_store: dict = {}
@@ -109,144 +110,6 @@ def _parse_campaigns(data: dict) -> CampaignSet:
     )
 
 
-def _build_persona_predictions(panel_scores, campaigns):
-    """
-    从 panel_scores 构建 per-persona prediction records。
-    每个 persona 对各 campaign 的 score 归一化为 preference (sum=1 per persona)。
-    """
-    # 按 persona 分组
-    by_persona = defaultdict(list)
-    for ps in panel_scores:
-        by_persona[ps.persona_id].append(ps)
-
-    records = []
-    for persona_id, scores in by_persona.items():
-        total = sum(s.score for s in scores)
-        for s in scores:
-            preference = s.score / total if total > 0 else 1.0 / len(scores)
-            records.append({
-                "persona_id": s.persona_id,
-                "campaign_id": s.campaign_id,
-                "score": s.score,
-                "preference": round(preference, 4),
-            })
-    return records
-
-
-def _build_judge_predictions(pairwise_results):
-    """
-    从 pairwise_results 的 votes 构建 per-judge prediction records。
-    """
-    records = []
-    for pr in pairwise_results:
-        for vote in pr.votes:
-            records.append({
-                "judge_id": vote.get("judge_id", ""),
-                "campaign_a_id": pr.campaign_a_id,
-                "campaign_b_id": pr.campaign_b_id,
-                "winner_pick": vote.get("winner", "tie"),
-                "dimensions": vote.get("dimensions", {}),
-            })
-    return records
-
-
-def _run_evaluation(task_id: str, campaign_set: CampaignSet):
-    """在后台线程中执行完整评审流程"""
-    try:
-        task_manager.update_task(
-            task_id, status=TaskStatus.PROCESSING,
-            progress=5, message="初始化评审引擎..."
-        )
-
-        llm = LLMClient()
-        campaigns = campaign_set.campaigns
-
-        # 加载校准权重
-        calibration = JudgeCalibration()
-        judge_weights, persona_weights = calibration.get_weights()
-
-        # Phase 1: Audience Panel
-        task_manager.update_task(task_id, progress=10, message="Audience Panel 评审中...")
-        panel = AudiencePanel(llm_client=llm)
-        panel_scores = panel.evaluate_all(campaigns)
-        if not panel_scores:
-            raise RuntimeError(
-                "Audience Panel 评审全部失败（0 个 persona 返回有效结果），"
-                "请检查 LLM API 配置和网络连接"
-            )
-        task_manager.update_task(task_id, progress=40, message="Panel 评审完成")
-
-        # Phase 2: Pairwise Judge
-        task_manager.update_task(task_id, progress=45, message="Pairwise 对决中...")
-        judge = PairwiseJudge(llm_client=llm)
-        pairwise_results, bt_scores = judge.evaluate_all(campaigns)
-        if not pairwise_results:
-            raise RuntimeError(
-                "Pairwise 对决全部失败（0 个对决返回有效结果），"
-                "请检查 LLM API 配置和网络连接"
-            )
-        task_manager.update_task(task_id, progress=80, message="对决完成")
-
-        # Phase 3: Scoring
-        task_manager.update_task(task_id, progress=85, message="Scoring...")
-        scorer = CampaignScorer(
-            judge_weights=judge_weights,
-            persona_weights=persona_weights,
-        )
-        rankings, scoreboard = scorer.score(
-            campaigns, panel_scores, pairwise_results, bt_scores,
-        )
-
-        # Phase 5.1: 持久化 per-persona / per-judge 预测
-        overall_scores = {c.campaign_id: c.overall_score for c in scoreboard.campaigns}
-        calibration.save_predictions(
-            set_id=campaign_set.set_id,
-            persona_predictions=_build_persona_predictions(panel_scores, campaigns),
-            judge_predictions=_build_judge_predictions(pairwise_results),
-            campaign_win_probabilities=overall_scores,
-        )
-
-        # Phase 4: Summary
-        task_manager.update_task(task_id, progress=90, message="生成总结报告...")
-        summarizer = SummaryGenerator(llm_client=llm)
-        summary_data = summarizer.generate(
-            campaigns, rankings, panel_scores, pairwise_results,
-        )
-
-        # Resolution tracker
-        resolver = ResolutionTracker()
-
-        # 构建最终结果
-        result = EvaluationResult(
-            set_id=campaign_set.set_id,
-            rankings=rankings,
-            panel_scores=panel_scores,
-            pairwise_results=pairwise_results,
-            summary=summary_data["summary"],
-            assumptions=summary_data["assumptions"],
-            confidence_notes=summary_data["confidence_notes"],
-            scoreboard=scoreboard.to_dict(),
-            resolution_ready_fields=resolver.get_resolution_ready_fields(),
-        )
-
-        result_dict = result.to_dict()
-        _evaluation_store[campaign_set.set_id] = result_dict
-        _save_result(campaign_set.set_id, result_dict)
-
-        top = scoreboard.campaigns[0] if scoreboard.campaigns else None
-        task_manager.complete_task(task_id, result={
-            "set_id": campaign_set.set_id,
-            "campaign_count": len(campaigns),
-            "top_campaign": top.campaign_name if top else None,
-            "top_verdict": top.verdict if top else None,
-            "top_overall_score": round(top.overall_score, 3) if top else None,
-            "too_close_to_call": scoreboard.too_close_to_call,
-            "lead_margin": round(scoreboard.lead_margin, 3),
-        })
-
-    except Exception as e:
-        logger.error(f"评审失败: {e}", exc_info=True)
-        task_manager.fail_task(task_id, str(e))
 
 
 ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
@@ -369,8 +232,13 @@ def evaluate():
             }
         )
 
+        orchestrator = EvaluationOrchestrator(
+            task_manager=task_manager,
+            evaluation_store=_evaluation_store,
+            save_result_fn=_save_result,
+        )
         thread = threading.Thread(
-            target=_run_evaluation,
+            target=orchestrator.run,
             args=(task_id, campaign_set),
             daemon=True,
         )
@@ -440,8 +308,7 @@ def resolve():
             return jsonify({"error": "set_id 和 winner_campaign_id 必填"}), 400
 
         # 防重复结算：检查 set_id 是否已结算
-        calibration_check = JudgeCalibration()
-        existing_resolutions = calibration_check.load_resolutions()
+        existing_resolutions = _calibration.load_resolutions()
         already_resolved = any(r["set_id"] == set_id for r in existing_resolutions)
         if already_resolved:
             return jsonify({"error": f"评审集 '{set_id}' 已结算，不允许重复结算"}), 409
@@ -458,8 +325,7 @@ def resolve():
 
         # 内存无数据时，回退到持久化的 predictions 文件
         if not predicted:
-            calibration_fallback = JudgeCalibration()
-            preds_data = calibration_fallback.load_predictions(set_id)
+            preds_data = _calibration.load_predictions(set_id)
             if preds_data:
                 predicted = preds_data.get("campaign_win_probabilities", {})
 
@@ -479,12 +345,11 @@ def resolve():
         )
 
         # 检查校准条件：同时检查 resolved_set_count 和 sets_with_predictions
-        calibration = JudgeCalibration()
-        resolutions = calibration.load_resolutions()
+        resolutions = _calibration.load_resolutions()
         resolved_set_ids = set(r["set_id"] for r in resolutions)
         sets_with_preds = sum(
             1 for sid in resolved_set_ids
-            if calibration.load_predictions(sid) is not None
+            if _calibration.load_predictions(sid) is not None
         )
 
         if sets_with_preds >= 5:
@@ -518,17 +383,16 @@ def resolve():
 @campaign_bp.route('/calibration', methods=['GET'])
 def get_calibration():
     """查看 judge/persona 校准状态"""
-    calibration = JudgeCalibration()
-    stats = calibration.get_all_stats()
-    resolutions = calibration.load_resolutions()
-    meta = calibration.get_calibration_meta()
+    stats = _calibration.get_all_stats()
+    resolutions = _calibration.load_resolutions()
+    meta = _calibration.get_calibration_meta()
 
     # 去重计算已结算评审集数
     resolved_set_ids = set(r["set_id"] for r in resolutions)
     # 检查有多少评审集有预测数据
     sets_with_preds = sum(
         1 for sid in resolved_set_ids
-        if calibration.load_predictions(sid) is not None
+        if _calibration.load_predictions(sid) is not None
     )
 
     has_stats = len(stats) > 0
@@ -587,8 +451,7 @@ def recalibrate():
     无需请求体。
     """
     try:
-        calibration = JudgeCalibration()
-        result = calibration.recalibrate()
+        result = _calibration.recalibrate()
         return jsonify(result)
     except Exception as e:
         logger.error(f"校准失败: {e}", exc_info=True)
