@@ -1,7 +1,7 @@
 [project]
 name = "mirofish-backend"
-version = "0.1.0"
-description = "MiroFish - 简洁通用的群体智能引擎，预测万物"
+version = "0.5.0"
+description = "MiroFishmoody backend for Moody campaign review, resolution, and calibration"
 requires-python = ">=3.11"
 license = { text = "AGPL-3.0" }
 authors = [

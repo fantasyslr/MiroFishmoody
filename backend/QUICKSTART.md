@@ -1,42 +1,85 @@
-# Moody Campaign Choice Engine — 后端快速试用
+# MiroFishmoody Backend Quickstart
 
-## 1. 安装依赖
+## 1. Install dependencies
+
+Recommended with `uv`:
+
+```bash
+cd backend
+uv sync
+```
+
+Or with `pip`:
 
 ```bash
 cd backend
 pip install -r requirements.txt
-pip install pytest  # 可选，跑测试用
+pip install pytest  # optional, for tests
 ```
 
-## 2. 配置 .env
+## 2. Configure `.env`
 
 ```bash
+cd ..
 cp .env.example .env
-# 编辑 .env，填入真实的 LLM_API_KEY
-# 支持任何 OpenAI 兼容 API，改 LLM_BASE_URL 和 LLM_MODEL_NAME 即可
 ```
 
-## 3. 启动
+Edit `.env` and set at least:
+
+- `LLM_API_KEY`
+- `LLM_BASE_URL` if you are not using the default OpenAI endpoint
+- `LLM_MODEL_NAME` if needed
+- `SECRET_KEY` for a non-default session secret
+
+## 3. Start the backend
+
+With `uv`:
+
+```bash
+cd backend
+uv run python run.py
+```
+
+Or with plain Python:
 
 ```bash
 cd backend
 python run.py
-# 默认 http://0.0.0.0:5001
 ```
 
-## 4. 健康检查
+Default address: `http://0.0.0.0:5001`
+
+## 4. Health check
 
 ```bash
 curl http://localhost:5001/health
-# {"service":"Campaign Ranker Engine","status":"ok"}
 ```
 
-## 5. 最小试用流程
+Expected response:
 
-### 提交评审（异步）
+```json
+{"service":"Campaign Ranker Engine","status":"ok"}
+```
+
+## 5. Authentication note
+
+All `/api/campaign/*` endpoints require a logged-in session.  
+Local users are defined in `backend/app/auth.py`; update them before sharing or deploying publicly.
+
+## 6. Minimal backend smoke test
+
+### Login and store the session cookie
 
 ```bash
-curl -X POST http://localhost:5001/api/campaign/evaluate \
+curl -c cookies.txt -X POST http://localhost:5001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"<username>","password":"<password>"}'
+```
+
+### Submit an evaluation
+
+```bash
+curl -b cookies.txt -X POST http://localhost:5001/api/campaign/evaluate \
   -H "Content-Type: application/json" \
   -d '{
     "campaigns": [
@@ -44,37 +87,52 @@ curl -X POST http://localhost:5001/api/campaign/evaluate \
       {"name": "方案B", "core_message": "硅水凝胶透氧黑科技", "product_line": "moodyplus"}
     ]
   }'
-# 返回 task_id 和 set_id
 ```
 
-### 查询进度
+This returns `task_id` and `set_id`.
+
+### Check task progress
 
 ```bash
-curl http://localhost:5001/api/campaign/evaluate/status/<task_id>
-# progress=100, status=completed 时可取结果
+curl -b cookies.txt http://localhost:5001/api/campaign/evaluate/status/<task_id>
 ```
 
-### 获取结果
+When `status=completed`, fetch the result:
 
 ```bash
-curl http://localhost:5001/api/campaign/result/<set_id>
+curl -b cookies.txt http://localhost:5001/api/campaign/result/<set_id>
 ```
 
-### 赛后结算（可选）
+### Export the result JSON
 
 ```bash
-curl -X POST http://localhost:5001/api/campaign/resolve \
+curl -b cookies.txt -OJ http://localhost:5001/api/campaign/export/<set_id>
+```
+
+### Post-launch resolution
+
+```bash
+curl -b cookies.txt -X POST http://localhost:5001/api/campaign/resolve \
   -H "Content-Type: application/json" \
-  -d '{"set_id": "<set_id>", "winner_campaign_id": "campaign_1", "actual_metrics": {"ctr": 0.03}}'
+  -d '{"set_id":"<set_id>","winner_campaign_id":"campaign_1","actual_metrics":{"ctr":0.03}}'
 ```
 
-### 查看校准状态
+### Check calibration status
 
 ```bash
-curl http://localhost:5001/api/campaign/calibration
+curl -b cookies.txt http://localhost:5001/api/campaign/calibration
 ```
 
-## 6. 跑测试
+## 7. Run tests
+
+With `uv`:
+
+```bash
+cd backend
+uv run pytest tests -q
+```
+
+Or with Python directly:
 
 ```bash
 cd backend

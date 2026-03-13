@@ -4,198 +4,175 @@
 
 # MiroFishmoody
 
-**为 Moody Lenses 重构的 Internal Decision Market**
+**Moody Lenses 内部 campaign 决策市场**
 
-从“预测万物”的社会仿真，转向“上线前给方案定价”的电商内部决策市场。
+把 campaign 评审从“拍脑袋讨论”升级成可对比、可追踪、可结算、可校准的内部决策流程。
 
-[English](./README-EN.md) | [中文](./README.md)
+[English](./README-EN.md) | [更新日志](./CHANGELOG.md) | [部署说明](./DEPLOY.md) | [后端快速试用](./backend/QUICKSTART.md)
 
 </div>
 
-## 项目定位
+## 项目概览
 
-**MiroFishmoody** 是基于 [MiroFish](https://github.com/666ghj/MiroFish) 的一条产品化 fork，目标不是继续做重型舆情/社会模拟，而是服务于 **Moody Lenses** 的电商投放场景：
+**MiroFishmoody** 是基于 [MiroFish](https://github.com/666ghj/MiroFish) 重构出的产品化分支，但当前主线已经明确收敛到 **Moody Lenses 的 pre-launch campaign review** 场景。
 
-- 在多个 campaign 方案之间做结构化对比
-- 在上线前找出更可能赢的 angle、hook 和 narrative
-- 把“经验判断”变成可复盘、可比较、可校准的内部决策市场
+它不做“预测万物”，而是解决更具体的问题：
 
-它回答的不是“未来一定会怎样”，而是：
+- 多个 campaign 方案里谁更值得先上
+- 哪个 angle 更抓眼球、更可信、更匹配受众
+- 哪些 objection、claim 风险和表达问题会拖垮转化
+- 当前方案应该 `ship / revise / kill`
+- 赛后如何把真实结果回写进系统，校准判断质量
 
-- `A / B / C` 三个方案里谁更值得上
-- 哪个方案更抓眼球、更可信、更适配目标受众
-- 哪些 objection、claim 风险或品牌表达问题会拖垮转化
-- 当前方案应当 `ship / revise / kill`
-- 哪些方案只是“看起来不错”，但没有足够 edge 值得下注
+## 当前版本
 
-## 为什么做这个 fork
+**当前文档基线：`v0.5.0`（2026-03-13）**
 
-电商 campaign 的早期决策，常常在“好不好看”“会不会有用”“我觉得用户会喜欢”这种主观判断里打转。
+这是 `moody-main` 当前可运行版本的首个 SemVer 基线，汇总了 P0-P3 功能实现，以及最近的 UI、后台和评审流程修整。
 
-对 Moody 来说，这不够。
+| 模块 | 状态 | 说明 |
+|------|------|------|
+| 输入层 | 已上线 | Brief 模式、必填校验、高级模式、多方案输入、图片上传 |
+| 评审层 | 已上线 | Audience panel、pairwise judge、概率聚合、维度评分、总结输出 |
+| 任务层 | 已上线 | 异步任务、进度查询、任务列表、结果持久化、JSON 导出 |
+| 复盘层 | 已上线 | 结算、judge/persona calibration、阈值提示、历史回看 |
+| 管理层 | 已上线 | 登录态、`admin` 角色、后台总览与历史页面 |
 
-我们要的是一个 **internal decision market**：
+## `v0.5.0` 具体包含什么
 
-- 不假装预测真实 ROAS / GMV
-- 不用一个人的经验覆盖全部用户反应
-- 不把“大家觉得不错”当成结论
-- 用多视角评审、方案对战、概率化输出和赛后校准，提升方案选择胜率
+| 里程碑 | 已纳入 `v0.5.0` | 内容 |
+|--------|------------------|------|
+| P0 | 是 | 必填校验、Brief 解析入口、任务列表信息可读化 |
+| P1 | 是 | 登录系统、图片上传、术语收敛到 campaign review 语境 |
+| P2 | 是 | orchestrator 抽离、market judge、概率修正、维度分数 |
+| P3 | 是 | 任务与结果持久化、结果页素材展示、JSON 导出 |
+| Recent polish | 是 | UI 重设计、`admin` 角色、评审流程修复 |
 
-## 方法论血统
+详细更新见 [CHANGELOG.md](./CHANGELOG.md)。
 
-这个项目的下一跳，不只是从 AI 来的，也明确是从 **币圈 / prediction market / event pricing** 文化里长出来的。
+## 已实现功能
 
-如果没有这些经历，我大概率也不会想到把一个多-agent evaluator，推进成一个 **internal decision market**。
+- **登录与角色**：提供 `/api/auth/login`、`/logout`、`/me`，支持 `admin` / `user` 角色。
+- **新建评审**：默认 Brief 模式，可切换高级字段模式；支持多方案输入、图片上传、提交前校验。
+- **异步评审**：提交后返回 `task_id` 和 `set_id`，可在运行页或后台持续追踪进度。
+- **结果沉淀**：完整结果会落盘保存，支持服务重启后重新读取与导出。
+- **结算与校准**：支持赛后 resolution、judge/persona calibration 状态查询与再校准。
+- **后台视图**：管理员可以在总览台和历史页查看任务、结果和校准状态。
 
-这里真正被借过来的，不是“发币”那一套，而是下面这套思维方式：
+## 以后会做
 
-- 把分歧拿来定价，而不是拿来空谈
-- 把“我觉得”逼成“你愿意给它多少概率”
-- 把 bull case 和 bear case 同时摆上台面
-- 把结论和赛后结果绑定，允许系统被结算、被打脸、被校准
+当前 `v0.5.0` 还不是“品牌认知下注系统”，它仍然是 **campaign review system**。  
+下面这部分属于 **big picture / future work**，不是当前已交付能力。
 
-所以这个仓库也想明确向那条 lineage 致意：
+这条线我建议统一叫：
 
-- 向早期 prediction market builders 致意
-- 向 crypto-native event market players 致意
-- 向把 `odds`、`edge`、`implied probability` 带进日常决策讨论的人致意
-- 也向像 **SBF** 这一代交易圈人物所代表的那种“先问市场怎么定价分歧，而不是先问谁声音更大”的思维习惯致意
+- **Moody Brandiction Engine**
 
-这里的致意只针对 **epistemic machinery** 和信息聚合方法，不是对后来所有人、所有项目或所有结果的背书。
+`Brandiction` 这里是 `brand + prediction` 的组合词，用来表示“围绕品牌认知路径做判断、下注、结算和校准”的系统。
 
-## Moody 业务语境
+这个方向 **现在还没做** 的核心能力包括：
 
-这个 fork 面向 **Moody Lenses** 的真实业务场景设计：
+- `BrandState`：品牌认知状态建模
+- `Intervention`：把推广动作建成可模拟的干预对象
+- 轻量用户扩散仿真：评论、种草、质疑、二次传播
+- `MarketContract`：把战略问题改成可定价、可结算的命题
+- argument-driven market maker：多空论据对打后更新价格
+- 认知路径级别的 resolution 与 calibration
 
-- 两条产品线：`colored lenses` 与 `moodyPlus`
-- 品牌竞争点是 `function + aesthetics`，不是简单打折
-- `moodyPlus` 主要面向已有隐形眼镜佩戴者，重视自然感、舒适感与眼健康安心感
-- Meta、Google、influencer 等渠道的素材评审，需要先做方案筛选，再进入真实投放验证
+未来方向设计稿见 [docs/MOODY_BRANDICTION_ENGINE.md](./docs/MOODY_BRANDICTION_ENGINE.md)。
 
-## 这个系统重点评什么
+## 系统流程
 
-当前设计关注的是 **相对排序 + 概率定价**，而不是绝对预测。
+```mermaid
+flowchart LR
+  A["Campaign 方案集"] --> B["Brief 解析 / 高级表单"]
+  B --> C["Audience Panel"]
+  C --> D["Pairwise Judges"]
+  D --> E["Probability Board"]
+  E --> F["Ranking / Verdict / Objections"]
+  F --> G["Export / Resolve"]
+  G --> H["Judge & Persona Calibration"]
+```
 
-核心评审维度包括：
-
-- Hook strength
-- Visual / aesthetic pull
-- Message clarity
-- Trust and claim believability
-- Audience fit
-- Objection pressure
-- Brand risk
-
-最终输出应聚焦：
-
-- ranking
-- probability board
-- sub-markets
-- pairwise comparison
-- spread / uncertainty
-- audience-specific feedback
-- objections and revision directions
-- resolution-ready fields
-- `ship / revise / kill`
-
-## 重构方向
-
-这个 fork 的重构原则很明确：
-
-**保留**
-
-- 多视角 agent 评审
-- 多方案对战而不是单方案打分
-- 结构化总结与决策输出
-
-**删除**
-
-- Zep 图谱
-- GraphRAG
-- Twitter / Reddit 社交环境
-- 长时社会模拟
-- “预测万物”的泛化叙事
-
-**重写**
-
-- Audience panel
-- Pairwise judge engine
-- Campaign scoring
-- Probability aggregation
-- Sub-market evaluation
-- Resolution tracking
-- Judge calibration
-- Summary generation
-- 后续 calibration layer 持续增强
-
-## 当前状态
-
-这是一个 **正在公开推进中的重构 fork**。
-
-当前主线不是做“完整自治世界”，而是把原始 MiroFish 的重型结构压缩成一个更适合电商团队使用的 **internal decision market**。
-
-当前公开仓库的目标是：
-
-1. 先完成对外叙事与方向对齐
-2. 再持续同步代码层的清理、重构和验证
-3. 最终把 fork 收敛成一个真正能用于 pre-launch campaign review 的系统
-
-换句话说，这个仓库现在更适合被理解为：
-
-> 一个围绕 Moody Lenses 场景重构中的 internal decision market，而不是原始 MiroFish 的简单换皮版本。
-
-## 如何试用
+## 快速开始
 
 ### 前置要求
 
-| 工具 | 版本 | 说明 |
+| 工具 | 版本 | 用途 |
 |------|------|------|
 | Python | 3.11+ | 后端运行环境 |
-| Node.js | 18+ | 前端构建（Docker 部署可跳过） |
-| Docker | 最新版 | 推荐的部署方式 |
+| Node.js | 18+ | 前端开发与构建 |
+| Docker | 最新版 | 推荐部署方式 |
+| `uv` | 可选 | 本地后端依赖管理 |
 
-### 方式一：Docker 部署（推荐）
+### 方式一：Docker 运行
 
 ```bash
-# 1. 克隆仓库
 git clone https://github.com/fantasyslr/MiroFishmoody.git
 cd MiroFishmoody
 
-# 2. 配置环境变量
 cp .env.example .env
-# 编辑 .env，填入 LLM_API_KEY（支持任何 OpenAI 兼容接口）
+# 编辑 .env，至少填入 LLM_API_KEY
 
-# 3. 构建并启动
 docker compose up -d --build
-
-# 4. 访问
-# http://localhost:5001
 ```
 
-### 方式二：源码运行
+打开 `http://localhost:5001`。
+
+### 方式二：本地开发
 
 ```bash
-# 1. 安装后端依赖
-cd backend && pip install -r requirements.txt
+git clone https://github.com/fantasyslr/MiroFishmoody.git
+cd MiroFishmoody
 
-# 2. 配置
 cp .env.example .env
-# 编辑 .env，填入 LLM_API_KEY
+# 编辑 .env，至少填入 LLM_API_KEY
 
-# 3. 启动
-python run.py
-# http://localhost:5001
+npm run setup
+cd backend && uv sync && cd ..
+
+npm run dev
 ```
 
-### 方式三：纯 API 试用
+默认会同时启动：
+
+- 前端：`http://localhost:5173/#/login`
+- 后端：`http://localhost:5001`
+
+如果你不用 `uv`，也可以改成：
 
 ```bash
-# 健康检查
-curl http://localhost:5001/health
-# {"service":"Campaign Ranker Engine","status":"ok"}
+cd backend
+pip install -r requirements.txt
+python run.py
+```
 
-# 提交评审（异步）
-curl -X POST http://localhost:5001/api/campaign/evaluate \
+然后另开一个终端启动前端：
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+## 认证与 API 说明
+
+除 `/health` 外，当前 `/api/campaign/*` 接口都要求登录态 Session。  
+本地测试账号定义在 `backend/app/auth.py`，正式部署前请替换成自己的账号配置或接入真实认证。
+
+### API 冒烟示例
+
+```bash
+# 1. 登录并保存 Cookie
+curl -c cookies.txt -X POST http://localhost:5001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"<username>","password":"<password>"}'
+
+# 2. 查看任务列表
+curl -b cookies.txt http://localhost:5001/api/campaign/tasks
+
+# 3. 提交评审
+curl -b cookies.txt -X POST http://localhost:5001/api/campaign/evaluate \
   -H "Content-Type: application/json" \
   -d '{
     "campaigns": [
@@ -203,120 +180,57 @@ curl -X POST http://localhost:5001/api/campaign/evaluate \
       {"name": "方案B", "core_message": "硅水凝胶透氧黑科技", "product_line": "moodyplus"}
     ]
   }'
-# 返回 task_id 和 set_id
 
-# 查询进度
-curl http://localhost:5001/api/campaign/evaluate/status/<task_id>
+# 4. 查询进度
+curl -b cookies.txt http://localhost:5001/api/campaign/evaluate/status/<task_id>
 
-# 获取结果
-curl http://localhost:5001/api/campaign/result/<set_id>
+# 5. 获取结果
+curl -b cookies.txt http://localhost:5001/api/campaign/result/<set_id>
 
-# 赛后结算（可选）
-curl -X POST http://localhost:5001/api/campaign/resolve \
+# 6. 导出 JSON
+curl -b cookies.txt -OJ http://localhost:5001/api/campaign/export/<set_id>
+
+# 7. 赛后结算
+curl -b cookies.txt -X POST http://localhost:5001/api/campaign/resolve \
   -H "Content-Type: application/json" \
-  -d '{"set_id": "<set_id>", "winner_campaign_id": "campaign_1", "actual_metrics": {"ctr": 0.03}}'
+  -d '{"set_id":"<set_id>","winner_campaign_id":"campaign_1","actual_metrics":{"ctr":0.03}}'
 
-# 查看校准状态
-curl http://localhost:5001/api/campaign/calibration
+# 8. 查看校准状态
+curl -b cookies.txt http://localhost:5001/api/campaign/calibration
 ```
 
-### 环境变量
+## 仓库结构
 
-| 变量 | 必填 | 说明 |
-|------|------|------|
-| `LLM_API_KEY` | 是 | LLM API 密钥 |
-| `LLM_BASE_URL` | 否 | OpenAI 兼容接口地址（默认 OpenAI） |
-| `LLM_MODEL_NAME` | 否 | 模型名（默认 gpt-4o-mini） |
-| `SECRET_KEY` | 建议 | Flask session 密钥 |
-
-详细部署说明见 [DEPLOY.md](./DEPLOY.md)，后端开发快速上手见 [backend/QUICKSTART.md](./backend/QUICKSTART.md)。
+| 路径 | 说明 |
+|------|------|
+| `frontend/` | React + Vite + TypeScript 前端 |
+| `backend/` | Flask 后端、评审逻辑、结算与校准服务 |
+| `backend/tests/` | 后端测试，覆盖评分、校准、Phase 5.5/5.6 行为 |
+| `static/` | 静态资源，包括项目 logo |
+| `DEPLOY.md` | Docker / 服务器部署说明 |
+| `CHANGELOG.md` | 版本更新记录 |
 
 ## 技术栈
 
-- **后端**：Python 3.11+ / Flask / Gunicorn
-- **前端**：React + Vite + TypeScript
-- **部署**：Docker multi-stage build，单端口 5001
-- **LLM**：OpenAI 兼容接口（百炼/千问/OpenAI 均可）
+- **前端**：React 19、Vite 8、TypeScript、React Router、Zustand
+- **后端**：Flask、Gunicorn、OpenAI-compatible LLM client
+- **运行方式**：本地双端开发或 Docker 单端口部署
+- **LLM 接口**：OpenAI、百炼 / 千问等兼容接口
 
-## 一眼看懂
+## 测试
 
-```mermaid
-flowchart LR
-  A["Campaign 方案集"] --> B["Audience Panel"]
-  B --> C["Pairwise Judges"]
-  C --> D["Probability Board"]
-  D --> E["Sub-markets"]
-  E --> F["Ship / Revise / Kill"]
-  F --> G["Post-launch Resolution"]
-  G --> H["Judge Calibration"]
+```bash
+cd backend
+python -m pytest tests -q
 ```
 
-它不是一次性打分器，而是一个会把观点变成概率、再把概率和真实结果重新对账的内部决策回路。
+## 版本策略
 
-## 预期工作流
-
-长期目标中的工作流大致如下：
-
-1. 输入多个 campaign 方案
-2. 选择产品线与目标受众
-3. 由 audience panel 做多视角评审
-4. 由 judge engine 做 pairwise 对战
-5. 生成 probability board、sub-markets、ranking、objections 与建议动作
-6. 赛后用真实投放结果做 resolution 与 calibration
-
-## 为什么币圈人会秒懂
-
-如果你来自 prediction market、event pricing、交易或赔率文化，这个项目的味道会很熟。
-
-因为它本质上做的是同一件事：
-
-- 不再问“你喜不喜欢这个方案”
-- 而是问“你愿意给它多少概率”
-- 不再只给观点
-- 而是给 `price`、`spread`、`edge`、`resolution`
-
-区别只在于，这里被定价的不是 election、macro event 或 token narrative，而是 **Moody 的 campaign concept**。
-
-## 为什么电商团队真的能用
-
-对电商团队来说，这不是一个“更会说话的创意 review 机器人”，而是一个把早期拍脑袋决策结构化的系统。
-
-它适合用来：
-
-- 在正式花预算前筛掉明显弱方案
-- 在多个 angle 之间找到更值得先测的那个
-- 把“我觉得会赢”拆成可讨论的子问题
-- 让创意、投放、品牌和落地页判断进入同一个决策面板
-
-它不替代真实投放测试，但能显著减少低质量测试进入媒体的概率。
-
-## 适用场景
-
-- Meta campaign angle 预筛选
-- 创意方向选择
-- LP angle 对比
-- Influencer script / brief 的早期评审
-- `colored lenses` 与 `moodyPlus` 的受众差异化判断
-
-## 不解决什么
-
-这个系统不应该被当成：
-
-- 真实利润预测器
-- 归因系统替代品
-- 媒体 buying engine
-- “一定会爆”的神谕工具
-
-它首先是一个 **更可量化的方案选择器 / 内部决策市场**。
+从 `v0.5.0` 开始，仓库文档按 SemVer 记录公开版本基线。  
+更早的重构提交仍保留在 Git 历史中，但统一收敛到当前基线版本说明里。
 
 ## 致谢
 
 - 原始项目：[MiroFish](https://github.com/666ghj/MiroFish)
-- 原始社会仿真方向为这个 fork 提供了多 agent 推演的起点
-- 这套新方向也明确借鉴了 **crypto-native prediction markets / event contracts / forecasting communities** 的方法论
-- 如果没有币圈里那套关于 `pricing disagreement`、`finding edge`、`settling against reality` 的训练，这个方向不会成形
-- 这里也特别致意那些让“市场化聚合观点”变得更可见的玩家与社区，包括早期 prediction market builders、crypto event market 玩家，以及像 **SBF** 这样的交易圈代表人物所体现出的那部分思维影响
-- 我们借用的是：`implied probability`、`sub-markets`、`resolution`、`calibration`
-- 我们**不**借用的是：发币、链上交易、公开投机市场
-
-后续代码与文档会继续围绕 **Moody Lenses internal decision market** 这一目标收敛。
+- 本项目沿用多视角评审与结构化比较思路，但已经收敛到更明确的 campaign decision workflow
+- License：`AGPL-3.0`

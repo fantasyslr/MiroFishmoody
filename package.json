@@ -1,7 +1,7 @@
 {
   "name": "mirofishmoody",
-  "version": "0.1.0",
-  "description": "MiroFishmoody - Moody 内部 campaign 决策市场前端壳",
+  "version": "0.5.0",
+  "description": "MiroFishmoody - Moody Lenses campaign decision market with review, resolution, and calibration workflows",
   "scripts": {
     "setup": "npm install && cd frontend && npm install",
     "setup:backend": "cd backend && uv sync",
