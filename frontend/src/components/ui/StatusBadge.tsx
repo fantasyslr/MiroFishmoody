@@ -9,10 +9,10 @@ type StatusTone =
 const toneMap: Record<StatusTone, string> = {
   neutral: 'border-mist/30 bg-mist-soft/60 text-ink',
   running: 'border-mist/40 bg-mist-soft text-coffee',
-  done: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  done: 'border-coffee/20 bg-coffee/10 text-coffee',
   warning: 'border-wine/20 bg-wine/10 text-wine',
   draft: 'border-line bg-cream text-ink',
-  settlement: 'border-amber-200 bg-amber-50 text-amber-700',
+  settlement: 'border-wine/15 bg-wine/8 text-ink',
 }
 
 type StatusBadgeProps = {

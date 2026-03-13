@@ -12,8 +12,10 @@ import tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.models.market import ResolutionRecord
+from app import create_app
 from app.services.judge_calibration import JudgeCalibration
 from app.services.resolution_tracker import ResolutionTracker
+from app.api import campaign as campaign_api
 
 
 # ============================================================
@@ -58,6 +60,44 @@ def test_resolve_without_evaluation_store():
         resolutions = cal.load_resolutions()
         assert len(resolutions) == 2  # winner + loser
         print("  PASS: resolve works without _evaluation_store (fallback to predictions file)")
+
+
+def test_get_result_without_evaluation_store():
+    """模拟服务重启后 _evaluation_store 为空，GET result 仍可从磁盘恢复"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        old_dir = campaign_api._RESULTS_DIR
+        old_store = dict(campaign_api._evaluation_store)
+        campaign_api._RESULTS_DIR = tmpdir
+        campaign_api._evaluation_store.clear()
+        try:
+            result = {
+                "set_id": "restart-set",
+                "rankings": [{"campaign_id": "a", "rank": 1, "verdict": "ship"}],
+                "probability_board": {
+                    "campaigns": [
+                        {"campaign_id": "a", "win_probability": 0.65},
+                        {"campaign_id": "b", "win_probability": 0.35},
+                    ]
+                },
+            }
+            campaign_api._save_result("restart-set", result)
+
+            loaded = campaign_api._load_result("restart-set")
+            assert loaded == result
+
+            app = create_app()
+            with app.app_context():
+                resp = campaign_api.get_result("restart-set")
+            body = resp.get_json()
+
+            assert body["set_id"] == "restart-set"
+            assert body["probability_board"]["campaigns"][0]["campaign_id"] == "a"
+            assert campaign_api._evaluation_store["restart-set"]["set_id"] == "restart-set"
+            print("  PASS: result endpoint works without _evaluation_store (fallback to disk)")
+        finally:
+            campaign_api._RESULTS_DIR = old_dir
+            campaign_api._evaluation_store.clear()
+            campaign_api._evaluation_store.update(old_store)
 
 
 # ============================================================
@@ -230,6 +270,7 @@ def test_judge_calibration_complete_for_2_campaigns():
 if __name__ == "__main__":
     print("=== Phase 5.5 Tests ===")
     test_resolve_without_evaluation_store()
+    test_get_result_without_evaluation_store()
     test_recalibrate_hint_mixed_data()
     test_judge_calibration_partial_label()
     test_judge_calibration_complete_for_2_campaigns()

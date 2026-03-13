@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.models.market import ResolutionRecord
 from app.services.judge_calibration import JudgeCalibration
+from app.api.campaign import _parse_campaigns
 
 
 def _seed_set(cal, set_id, n_campaigns, winner_id, judge_preds):
@@ -204,10 +205,243 @@ def test_calibration_ready_based_on_predictions():
         print(f"  PASS: calibration_ready based on sets_with_predictions (0→False, {sets_with_preds2}→True)")
 
 
+def test_parse_campaigns_rejects_duplicate_campaign_ids():
+    """重复 campaign.id 应在 API 入口被拒绝，避免结果按同 key 覆盖"""
+    payload = {
+        "campaigns": [
+            {
+                "id": "dup",
+                "name": "A",
+                "product_line": "colored_lenses",
+                "core_message": "msg-a",
+            },
+            {
+                "id": "dup",
+                "name": "B",
+                "product_line": "colored_lenses",
+                "core_message": "msg-b",
+            },
+        ]
+    }
+
+    try:
+        _parse_campaigns(payload)
+        assert False, "Expected duplicate campaign id to raise ValueError"
+    except ValueError as e:
+        assert "重复" in str(e)
+        assert "dup" in str(e)
+        print("  PASS: duplicate campaign ids rejected at parse time")
+
+
+def test_resolve_rejects_duplicate_set_id():
+    """同一个 set_id 不允许重复结算"""
+    import tempfile
+    from unittest.mock import patch
+    from app import create_app
+    from app.services.judge_calibration import JudgeCalibration as RealJC
+    from app.api import campaign as campaign_api
+
+    app = create_app()
+    with app.app_context():
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cal = RealJC(calibration_dir=tmpdir)
+            old_results_dir = campaign_api._RESULTS_DIR
+            old_store = dict(campaign_api._evaluation_store)
+
+            campaign_api._RESULTS_DIR = os.path.join(tmpdir, 'results')
+            os.makedirs(campaign_api._RESULTS_DIR, exist_ok=True)
+
+            result_data = {
+                "set_id": "resolve-dup-test",
+                "rankings": [],
+                "probability_board": {
+                    "campaigns": [
+                        {"campaign_id": "a", "win_probability": 0.6},
+                        {"campaign_id": "b", "win_probability": 0.4},
+                    ]
+                },
+            }
+            campaign_api._save_result("resolve-dup-test", result_data)
+            campaign_api._evaluation_store["resolve-dup-test"] = result_data
+
+            # Patch JudgeCalibration 在 campaign API 模块中，使其始终使用临时目录
+            with patch('app.api.campaign.JudgeCalibration', lambda **kw: cal):
+                # 同时 patch ResolutionTracker 使其也用同一个 calibration
+                with patch('app.api.campaign.ResolutionTracker') as MockRT:
+                    from app.services.resolution_tracker import ResolutionTracker as RealRT
+                    real_tracker = RealRT()
+                    real_tracker.calibration = cal
+                    MockRT.return_value = real_tracker
+
+                    client = app.test_client()
+
+                    resp1 = client.post('/api/campaign/resolve', json={
+                        "set_id": "resolve-dup-test",
+                        "winner_campaign_id": "a",
+                        "actual_metrics": {"ctr": 0.03},
+                    })
+                    assert resp1.status_code == 200, f"First resolve failed: {resp1.get_json()}"
+
+                    resp2 = client.post('/api/campaign/resolve', json={
+                        "set_id": "resolve-dup-test",
+                        "winner_campaign_id": "b",
+                        "actual_metrics": {"ctr": 0.01},
+                    })
+                    assert resp2.status_code == 409, (
+                        f"Expected 409 for duplicate resolve, got {resp2.status_code}: {resp2.get_json()}"
+                    )
+                    body2 = resp2.get_json()
+                    assert "已结算" in body2["error"]
+                    print("  PASS: duplicate resolve rejected with 409")
+
+            campaign_api._RESULTS_DIR = old_results_dir
+            campaign_api._evaluation_store.clear()
+            campaign_api._evaluation_store.update(old_store)
+
+
+def test_evaluate_rejects_duplicate_set_id():
+    """用户传入已存在的 set_id 应返回 409，不覆盖已有结果"""
+    import tempfile
+    from app import create_app
+    from app.api import campaign as campaign_api
+
+    app = create_app()
+    with app.app_context():
+        with tempfile.TemporaryDirectory() as tmpdir:
+            old_results_dir = campaign_api._RESULTS_DIR
+            old_store = dict(campaign_api._evaluation_store)
+            campaign_api._RESULTS_DIR = tmpdir
+
+            # 预存一个已有结果
+            existing = {"set_id": "existing-set", "rankings": [{"rank": 1}]}
+            campaign_api._save_result("existing-set", existing)
+
+            try:
+                client = app.test_client()
+                resp = client.post('/api/campaign/evaluate', json={
+                    "set_id": "existing-set",
+                    "campaigns": [
+                        {"name": "A", "core_message": "msg-a", "product_line": "colored_lenses"},
+                        {"name": "B", "core_message": "msg-b", "product_line": "colored_lenses"},
+                    ],
+                })
+                assert resp.status_code == 409, (
+                    f"Expected 409, got {resp.status_code}: {resp.get_json()}"
+                )
+                assert "已存在" in resp.get_json()["error"]
+
+                # 验证磁盘结果未被覆盖
+                loaded = campaign_api._load_result("existing-set")
+                assert loaded == existing, "Existing result should not be overwritten"
+                print("  PASS: evaluate rejects duplicate set_id with 409")
+            finally:
+                campaign_api._RESULTS_DIR = old_results_dir
+                campaign_api._evaluation_store.clear()
+                campaign_api._evaluation_store.update(old_store)
+
+
+def test_evaluate_rejects_duplicate_set_id_in_memory():
+    """set_id 在内存中存在时也应被拒绝"""
+    from app import create_app
+    from app.api import campaign as campaign_api
+
+    app = create_app()
+    with app.app_context():
+        old_store = dict(campaign_api._evaluation_store)
+        campaign_api._evaluation_store["mem-set"] = {"set_id": "mem-set"}
+
+        try:
+            client = app.test_client()
+            resp = client.post('/api/campaign/evaluate', json={
+                "set_id": "mem-set",
+                "campaigns": [
+                    {"name": "A", "core_message": "msg-a", "product_line": "colored_lenses"},
+                    {"name": "B", "core_message": "msg-b", "product_line": "colored_lenses"},
+                ],
+            })
+            assert resp.status_code == 409
+            print("  PASS: evaluate rejects set_id found in memory store")
+        finally:
+            campaign_api._evaluation_store.clear()
+            campaign_api._evaluation_store.update(old_store)
+
+
+def test_run_evaluation_fails_on_empty_panel():
+    """panel_scores 为空时 _run_evaluation 应 fail task"""
+    from unittest.mock import patch, MagicMock
+    from app.api import campaign as campaign_api
+    from app.models.campaign import Campaign, CampaignSet, ProductLine
+
+    campaigns = [
+        Campaign(id="a", name="A", product_line=ProductLine.COLORED,
+                 target_audience="t", core_message="m", channels=[], creative_direction=""),
+        Campaign(id="b", name="B", product_line=ProductLine.COLORED,
+                 target_audience="t", core_message="m", channels=[], creative_direction=""),
+    ]
+    cs = CampaignSet(set_id="fail-panel", campaigns=campaigns, context="", created_at="now")
+    task_id = campaign_api.task_manager.create_task("campaign_evaluation")
+
+    # Mock LLMClient so it doesn't need a real key
+    mock_llm = MagicMock()
+    # Mock AudiencePanel.evaluate_all to return empty (simulating all LLM calls failing)
+    with patch('app.api.campaign.LLMClient', return_value=mock_llm):
+        with patch('app.api.campaign.AudiencePanel') as MockPanel:
+            MockPanel.return_value.evaluate_all.return_value = []
+            campaign_api._run_evaluation(task_id, cs)
+
+    task = campaign_api.task_manager.get_task(task_id)
+    assert task.status.value == "failed", f"Expected failed, got {task.status.value}"
+    assert "Panel" in task.error
+    assert "全部失败" in task.error
+    print(f"  PASS: empty panel_scores → task failed: {task.error}")
+
+
+def test_run_evaluation_fails_on_empty_pairwise():
+    """pairwise_results 为空时 _run_evaluation 应 fail task"""
+    from unittest.mock import patch, MagicMock
+    from app.api import campaign as campaign_api
+    from app.models.campaign import Campaign, CampaignSet, ProductLine
+    from app.models.evaluation import PanelScore
+
+    campaigns = [
+        Campaign(id="a", name="A", product_line=ProductLine.COLORED,
+                 target_audience="t", core_message="m", channels=[], creative_direction=""),
+        Campaign(id="b", name="B", product_line=ProductLine.COLORED,
+                 target_audience="t", core_message="m", channels=[], creative_direction=""),
+    ]
+    cs = CampaignSet(set_id="fail-pairwise", campaigns=campaigns, context="", created_at="now")
+    task_id = campaign_api.task_manager.create_task("campaign_evaluation")
+
+    # Panel returns valid scores, but pairwise returns empty
+    fake_panel = [
+        PanelScore("p1", "P1", "a", 7.0, ["obj"], ["str"], "ok"),
+        PanelScore("p1", "P1", "b", 5.0, ["obj"], ["str"], "ok"),
+    ]
+    mock_llm = MagicMock()
+    with patch('app.api.campaign.LLMClient', return_value=mock_llm):
+        with patch('app.api.campaign.AudiencePanel') as MockPanel:
+            MockPanel.return_value.evaluate_all.return_value = fake_panel
+            with patch('app.api.campaign.PairwiseJudge') as MockJudge:
+                MockJudge.return_value.evaluate_all.return_value = ([], {})
+                campaign_api._run_evaluation(task_id, cs)
+
+    task = campaign_api.task_manager.get_task(task_id)
+    assert task.status.value == "failed", f"Expected failed, got {task.status.value}"
+    assert "Pairwise" in task.error
+    assert "全部失败" in task.error
+    print(f"  PASS: empty pairwise_results → task failed: {task.error}")
+
+
 if __name__ == "__main__":
     print("=== Phase 5.6 Tests ===")
     test_mixed_data_recalibrate_insufficient()
     test_2_campaign_judge_complete()
     test_3_campaign_judge_partial()
     test_calibration_ready_based_on_predictions()
+    test_parse_campaigns_rejects_duplicate_campaign_ids()
+    test_resolve_rejects_duplicate_set_id()
+    test_evaluate_rejects_duplicate_set_id()
+    test_evaluate_rejects_duplicate_set_id_in_memory()
+    test_run_evaluation_fails_on_empty_panel()
+    test_run_evaluation_fails_on_empty_pairwise()
     print("\nALL PHASE 5.6 TESTS PASSED")

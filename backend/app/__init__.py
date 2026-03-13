@@ -7,11 +7,14 @@ import warnings
 
 warnings.filterwarnings("ignore", message=".*resource_tracker.*")
 
-from flask import Flask, request
+from flask import Flask, request, send_from_directory
 from flask_cors import CORS
 
 from .config import Config
 from .utils.logger import setup_logger, get_logger
+
+# 前端 build 产物目录（生产模式由 Flask 托管）
+FRONTEND_DIST = os.path.join(os.path.dirname(__file__), '../../frontend/dist')
 
 
 def create_app(config_class=Config):
@@ -53,6 +56,28 @@ def create_app(config_class=Config):
     @app.route('/health')
     def health():
         return {'status': 'ok', 'service': 'Campaign Ranker Engine'}
+
+    # 生产模式：Flask 托管前端静态文件
+    dist = os.path.abspath(FRONTEND_DIST)
+    if os.path.isdir(dist):
+        @app.route('/assets/<path:filename>')
+        def serve_assets(filename):
+            return send_from_directory(os.path.join(dist, 'assets'), filename)
+
+        @app.route('/', defaults={'path': ''})
+        @app.route('/<path:path>')
+        def serve_frontend(path):
+            # API / health 路由已注册，不会走到这里
+            file_path = os.path.join(dist, path)
+            if path and os.path.isfile(file_path):
+                return send_from_directory(dist, path)
+            return send_from_directory(dist, 'index.html')
+
+        if should_log_startup:
+            logger.info(f"前端静态文件托管: {dist}")
+    else:
+        if should_log_startup:
+            logger.info(f"前端 dist 目录不存在 ({dist})，仅提供 API 服务")
 
     if should_log_startup:
         logger.info("Campaign Ranker Engine 启动完成")

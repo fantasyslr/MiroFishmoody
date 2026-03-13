@@ -21,6 +21,7 @@ export default {
       boxShadow: {
         paper: '0 18px 40px rgba(74, 58, 50, 0.08)',
         card: '0 10px 24px rgba(74, 58, 50, 0.08)',
+        soft: '0 4px 12px rgba(74, 58, 50, 0.05)',
       },
       borderRadius: {
         panel: '28px',

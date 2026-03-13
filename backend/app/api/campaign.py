@@ -3,6 +3,8 @@ Campaign API — 方案提交 + 评审 + 结算 + 校准
 """
 
 import uuid
+import json
+import os
 import threading
 from collections import defaultdict
 from datetime import datetime
@@ -27,6 +29,24 @@ task_manager = TaskManager()
 
 # 内存存储（MVP 阶段）
 _evaluation_store: dict = {}
+_RESULTS_DIR = os.path.join(Config.UPLOAD_FOLDER, 'results')
+os.makedirs(_RESULTS_DIR, exist_ok=True)
+
+
+def _save_result(set_id: str, result: dict) -> None:
+    """持久化完整评审结果，支持服务重启后恢复。"""
+    path = os.path.join(_RESULTS_DIR, f"{set_id}.json")
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+
+
+def _load_result(set_id: str):
+    """从磁盘加载完整评审结果。"""
+    path = os.path.join(_RESULTS_DIR, f"{set_id}.json")
+    if not os.path.exists(path):
+        return None
+    with open(path, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
 
 def _parse_campaigns(data: dict) -> CampaignSet:
@@ -40,6 +60,7 @@ def _parse_campaigns(data: dict) -> CampaignSet:
         raise ValueError(f"最多支持 {Config.MAX_CAMPAIGNS} 个方案")
 
     campaigns = []
+    seen_ids = set()
     for i, c in enumerate(campaigns_raw):
         pl_str = c.get("product_line", "colored_lenses")
         try:
@@ -55,8 +76,13 @@ def _parse_campaigns(data: dict) -> CampaignSet:
         if not c.get("core_message"):
             raise ValueError(f"方案 {i+1}: core_message 不能为空")
 
+        campaign_id = c.get("id", f"campaign_{i+1}")
+        if campaign_id in seen_ids:
+            raise ValueError(f"方案 {i+1}: campaign id '{campaign_id}' 重复")
+        seen_ids.add(campaign_id)
+
         campaigns.append(Campaign(
-            id=c.get("id", f"campaign_{i+1}"),
+            id=campaign_id,
             name=c["name"],
             product_line=product_line,
             target_audience=c.get("target_audience", ""),
@@ -138,12 +164,22 @@ def _run_evaluation(task_id: str, campaign_set: CampaignSet):
         task_manager.update_task(task_id, progress=10, message="Audience Panel 评审中...")
         panel = AudiencePanel(llm_client=llm)
         panel_scores = panel.evaluate_all(campaigns)
+        if not panel_scores:
+            raise RuntimeError(
+                "Audience Panel 评审全部失败（0 个 persona 返回有效结果），"
+                "请检查 LLM API 配置和网络连接"
+            )
         task_manager.update_task(task_id, progress=40, message="Panel 评审完成")
 
         # Phase 2: Pairwise Judge
         task_manager.update_task(task_id, progress=45, message="Pairwise 对决中...")
         judge = PairwiseJudge(llm_client=llm)
         pairwise_results, bt_scores = judge.evaluate_all(campaigns)
+        if not pairwise_results:
+            raise RuntimeError(
+                "Pairwise 对决全部失败（0 个对决返回有效结果），"
+                "请检查 LLM API 配置和网络连接"
+            )
         task_manager.update_task(task_id, progress=80, message="对决完成")
 
         # Phase 3: Market Scoring
@@ -190,6 +226,7 @@ def _run_evaluation(task_id: str, campaign_set: CampaignSet):
 
         result_dict = result.to_dict()
         _evaluation_store[campaign_set.set_id] = result_dict
+        _save_result(campaign_set.set_id, result_dict)
 
         top = probability_board.campaigns[0] if probability_board.campaigns else None
         task_manager.complete_task(task_id, result={
@@ -219,6 +256,13 @@ def evaluate():
             return jsonify({"error": "请求体不能为空"}), 400
 
         campaign_set = _parse_campaigns(data)
+
+        # 防重复 set_id：检查内存和磁盘是否已有该 set_id 的结果
+        if campaign_set.set_id in _evaluation_store or _load_result(campaign_set.set_id):
+            return jsonify({
+                "error": f"set_id '{campaign_set.set_id}' 已存在，不允许覆盖已有评审结果"
+            }), 409
+
         task_id = task_manager.create_task(
             "campaign_evaluation",
             metadata={"set_id": campaign_set.set_id}
@@ -259,6 +303,10 @@ def get_result(set_id: str):
     """获取评审结果"""
     result = _evaluation_store.get(set_id)
     if not result:
+        result = _load_result(set_id)
+        if result:
+            _evaluation_store[set_id] = result
+    if not result:
         return jsonify({"error": "评审结果不存在"}), 404
     return jsonify(result)
 
@@ -288,6 +336,13 @@ def resolve():
         winner_id = data.get("winner_campaign_id")
         if not set_id or not winner_id:
             return jsonify({"error": "set_id 和 winner_campaign_id 必填"}), 400
+
+        # 防重复结算：检查 set_id 是否已结算
+        calibration_check = JudgeCalibration()
+        existing_resolutions = calibration_check.load_resolutions()
+        already_resolved = any(r["set_id"] == set_id for r in existing_resolutions)
+        if already_resolved:
+            return jsonify({"error": f"评审集 '{set_id}' 已结算，不允许重复结算"}), 409
 
         # 尝试从内存获取 predicted probabilities
         predicted = None
