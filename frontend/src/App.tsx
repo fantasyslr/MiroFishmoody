@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react'
-import { createHashRouter, RouterProvider } from 'react-router-dom'
+import { createHashRouter, Navigate, RouterProvider } from 'react-router-dom'
 
 import { getMe, type AuthUser } from './lib/api'
+import { Layout } from './components/layout/Layout'
 import { AppShell } from './components/layout/AppShell'
+import { LoginPage } from './pages/LoginPage'
+import { HomePage } from './pages/HomePage'
+import { RunningPage } from './pages/RunningPage'
+import { ResultPage } from './pages/ResultPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { HistoryPage } from './pages/HistoryPage'
-import { LoginPage } from './pages/LoginPage'
-import { NewReviewPage } from './pages/NewReviewPage'
-import { ResultPage } from './pages/ResultPage'
-import { RunningStatusPage } from './pages/RunningStatusPage'
 
 export default function App() {
   const [user, setUser] = useState<AuthUser | null>(null)
@@ -27,19 +28,34 @@ export default function App() {
     return <LoginPage onLogin={setUser} />
   }
 
-  const router = createHashRouter([
+  const isAdmin = user.role === 'admin'
+
+  const routes = [
     {
-      path: '/',
-      element: <AppShell user={user} onLogout={() => setUser(null)} />,
+      element: <Layout user={user} onLogout={() => setUser(null)} />,
       children: [
-        { index: true, element: <DashboardPage /> },
-        { path: 'new-review', element: <NewReviewPage /> },
-        { path: 'running', element: <RunningStatusPage /> },
-        { path: 'result', element: <ResultPage /> },
-        { path: 'history', element: <HistoryPage /> },
+        { path: '/', element: <HomePage /> },
+        { path: '/running', element: <RunningPage /> },
+        { path: '/result', element: <ResultPage /> },
       ],
     },
-  ])
+    // Admin routes with old-style layout
+    ...(isAdmin
+      ? [
+          {
+            path: '/admin',
+            element: <AppShell user={user} onLogout={() => setUser(null)} />,
+            children: [
+              { path: 'dashboard', element: <DashboardPage /> },
+              { path: 'history', element: <HistoryPage /> },
+            ],
+          },
+        ]
+      : []),
+    { path: '*', element: <Navigate to="/" replace /> },
+  ]
+
+  const router = createHashRouter(routes)
 
   return <RouterProvider router={router} />
 }

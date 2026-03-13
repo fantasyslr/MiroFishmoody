@@ -24,10 +24,12 @@ def login():
     session['user'] = {
         "username": username,
         "display_name": user["display_name"],
+        "role": user.get("role", "user"),
     }
     return jsonify({
         "username": username,
         "display_name": user["display_name"],
+        "role": user.get("role", "user"),
     })
 
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { motion } from 'motion/react'
 import { login, type AuthUser } from '../lib/api'
 
 export function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
@@ -23,52 +24,47 @@ export function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-linen">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm space-y-5 rounded-panel border border-line bg-paper p-8 shadow-paper"
+    <div className="flex min-h-screen items-center justify-center bg-[#FDFCFB] p-6 font-sans text-stone-900">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-sm"
       >
-        <div className="text-center">
-          <h1 className="font-serif text-2xl font-semibold text-coffee">Moody Campaign Engine</h1>
-          <p className="mt-2 text-sm text-ink/60">内部评审系统，请登录</p>
+        <div className="mb-10 text-center">
+          <h1 className="text-2xl font-semibold tracking-tight">MiroFishmoody</h1>
+          <p className="mt-2 text-sm text-stone-500">内部营销决策工具</p>
         </div>
 
-        {error && (
-          <div className="rounded-2xl border border-wine/20 bg-wine/10 px-4 py-3 text-sm text-wine">
-            {error}
-          </div>
-        )}
-
-        <label className="block space-y-2">
-          <span className="field-label">用户名</span>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+              {error}
+            </div>
+          )}
           <input
-            className="field-input"
+            type="text"
+            placeholder="用户名"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="请输入用户名"
             autoFocus
+            className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 outline-none transition-all placeholder:text-stone-400 focus:border-stone-400 focus:ring-1 focus:ring-stone-400"
           />
-        </label>
-
-        <label className="block space-y-2">
-          <span className="field-label">密码</span>
           <input
-            className="field-input"
             type="password"
+            placeholder="密码"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="请输入密码"
+            className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 outline-none transition-all placeholder:text-stone-400 focus:border-stone-400 focus:ring-1 focus:ring-stone-400"
           />
-        </label>
-
-        <button
-          className="primary-button w-full justify-center"
-          type="submit"
-          disabled={loading || !username.trim() || !password}
-        >
-          {loading ? '登录中...' : '登录'}
-        </button>
-      </form>
+          <button
+            type="submit"
+            disabled={!username.trim() || !password || loading}
+            className="mt-2 w-full rounded-xl bg-stone-900 py-3 font-medium text-white transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? '登录中...' : '登录'}
+          </button>
+        </form>
+      </motion.div>
     </div>
   )
 }

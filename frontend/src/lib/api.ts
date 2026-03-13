@@ -158,6 +158,7 @@ export type LatestReviewSession = {
 export type AuthUser = {
   username: string
   display_name: string
+  role?: 'admin' | 'user'
 }
 
 export class ApiError extends Error {
@@ -275,10 +276,11 @@ export type ImageUploadResponse = {
   size: number
 }
 
-export async function uploadImage(file: File, setId?: string): Promise<ImageUploadResponse> {
+export async function uploadImage(file: File, setId?: string, campaignId?: string): Promise<ImageUploadResponse> {
   const formData = new FormData()
   formData.append('file', file)
   if (setId) formData.append('set_id', setId)
+  if (campaignId) formData.append('campaign_id', campaignId)
 
   const response = await fetch(`${API_BASE}/api/campaign/upload-image`, {
     method: 'POST',

@@ -7,19 +7,20 @@ from flask import session, jsonify, request
 
 # 硬编码内测用户（后续改成数据库）
 USERS = {
-    "liren": {"password": "moody2026", "display_name": "Liren"},
-    "tester1": {"password": "test1234", "display_name": "测试员1"},
-    "tester2": {"password": "test1234", "display_name": "测试员2"},
-    "test1": {"password": "eazillion123", "display_name": "Test1"},
-    "test2": {"password": "eazillion123", "display_name": "Test2"},
-    "test3": {"password": "eazillion123", "display_name": "Test3"},
-    "test4": {"password": "eazillion123", "display_name": "Test4"},
-    "test5": {"password": "eazillion123", "display_name": "Test5"},
-    "test6": {"password": "eazillion123", "display_name": "Test6"},
-    "test7": {"password": "eazillion123", "display_name": "Test7"},
-    "test8": {"password": "eazillion123", "display_name": "Test8"},
-    "test9": {"password": "eazillion123", "display_name": "Test9"},
-    "test10": {"password": "eazillion123", "display_name": "Test10"},
+    "slr": {"password": "shen1993", "display_name": "Liren", "role": "admin"},
+    "liren": {"password": "moody2026", "display_name": "Liren", "role": "admin"},
+    "tester1": {"password": "test1234", "display_name": "测试员1", "role": "user"},
+    "tester2": {"password": "test1234", "display_name": "测试员2", "role": "user"},
+    "test1": {"password": "eazillion123", "display_name": "Test1", "role": "user"},
+    "test2": {"password": "eazillion123", "display_name": "Test2", "role": "user"},
+    "test3": {"password": "eazillion123", "display_name": "Test3", "role": "user"},
+    "test4": {"password": "eazillion123", "display_name": "Test4", "role": "user"},
+    "test5": {"password": "eazillion123", "display_name": "Test5", "role": "user"},
+    "test6": {"password": "eazillion123", "display_name": "Test6", "role": "user"},
+    "test7": {"password": "eazillion123", "display_name": "Test7", "role": "user"},
+    "test8": {"password": "eazillion123", "display_name": "Test8", "role": "user"},
+    "test9": {"password": "eazillion123", "display_name": "Test9", "role": "user"},
+    "test10": {"password": "eazillion123", "display_name": "Test10", "role": "user"},
 }
 
 

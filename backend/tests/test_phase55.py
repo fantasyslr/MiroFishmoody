@@ -87,7 +87,10 @@ def test_get_result_without_evaluation_store():
 
             app = create_app()
             with app.app_context():
-                resp = campaign_api.get_result("restart-set")
+                client = app.test_client()
+                with client.session_transaction() as sess:
+                    sess['user'] = {"username": "tester", "display_name": "Tester"}
+                resp = client.get('/api/campaign/result/restart-set')
             body = resp.get_json()
 
             assert body["set_id"] == "restart-set"

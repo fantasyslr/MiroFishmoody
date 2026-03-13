@@ -123,6 +123,7 @@ def _allowed_image(filename: str) -> bool:
 
 
 @campaign_bp.route('/upload-image', methods=['POST'])
+@login_required
 def upload_image():
     """上传 campaign 素材图片"""
     if 'file' not in request.files:
@@ -154,12 +155,18 @@ def upload_image():
     except ImportError:
         pass  # PIL not available, use original
 
-    # Save
+    # Save with campaign_id prefix for per-campaign binding
     set_id = request.form.get('set_id', 'unsorted')
+    campaign_id = request.form.get('campaign_id', '')
     save_dir = os.path.join(IMAGES_DIR, secure_filename(set_id))
     os.makedirs(save_dir, exist_ok=True)
 
-    filename = secure_filename(file.filename)
+    safe_name = secure_filename(file.filename)
+    uid = str(uuid.uuid4())[:8]
+    if campaign_id:
+        filename = f"{secure_filename(campaign_id)}__{uid}__{safe_name}"
+    else:
+        filename = f"__{uid}__{safe_name}"
     save_path = os.path.join(save_dir, filename)
     with open(save_path, 'wb') as f:
         f.write(file_data)
@@ -172,6 +179,7 @@ def upload_image():
 
 
 @campaign_bp.route('/image-file/<set_id>/<filename>', methods=['GET'])
+@login_required
 def serve_image_file(set_id: str, filename: str):
     """提供 campaign 素材图片的静态文件访问"""
     safe_set_id = secure_filename(set_id)
@@ -184,6 +192,7 @@ def serve_image_file(set_id: str, filename: str):
 
 
 @campaign_bp.route('/images/<set_id>', methods=['GET'])
+@login_required
 def list_images(set_id: str):
     """列出某个 set_id 下的所有已上传图片"""
     safe_set_id = secure_filename(set_id)
@@ -205,9 +214,9 @@ def _build_campaign_image_map(set_id: str) -> dict:
     """
     扫描 images/<set_id>/ 目录，构建 campaign_id -> image URLs 的映射。
 
-    图片文件名规则：
-    - 如果文件名以 campaign_id 为前缀（如 campaign_1_photo.jpg），归入该 campaign
-    - 否则归入 "_shared" 键，所有 campaign 共享
+    文件名格式：{campaign_id}__{uuid}__{original_name}
+    - 解析出 campaign_id 的归入对应 key
+    - 解析不出的归入 "_all"
     """
     safe_set_id = secure_filename(set_id)
     image_dir = os.path.join(IMAGES_DIR, safe_set_id)
@@ -219,8 +228,11 @@ def _build_campaign_image_map(set_id: str) -> dict:
         if not _allowed_image(fname):
             continue
         url = f"/api/campaign/image-file/{safe_set_id}/{fname}"
-        # 尝试按文件名前缀匹配 campaign_id
-        image_map.setdefault("_all", []).append(url)
+        parts = fname.split("__", 2)
+        if len(parts) >= 3 and parts[0]:
+            image_map.setdefault(parts[0], []).append(url)
+        else:
+            image_map.setdefault("_all", []).append(url)
 
     return image_map
 
@@ -313,6 +325,7 @@ def evaluate():
 
 
 @campaign_bp.route('/evaluate/status/<task_id>', methods=['GET'])
+@login_required
 def evaluate_status(task_id: str):
     """查询评审任务进度"""
     task = task_manager.get_task(task_id)
@@ -322,6 +335,7 @@ def evaluate_status(task_id: str):
 
 
 @campaign_bp.route('/result/<set_id>', methods=['GET'])
+@login_required
 def get_result(set_id: str):
     """获取评审结果，附带 campaign 图片 URL 映射"""
     result = _evaluation_store.get(set_id)
@@ -468,6 +482,7 @@ def resolve():
 
 
 @campaign_bp.route('/calibration', methods=['GET'])
+@login_required
 def get_calibration():
     """查看 judge/persona 校准状态"""
     stats = _calibration.get_all_stats()
@@ -546,6 +561,7 @@ def recalibrate():
 
 
 @campaign_bp.route('/tasks', methods=['GET'])
+@login_required
 def list_tasks():
     """列出所有评审任务"""
     tasks = task_manager.list_tasks("campaign_evaluation")

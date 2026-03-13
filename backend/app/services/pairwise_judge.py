@@ -6,6 +6,8 @@ Pairwise Judge Engine — 方案两两对决
 """
 
 import math
+import os
+import base64
 from itertools import combinations
 from typing import List, Dict, Any, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -119,6 +121,30 @@ def _extra_block(c: Campaign) -> str:
     return "\n".join(parts)
 
 
+def _build_image_parts(campaign: Campaign, label: str) -> list:
+    """为一个 campaign 的图片构建 OpenAI Vision content parts"""
+    parts = []
+    image_paths = getattr(campaign, 'image_paths', None) or []
+    for img_path in image_paths[:5]:
+        if not os.path.exists(img_path):
+            continue
+        with open(img_path, 'rb') as f:
+            img_data = base64.b64encode(f.read()).decode()
+        ext = img_path.rsplit('.', 1)[-1].lower()
+        mime = 'image/jpeg' if ext in ('jpg', 'jpeg') else f'image/{ext}'
+        parts.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:{mime};base64,{img_data}"},
+        })
+    return parts
+
+
+VISUAL_INSTRUCTION = (
+    "\n\n如果提供了素材图，请同时参考视觉效果判断触达、转化、品牌调性、风险和可执行性；"
+    "若图文冲突，请明确指出，并以实际视觉呈现为重要依据。"
+)
+
+
 class PairwiseJudge:
     """方案两两对决评审引擎"""
 
@@ -128,8 +154,8 @@ class PairwiseJudge:
     def judge_pair(
         self, a: Campaign, b: Campaign, judge: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """单个 judge 评审一对方案"""
-        user_msg = JUDGE_USER_PROMPT.format(
+        """单个 judge 评审一对方案，有图片时自动走多模态"""
+        user_text = JUDGE_USER_PROMPT.format(
             name_a=a.name, pl_a=_pl_label(a.product_line),
             audience_a=a.target_audience, message_a=a.core_message,
             channels_a=", ".join(a.channels), creative_a=a.creative_direction,
@@ -139,15 +165,34 @@ class PairwiseJudge:
             channels_b=", ".join(b.channels), creative_b=b.creative_direction,
             extra_b=_extra_block(b),
         )
-        messages = [
-            {"role": "system", "content": judge["system_prompt"]},
-            {"role": "user", "content": user_msg},
-        ]
-        result = self.llm.chat_json(
-            messages=messages,
-            temperature=Config.JUDGE_TEMPERATURE,
-            max_tokens=1024,
-        )
+
+        a_imgs = _build_image_parts(a, "A")
+        b_imgs = _build_image_parts(b, "B")
+        has_images = bool(a_imgs or b_imgs)
+
+        system_msg = {"role": "system", "content": judge["system_prompt"]}
+
+        if has_images:
+            content_parts: list = [{"type": "text", "text": user_text + VISUAL_INSTRUCTION}]
+            if a_imgs:
+                content_parts.append({"type": "text", "text": f"--- 方案 A 素材图 ({len(a_imgs)} 张) ---"})
+                content_parts.extend(a_imgs)
+            if b_imgs:
+                content_parts.append({"type": "text", "text": f"--- 方案 B 素材图 ({len(b_imgs)} 张) ---"})
+                content_parts.extend(b_imgs)
+            user_msg = {"role": "user", "content": content_parts}
+            result = self.llm.chat_multimodal_json(
+                messages=[system_msg, user_msg],
+                temperature=Config.JUDGE_TEMPERATURE,
+            )
+        else:
+            user_msg = {"role": "user", "content": user_text}
+            result = self.llm.chat_json(
+                messages=[system_msg, user_msg],
+                temperature=Config.JUDGE_TEMPERATURE,
+                max_tokens=1024,
+            )
+
         return {
             "judge_id": judge["id"],
             "judge_name": judge["name"],

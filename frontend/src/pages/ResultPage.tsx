@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-
-import { SectionCard } from '../components/ui/SectionCard'
-import { StatusBadge } from '../components/ui/StatusBadge'
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { motion } from 'motion/react'
+import { Download, CheckCircle2, AlertCircle, XCircle } from 'lucide-react'
+import { cn } from '../utils'
+import { useReviewStore } from '../store'
 import {
   campaignImageUrl,
   exportResult,
@@ -10,399 +11,239 @@ import {
   getResult,
   saveLatestReviewSession,
   type EvaluationResult,
+  type Ranking,
 } from '../lib/api'
 
-const verdictTone = {
-  ship: 'done',
-  revise: 'neutral',
-  kill: 'warning',
+const verdictConfig = {
+  ship: {
+    label: '建议上线',
+    color: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+    Icon: CheckCircle2,
+  },
+  revise: {
+    label: '建议优化',
+    color: 'text-amber-600 bg-amber-50 border-amber-200',
+    Icon: AlertCircle,
+  },
+  kill: {
+    label: '建议放弃',
+    color: 'text-rose-600 bg-rose-50 border-rose-200',
+    Icon: XCircle,
+  },
 } as const
 
-const verdictLabel = {
-  ship: '建议：上线',
-  revise: '建议：优化后再上',
-  kill: '建议：不上',
-} as const
-
-function percent(value: number) {
-  return `${Math.round(value * 100)}%`
-}
-
-function LevelMeter({ level }: { level: 1 | 2 | 3 }) {
+function VerdictBadge({ verdict }: { verdict: Ranking['verdict'] }) {
+  const config = verdictConfig[verdict]
+  const Icon = config.Icon
   return (
-    <div className="flex items-center gap-1.5">
-      {[1, 2, 3].map((item) => (
-        <span
-          key={item}
-          className={`h-2 rounded-full transition-all duration-300 ${
-            item <= level ? 'w-9 bg-coffee' : 'w-6 bg-stone/60'
-          }`}
-        />
-      ))}
-      <span className="ml-2 text-xs font-semibold text-ink/50">{level}/3</span>
-    </div>
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium',
+        config.color,
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {config.label}
+    </span>
   )
 }
 
-function probabilityToLevel(value: number): 1 | 2 | 3 {
-  if (value >= 0.5) {
-    return 3
-  }
-  if (value >= 0.25) {
-    return 2
-  }
-  return 1
-}
-
 export function ResultPage() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const latest = getLatestReviewSession()
   const setId = searchParams.get('setId') ?? latest?.setId ?? ''
 
-  const [result, setResult] = useState<EvaluationResult | null>(null)
+  const [result, setResultData] = useState<EvaluationResult | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(Boolean(setId))
+  const reset = useReviewStore((s) => s.reset)
 
   useEffect(() => {
-    if (!setId) {
-      return
-    }
+    if (!setId) return
 
     let cancelled = false
-
     const load = async () => {
       try {
         setLoading(true)
-        const nextResult = await getResult(setId)
+        const data = await getResult(setId)
         if (cancelled) return
-        setResult(nextResult)
-        setError('')
+        setResultData(data)
         saveLatestReviewSession({
           taskId: latest?.taskId,
           setId,
           reviewName: latest?.reviewName,
         })
-      } catch (loadError) {
+      } catch (err) {
         if (cancelled) return
-        setError(loadError instanceof Error ? loadError.message : '加载结果失败')
+        setError(err instanceof Error ? err.message : '加载结果失败')
       } finally {
         if (!cancelled) setLoading(false)
       }
     }
-
     void load()
-
     return () => {
       cancelled = true
     }
-  }, [latest?.reviewName, latest?.taskId, setId])
+  }, [setId, latest?.taskId, latest?.reviewName])
 
-  const scoreboardRows = useMemo(() => {
-    return result?.scoreboard?.campaigns ?? []
-  }, [result])
+  const handleNewReview = () => {
+    reset()
+    navigate('/')
+  }
 
-  /** All image URLs from the set, available for every campaign */
-  const imageUrls = useMemo(() => {
-    return result?.campaign_image_map?._all ?? []
-  }, [result])
-
-  /** Build a lookup: `${campaignId}::${dimensionKey}` → dimension_label */
-  const dimensionLabelMap = useMemo(() => {
-    const map = new Map<string, string>()
-    for (const d of result?.scoreboard?.dimension_details ?? []) {
-      map.set(`${d.campaign_id}::${d.dimension_key}`, d.dimension_label)
-    }
-    return map
-  }, [result])
-
-  if (!setId) {
-    return (
-      <SectionCard
-        title="结果页"
-        eyebrow="还没有结果"
-        description="请先完成一次评审任务，再来查看真实排序与结论。"
-      >
-        <div className="space-y-4">
-          <p className="text-sm leading-7 text-ink/80">
-            当前没有可读取的 `setId`。从新建评审页发起任务并等待完成后，这里会显示真实结果。
-          </p>
-          <Link className="primary-button" to="/new-review">
-            去新建评审
-          </Link>
-        </div>
-      </SectionCard>
-    )
+  const handleExport = () => {
+    void exportResult(setId).catch((err) => {
+      alert(err instanceof Error ? err.message : '导出失败')
+    })
   }
 
   if (loading) {
     return (
-      <SectionCard
-        title="结果页"
-        eyebrow="正在加载"
-        description="页面正在从后端读取真实评审结果。"
-      >
-        <p className="text-sm leading-7 text-ink/80">请稍等片刻...</p>
-      </SectionCard>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <p className="text-stone-500">正在加载结果...</p>
+      </div>
     )
   }
 
   if (error || !result) {
     return (
-      <SectionCard
-        title="结果页"
-        eyebrow="读取失败"
-        description="结果还不可用，可能是任务尚未完成，或后端服务未启动。"
-      >
-        <div className="space-y-4">
-          <div className="rounded-3xl border border-wine/20 bg-wine/10 px-4 py-4 text-sm leading-6 text-wine">
-            {error || '未读取到评审结果'}
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link className="secondary-button" to={`/running?taskId=${latest?.taskId ?? ''}&setId=${setId}`}>
-              回运行状态页
-            </Link>
-            <Link className="primary-button" to="/new-review">
-              发起新评审
-            </Link>
-          </div>
-        </div>
-      </SectionCard>
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
+        <p className="text-stone-500">{error || '没有可用的评审结果'}</p>
+        <button onClick={() => navigate('/')} className="text-stone-900 underline">
+          返回首页
+        </button>
+      </div>
     )
   }
 
-  const lead = scoreboardRows[0]
+  const winner = result.rankings[0]
+
+  /** Per-campaign image URLs */
+  const getImageUrls = (campaignId: string): string[] => {
+    const map = result.campaign_image_map
+    if (!map) return []
+    return map[campaignId] ?? map._all ?? []
+  }
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-panel border border-line bg-paper/95 p-6 shadow-paper sm:p-8">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="section-label">结果页</p>
-              <StatusBadge label="真实结果" tone="done" />
-            </div>
-            <h2 className="mt-3 font-serif text-3xl font-semibold text-coffee sm:text-4xl">
-              {lead ? `建议：上线 ${lead.campaign_name}` : '评审结果已生成'}
-            </h2>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-ink/85">
-              {result.summary}
-            </p>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pb-24">
+      {/* Conclusion header */}
+      <div className="mb-12">
+        <h1 className="mb-4 text-2xl font-semibold leading-snug tracking-tight">
+          {result.summary}
+        </h1>
+        {winner && (
+          <div className="flex items-center gap-3">
+            <span className="text-stone-500">推荐方案：</span>
+            <span className="font-medium">{winner.campaign_name}</span>
+            <VerdictBadge verdict={winner.verdict} />
           </div>
+        )}
+      </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <Link className="primary-button justify-center" to={`/history?setId=${result.set_id}`}>
-              去做结算
-            </Link>
-            <button
-              type="button"
-              className="secondary-button justify-center"
-              onClick={() => {
-                void exportResult(result.set_id).catch((err) => {
-                  alert(err instanceof Error ? err.message : '导出失败')
-                })
-              }}
+      {/* Ranking cards */}
+      <div className="space-y-6">
+        {result.rankings.map((ranking) => {
+          const images = getImageUrls(ranking.campaign_id)
+          return (
+            <div
+              key={ranking.campaign_id}
+              className="flex flex-col gap-6 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm md:flex-row"
             >
-              导出报告
-            </button>
-            <Link className="secondary-button justify-center" to={`/running?taskId=${latest?.taskId ?? ''}&setId=${result.set_id}`}>
-              回运行状态
-            </Link>
-            <Link className="secondary-button justify-center" to="/new-review">
-              发起新评审
-            </Link>
-          </div>
-        </div>
-
-        <div className="mt-8 grid gap-4 lg:grid-cols-3">
-          <div className="rounded-panel border border-line/70 bg-cream px-4 py-4">
-            <p className="field-label">评审集</p>
-            <p className="mt-3 text-sm font-semibold text-coffee">{result.set_id}</p>
-          </div>
-          <div className="rounded-panel border border-line/70 bg-cream px-4 py-4">
-            <p className="field-label">领先方案综合评分</p>
-            <p className="mt-3 text-sm font-semibold text-coffee">
-              {lead ? `${Math.round(lead.overall_score * 100)} 分` : '暂无'}
-            </p>
-          </div>
-          <div className="rounded-panel border border-line/70 bg-cream px-4 py-4">
-            <p className="field-label">不确定性提示</p>
-            <p className="mt-3 text-sm leading-6 text-ink/80">
-              {result.scoreboard?.rationale_for_uncertainty ?? '暂无'}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
-        <SectionCard
-          title="方案排序"
-          eyebrow="真实排序"
-          description="这里直接读取后端 rank / verdict / objections / strengths，不再展示静态示例。"
-        >
-          <div className="space-y-4">
-            {result.rankings.map((ranking, index) => (
-              <article key={ranking.campaign_id} className={`rounded-panel border px-4 py-4 transition-colors ${
-                index === 0 ? 'border-coffee/20 bg-coffee/5' : 'border-line/80 bg-cream'
-              }`}>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex items-start gap-4">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line/70 bg-paper font-serif text-lg font-semibold text-coffee">
-                      {ranking.rank}
-                    </span>
-                    <div>
-                      <p className="text-lg font-semibold text-coffee">{ranking.campaign_name}</p>
-                      <p className="mt-1 text-sm leading-6 text-ink/80">
-                        Panel {ranking.panel_avg.toFixed(1)} · Pairwise {ranking.pairwise_wins} 胜 {ranking.pairwise_losses} 负
-                      </p>
-                    </div>
-                  </div>
-                  <StatusBadge label={verdictLabel[ranking.verdict]} tone={verdictTone[ranking.verdict]} />
+              <div className="flex flex-shrink-0 items-start gap-4 md:w-1/3">
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-stone-200 bg-stone-100 font-semibold text-stone-900">
+                  {ranking.rank}
                 </div>
-
-                <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                  <div className="rounded-3xl border border-line/70 bg-paper px-4 py-3">
-                    <p className="field-label">值得保留</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {ranking.top_strengths.length > 0 ? ranking.top_strengths.map((item) => (
-                        <span key={item} className="tag-chip">
-                          {item}
-                        </span>
-                      )) : <span className="text-sm text-ink/60">暂无</span>}
-                    </div>
-                  </div>
-                  <div className="rounded-3xl border border-line/70 bg-paper px-4 py-3">
-                    <p className="field-label">需要注意</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {ranking.top_objections.length > 0 ? ranking.top_objections.map((item) => (
-                        <span key={item} className="tag-chip tag-chip-warning">
-                          {item}
-                        </span>
-                      )) : <span className="text-sm text-ink/60">暂无</span>}
-                    </div>
-                  </div>
-                </div>
-
-                {imageUrls.length > 0 && (
-                  <div className="mt-4">
-                    <p className="field-label">素材图片</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {imageUrls.map((url) => (
+                <div>
+                  <h3 className="mb-2 text-lg font-semibold">{ranking.campaign_name}</h3>
+                  <VerdictBadge verdict={ranking.verdict} />
+                  {images.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {images.map((url) => (
                         <a
                           key={url}
                           href={campaignImageUrl(url)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="block overflow-hidden rounded-xl border border-line/70 transition-shadow hover:shadow-md"
+                          className="block h-12 w-12 overflow-hidden rounded-md border border-stone-200"
                         >
                           <img
                             src={campaignImageUrl(url)}
-                            alt="campaign 素材"
-                            className="h-20 w-20 object-cover sm:h-24 sm:w-24"
+                            alt=""
+                            className="h-full w-full object-cover"
                             loading="lazy"
                           />
                         </a>
                       ))}
                     </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid flex-1 grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                  <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-stone-400">
+                    值得保留
                   </div>
-                )}
-              </article>
-            ))}
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          title="系统摘要"
-          eyebrow="结果收口"
-          description="这里展示后端 summary / assumptions / confidence_notes。"
-        >
-          <div className="space-y-4">
-            <div className="rounded-3xl border border-mist/25 bg-mist-soft/45 px-4 py-4">
-              <p className="font-semibold text-coffee">结论摘要</p>
-              <p className="mt-2 text-sm leading-7 text-ink/80">{result.summary}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {ranking.top_strengths.length > 0 ? (
+                      ranking.top_strengths.map((item) => (
+                        <span
+                          key={item}
+                          className="rounded-md border border-stone-200/60 bg-stone-100 px-2.5 py-1 text-xs text-stone-700"
+                        >
+                          {item}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-stone-400">暂无</span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-stone-400">
+                    需要注意
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {ranking.top_objections.length > 0 ? (
+                      ranking.top_objections.map((item) => (
+                        <span
+                          key={item}
+                          className="rounded-md border border-orange-100 bg-orange-50 px-2.5 py-1 text-xs text-orange-800"
+                        >
+                          {item}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-stone-400">暂无</span>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-
-            <div className="rounded-3xl border border-line/70 bg-cream px-4 py-4">
-              <p className="font-semibold text-coffee">假设前提</p>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-ink/80">
-                {result.assumptions.map((item) => (
-                  <li key={item}>• {item}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="rounded-3xl border border-line/70 bg-cream px-4 py-4">
-              <p className="font-semibold text-coffee">置信提醒</p>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-ink/80">
-                {result.confidence_notes.map((item) => (
-                  <li key={item}>• {item}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </SectionCard>
+          )
+        })}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
-        <SectionCard
-          title="评分差异"
-          eyebrow="相对强弱"
-          description="这里直接读后端 scoreboard；不把相对评分包装成经营真值。"
-        >
-          <div className="space-y-3">
-            {scoreboardRows.map((item) => (
-              <div key={item.campaign_id} className="rounded-3xl border border-line/70 bg-cream px-4 py-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="font-semibold text-coffee">{item.campaign_name}</p>
-                  <StatusBadge label={`综合评分：${Math.round(item.overall_score * 100)} 分`} tone={verdictTone[item.verdict]} />
-                </div>
-                <p className="mt-2 text-sm leading-6 text-ink/80">{item.verdict_rationale}</p>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-
-        <div className="space-y-6">
-          <SectionCard
-            title="维度评分"
-            eyebrow="辅助阅读"
-            description="用三档强弱展示各维度评分，方便非技术同事快速看差异。"
+      {/* Bottom actions */}
+      <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-20 flex justify-center bg-gradient-to-t from-[#FDFCFB] via-[#FDFCFB] to-transparent p-6">
+        <div className="pointer-events-auto flex w-full max-w-2xl gap-4">
+          <button
+            onClick={handleExport}
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-stone-200 bg-white py-4 text-base font-medium text-stone-700 shadow-sm transition-all hover:bg-stone-50"
           >
-            <div className="space-y-3">
-              {scoreboardRows.map((item) => (
-                <div key={item.campaign_id} className="rounded-3xl border border-line/70 bg-cream px-4 py-4">
-                  <p className="font-semibold text-coffee">{item.campaign_name}</p>
-                  <div className="mt-3 space-y-3">
-                    {Object.entries(item.dimension_scores ?? {}).map(([dimension, value]) => (
-                      <div key={dimension} className="rounded-3xl border border-line/70 bg-paper px-4 py-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-semibold text-coffee">{dimensionLabelMap.get(`${item.campaign_id}::${dimension}`) ?? dimension}</p>
-                          <LevelMeter level={probabilityToLevel(value)} />
-                        </div>
-                        <p className="mt-2 text-sm leading-6 text-ink/80">{percent(value)}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            title="下一步"
-            eyebrow="接下来做什么"
-            description="团队看完结果后，下一步应该回到真实结算，而不是继续分析。"
+            <Download className="h-4 w-4" />
+            导出报告
+          </button>
+          <button
+            onClick={handleNewReview}
+            className="flex flex-[2] items-center justify-center gap-2 rounded-2xl bg-stone-900 py-4 text-base font-medium text-white shadow-xl shadow-stone-900/10 transition-all hover:bg-stone-800"
           >
-            <div className="space-y-3">
-              <div className="rounded-3xl border border-line/70 bg-cream px-4 py-3 text-sm leading-6 text-ink/80">
-                如果要验证这次建议，请去结算页回填真实赢家和投放指标。
-              </div>
-              <div className="rounded-3xl border border-line/70 bg-cream px-4 py-3 text-sm leading-6 text-ink/80">
-                如果当前结果没有明显优势，请回到新建评审页补充方案差异后再跑一次。
-              </div>
-            </div>
-          </SectionCard>
+            发起新评审
+          </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

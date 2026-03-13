@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { SectionCard } from '../components/ui/SectionCard'
@@ -49,6 +49,7 @@ function toPayloadCampaign(campaign: CampaignDraft): CampaignInput {
 
 export function NewReviewPage() {
   const navigate = useNavigate()
+  const [draftSetId, setDraftSetId] = useState(() => crypto.randomUUID())
   const [reviewName, setReviewName] = useState(reviewPreset.reviewName)
   const [context, setContext] = useState(reviewPreset.context)
   const [campaigns, setCampaigns] = useState(initialCampaignDrafts)
@@ -56,39 +57,40 @@ export function NewReviewPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [showErrors, setShowErrors] = useState(false)
-  const [briefMode, setBriefMode] = useState<Record<number, boolean>>({})
-  const [briefTexts, setBriefTexts] = useState<Record<number, string>>({})
+  const [briefMode, setBriefMode] = useState<Record<string, boolean>>({})
+  const [briefTexts, setBriefTexts] = useState<Record<string, string>>({})
   const [parsingIndex, setParsingIndex] = useState<number | null>(null)
-  const [parseError, setParseError] = useState<Record<number, string>>({})
-  const [campaignImages, setCampaignImages] = useState<Record<number, File[]>>({})
+  const [parseError, setParseError] = useState<Record<string, string>>({})
+  const [campaignImages, setCampaignImages] = useState<Record<string, File[]>>({})
+  const [briefNeedsConfirmation, setBriefNeedsConfirmation] = useState<Record<string, boolean>>({})
 
-  const handleImageUpload = (index: number, files: FileList | null) => {
+  const handleImageUpload = (campaignId: string, files: FileList | null) => {
     if (!files) return
     const validFiles = Array.from(files).filter(f =>
       ['image/jpeg', 'image/png', 'image/webp'].includes(f.type)
     ).slice(0, 5)
     setCampaignImages(prev => ({
       ...prev,
-      [index]: [...(prev[index] || []), ...validFiles].slice(0, 5)
+      [campaignId]: [...(prev[campaignId] || []), ...validFiles].slice(0, 5)
     }))
   }
 
-  const removeImage = (campaignIndex: number, imageIndex: number) => {
+  const removeImage = (campaignId: string, imageIndex: number) => {
     setCampaignImages(prev => ({
       ...prev,
-      [campaignIndex]: (prev[campaignIndex] || []).filter((_, i) => i !== imageIndex)
+      [campaignId]: (prev[campaignId] || []).filter((_, i) => i !== imageIndex)
     }))
   }
 
-  const isBriefMode = (index: number) => briefMode[index] !== false // default true
-  const toggleMode = (index: number) =>
-    setBriefMode((prev) => ({ ...prev, [index]: !isBriefMode(index) }))
+  const isBriefMode = (cid: string) => briefMode[cid] !== false // default true
+  const toggleMode = (cid: string) =>
+    setBriefMode((prev) => ({ ...prev, [cid]: !isBriefMode(cid) }))
 
-  const handleParseBrief = async (index: number) => {
-    const text = briefTexts[index]?.trim()
+  const handleParseBrief = async (index: number, campaignId: string) => {
+    const text = briefTexts[campaignId]?.trim()
     if (!text) return
     setParsingIndex(index)
-    setParseError((prev) => ({ ...prev, [index]: '' }))
+    setParseError((prev) => ({ ...prev, [campaignId]: '' }))
     try {
       const result = await parseBrief({
         brief_text: text,
@@ -96,8 +98,8 @@ export function NewReviewPage() {
       })
       const p = result.parsed
       setCampaigns((current) =>
-        current.map((c, i) =>
-          i === index
+        current.map((c) =>
+          c.id === campaignId
             ? {
                 ...c,
                 name: p.name || c.name,
@@ -112,14 +114,18 @@ export function NewReviewPage() {
             : c,
         ),
       )
-      // Switch to advanced mode so user can review/edit parsed result
-      setBriefMode((prev) => ({ ...prev, [index]: false }))
+      setBriefMode((prev) => ({ ...prev, [campaignId]: false }))
+      setBriefNeedsConfirmation((prev) => ({ ...prev, [campaignId]: true }))
     } catch (err) {
       const msg = err instanceof Error ? err.message : '解析失败，请切换到高级模式手动填写'
-      setParseError((prev) => ({ ...prev, [index]: msg }))
+      setParseError((prev) => ({ ...prev, [campaignId]: msg }))
     } finally {
       setParsingIndex(null)
     }
+  }
+
+  const confirmBrief = (campaignId: string) => {
+    setBriefNeedsConfirmation((prev) => ({ ...prev, [campaignId]: false }))
   }
 
   const fieldKey = (index: number, field: string) => `${index}-${field}`
@@ -128,14 +134,19 @@ export function NewReviewPage() {
   const isFieldError = (index: number, field: string, value: string) =>
     (touched[fieldKey(index, field)] || showErrors) && !value.trim()
 
+  // P0 fix: only name + coreMessage required
   const campaignsWithEnoughInput = campaigns.filter(
     (campaign) =>
       campaign.name.trim() &&
-      campaign.targetAudience.trim() &&
-      campaign.coreMessage.trim() &&
-      campaign.creativeDirection.trim(),
+      campaign.coreMessage.trim(),
   ).length
-  const canSubmit = campaigns.length >= 2 && campaignsWithEnoughInput === campaigns.length
+
+  const hasUnconfirmedBrief = useMemo(
+    () => Object.values(briefNeedsConfirmation).some(Boolean),
+    [briefNeedsConfirmation],
+  )
+
+  const canSubmit = campaigns.length >= 2 && campaignsWithEnoughInput === campaigns.length && !hasUnconfirmedBrief
 
   const updateCampaign = (
     index: number,
@@ -154,7 +165,13 @@ export function NewReviewPage() {
   }
 
   const removeCampaign = (index: number) => {
+    const cid = campaigns[index].id
     setCampaigns((current) => current.filter((_, currentIndex) => currentIndex !== index))
+    setBriefNeedsConfirmation((prev) => { const next = { ...prev }; delete next[cid]; return next })
+    setCampaignImages((prev) => { const next = { ...prev }; delete next[cid]; return next })
+    setBriefMode((prev) => { const next = { ...prev }; delete next[cid]; return next })
+    setBriefTexts((prev) => { const next = { ...prev }; delete next[cid]; return next })
+    setParseError((prev) => { const next = { ...prev }; delete next[cid]; return next })
   }
 
   const submitReview = async () => {
@@ -168,14 +185,15 @@ export function NewReviewPage() {
     try {
       const payloadCampaigns = campaigns.map(toPayloadCampaign)
 
-      // Upload images first
+      // Upload images with set_id and campaign_id binding
       for (let i = 0; i < campaigns.length; i++) {
-        const images = campaignImages[i]
+        const cid = campaigns[i].id
+        const images = campaignImages[cid]
         if (images?.length) {
           const paths: string[] = []
           for (const file of images) {
             try {
-              const result = await uploadImage(file)
+              const result = await uploadImage(file, draftSetId, cid.trim())
               paths.push(result.path)
             } catch {
               // Image upload failure is non-fatal
@@ -188,6 +206,7 @@ export function NewReviewPage() {
       }
 
       const payload = {
+        set_id: draftSetId,
         context: [reviewName.trim(), context.trim()].filter(Boolean).join('\n\n'),
         campaigns: payloadCampaigns,
       }
@@ -199,6 +218,7 @@ export function NewReviewPage() {
         reviewName: reviewName.trim(),
       })
 
+      setDraftSetId(crypto.randomUUID())
       navigate(`/running?taskId=${response.task_id}&setId=${response.set_id}`)
     } catch (error) {
       const message = error instanceof Error ? error.message : '提交失败，请稍后再试'
@@ -249,11 +269,11 @@ export function NewReviewPage() {
               <p className="mt-2 text-sm leading-6 text-ink/80">保持在 2 到 4 个之间最适合比较。</p>
             </div>
             <div className="rounded-3xl border border-line/70 bg-cream px-4 py-4">
-              <p className="field-label">输入较完整</p>
+              <p className="field-label">必填完成</p>
               <p className="mt-3 font-serif text-2xl font-semibold text-coffee">
                 {campaignsWithEnoughInput} / {campaigns.length}
               </p>
-              <p className="mt-2 text-sm leading-6 text-ink/80">至少具备名称、受众、核心信息和创意方向。</p>
+              <p className="mt-2 text-sm leading-6 text-ink/80">每个方案需填写名称和核心信息。</p>
             </div>
             <div className="rounded-3xl border border-mist/25 bg-mist-soft/40 px-4 py-4">
               <p className="field-label">提交模式</p>
@@ -280,7 +300,7 @@ export function NewReviewPage() {
           <div className="mt-5 rounded-3xl border border-mist/25 bg-mist-soft/40 px-4 py-4">
             <p className="font-semibold text-coffee">当前页的真正职责</p>
             <p className="mt-2 text-sm leading-6 text-ink/80">
-              把方案写成“可以比较”的输入，而不是只写一堆看起来高级但没法评的抽象词。
+              把方案写成"可以比较"的输入，而不是只写一堆看起来高级但没法评的抽象词。
             </p>
           </div>
 
@@ -344,9 +364,9 @@ export function NewReviewPage() {
                   <button
                     className="secondary-button text-xs"
                     type="button"
-                    onClick={() => toggleMode(index)}
+                    onClick={() => toggleMode(campaign.id)}
                   >
-                    {isBriefMode(index) ? '高级模式' : '简述模式'}
+                    {isBriefMode(campaign.id) ? '高级模式' : '简述模式'}
                   </button>
                   {campaigns.length > 2 ? (
                     <button
@@ -360,15 +380,28 @@ export function NewReviewPage() {
                 </div>
               </div>
 
-              {isBriefMode(index) ? (
+              {briefNeedsConfirmation[campaign.id] && (
+                <div className="mb-4 flex items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3">
+                  <span className="text-sm text-amber-800">Brief 已解析为结构化字段，请检查后确认</span>
+                  <button
+                    type="button"
+                    className="ml-auto rounded-xl bg-amber-600 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-700"
+                    onClick={() => confirmBrief(campaign.id)}
+                  >
+                    确认解析结果
+                  </button>
+                </div>
+              )}
+
+              {isBriefMode(campaign.id) ? (
                 <div className="space-y-3">
                   <label className="space-y-2">
                     <span className="field-label">方案简述</span>
                     <textarea
                       className="field-textarea"
                       rows={5}
-                      value={briefTexts[index] ?? ''}
-                      onChange={(e) => setBriefTexts((prev) => ({ ...prev, [index]: e.target.value }))}
+                      value={briefTexts[campaign.id] ?? ''}
+                      onChange={(e) => setBriefTexts((prev) => ({ ...prev, [campaign.id]: e.target.value }))}
                       placeholder={'用自然语言描述你的方案，例如：\n"针对大学生群体推一波椰糖棕色的日抛，主打自然素颜感，在小红书上做种草，预算不高，想用学生价的促销来拉新客"'}
                     />
                   </label>
@@ -376,33 +409,21 @@ export function NewReviewPage() {
                     <button
                       className="primary-button"
                       type="button"
-                      disabled={!briefTexts[index]?.trim() || parsingIndex === index}
-                      onClick={() => handleParseBrief(index)}
+                      disabled={!briefTexts[campaign.id]?.trim() || parsingIndex === index}
+                      onClick={() => handleParseBrief(index, campaign.id)}
                     >
                       {parsingIndex === index ? '解析中...' : '解析为结构化字段'}
                     </button>
                     <span className="text-xs text-ink/50">解析后会自动切换到高级模式供你确认和编辑</span>
                   </div>
-                  {parseError[index] ? (
-                    <p className="text-sm text-wine">{parseError[index]}</p>
+                  {parseError[campaign.id] ? (
+                    <p className="text-sm text-wine">{parseError[campaign.id]}</p>
                   ) : null}
                 </div>
               ) : (
                 <div className="grid gap-4 lg:grid-cols-2">
-                  <label className="space-y-2">
-                    <span className="field-label">目标受众</span>
-                    <textarea
-                      className={`field-textarea ${isFieldError(index, 'targetAudience', campaign.targetAudience) ? 'border-red-400 ring-1 ring-red-300' : ''}`}
-                      rows={3}
-                      value={campaign.targetAudience}
-                      onChange={(event) => updateCampaign(index, 'targetAudience', event.target.value)}
-                      onBlur={() => markTouched(index, 'targetAudience')}
-                    />
-                    {isFieldError(index, 'targetAudience', campaign.targetAudience) && <p className="text-xs text-red-500 mt-1">此项必填</p>}
-                  </label>
-
-                  <label className="space-y-2">
-                    <span className="field-label">核心信息</span>
+                  <label className="space-y-2 lg:col-span-2">
+                    <span className="field-label">核心信息 *</span>
                     <textarea
                       className={`field-textarea ${isFieldError(index, 'coreMessage', campaign.coreMessage) ? 'border-red-400 ring-1 ring-red-300' : ''}`}
                       rows={3}
@@ -414,6 +435,25 @@ export function NewReviewPage() {
                   </label>
 
                   <label className="space-y-2">
+                    <span className="field-label">目标受众</span>
+                    <textarea
+                      className="field-textarea"
+                      rows={3}
+                      value={campaign.targetAudience}
+                      onChange={(event) => updateCampaign(index, 'targetAudience', event.target.value)}
+                    />
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className="field-label">创意方向</span>
+                    <input
+                      className="field-input"
+                      value={campaign.creativeDirection}
+                      onChange={(event) => updateCampaign(index, 'creativeDirection', event.target.value)}
+                    />
+                  </label>
+
+                  <label className="space-y-2">
                     <span className="field-label">渠道重点</span>
                     <input
                       className="field-input"
@@ -421,17 +461,6 @@ export function NewReviewPage() {
                       onChange={(event) => updateCampaign(index, 'channels', event.target.value)}
                       placeholder="例如：小红书, 抖音, 天猫"
                     />
-                  </label>
-
-                  <label className="space-y-2">
-                    <span className="field-label">创意方向</span>
-                    <input
-                      className={`field-input ${isFieldError(index, 'creativeDirection', campaign.creativeDirection) ? 'border-red-400 ring-1 ring-red-300' : ''}`}
-                      value={campaign.creativeDirection}
-                      onChange={(event) => updateCampaign(index, 'creativeDirection', event.target.value)}
-                      onBlur={() => markTouched(index, 'creativeDirection')}
-                    />
-                    {isFieldError(index, 'creativeDirection', campaign.creativeDirection) && <p className="text-xs text-red-500 mt-1">此项必填</p>}
                   </label>
 
                   <label className="space-y-2">
@@ -454,7 +483,7 @@ export function NewReviewPage() {
                     />
                   </label>
 
-                  <label className="space-y-2 lg:col-span-2">
+                  <label className="space-y-2">
                     <span className="field-label">KV 描述</span>
                     <textarea
                       className="field-textarea"
@@ -467,7 +496,7 @@ export function NewReviewPage() {
                   <div className="lg:col-span-2 space-y-2">
                     <span className="field-label">素材图片（可选，最多 5 张）</span>
                     <div className="flex flex-wrap gap-3">
-                      {(campaignImages[index] || []).map((file, imgIdx) => (
+                      {(campaignImages[campaign.id] || []).map((file, imgIdx) => (
                         <div key={imgIdx} className="relative group">
                           <img
                             src={URL.createObjectURL(file)}
@@ -476,14 +505,14 @@ export function NewReviewPage() {
                           />
                           <button
                             type="button"
-                            onClick={() => removeImage(index, imgIdx)}
+                            onClick={() => removeImage(campaign.id, imgIdx)}
                             className="absolute -top-1.5 -right-1.5 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-wine text-white text-xs"
                           >
                             x
                           </button>
                         </div>
                       ))}
-                      {(campaignImages[index] || []).length < 5 && (
+                      {(campaignImages[campaign.id] || []).length < 5 && (
                         <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-line/50 text-ink/30 hover:border-mist/50 hover:text-ink/50 transition-colors">
                           <span className="text-2xl">+</span>
                           <input
@@ -491,7 +520,7 @@ export function NewReviewPage() {
                             accept="image/jpeg,image/png,image/webp"
                             multiple
                             className="hidden"
-                            onChange={(e) => handleImageUpload(index, e.target.files)}
+                            onChange={(e) => handleImageUpload(campaign.id, e.target.files)}
                           />
                         </label>
                       )}
@@ -545,7 +574,13 @@ export function NewReviewPage() {
               disabled={!canSubmit || isSubmitting}
               onClick={submitReview}
             >
-              {isSubmitting ? '正在创建评审任务...' : showErrors && !canSubmit ? '请先完成必填项' : '提交并进入运行状态'}
+              {isSubmitting
+                ? '正在创建评审任务...'
+                : hasUnconfirmedBrief
+                  ? '请先确认所有 Brief 解析结果'
+                  : showErrors && !canSubmit
+                    ? '请先完成必填项（名称 + 核心信息）'
+                    : '提交并进入运行状态'}
             </button>
           </div>
         </SectionCard>
