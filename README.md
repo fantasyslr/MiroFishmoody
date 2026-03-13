@@ -41,6 +41,28 @@
 - 不把“大家觉得不错”当成结论
 - 用多视角评审、方案对战、概率化输出和赛后校准，提升方案选择胜率
 
+## 方法论血统
+
+这个项目的下一跳，不只是从 AI 来的，也明确是从 **币圈 / prediction market / event pricing** 文化里长出来的。
+
+如果没有这些经历，我大概率也不会想到把一个多-agent evaluator，推进成一个 **internal decision market**。
+
+这里真正被借过来的，不是“发币”那一套，而是下面这套思维方式：
+
+- 把分歧拿来定价，而不是拿来空谈
+- 把“我觉得”逼成“你愿意给它多少概率”
+- 把 bull case 和 bear case 同时摆上台面
+- 把结论和赛后结果绑定，允许系统被结算、被打脸、被校准
+
+所以这个仓库也想明确向那条 lineage 致意：
+
+- 向早期 prediction market builders 致意
+- 向 crypto-native event market players 致意
+- 向把 `odds`、`edge`、`implied probability` 带进日常决策讨论的人致意
+- 也向像 **SBF** 这一代交易圈人物所代表的那种“先问市场怎么定价分歧，而不是先问谁声音更大”的思维习惯致意
+
+这里的致意只针对 **epistemic machinery** 和信息聚合方法，不是对后来所有人、所有项目或所有结果的背书。
+
 ## Moody 业务语境
 
 这个 fork 面向 **Moody Lenses** 的真实业务场景设计：
@@ -157,6 +179,8 @@
 - 原始项目：[MiroFish](https://github.com/666ghj/MiroFish)
 - 原始社会仿真方向为这个 fork 提供了多 agent 推演的起点
 - 这套新方向也明确借鉴了 **crypto-native prediction markets / event contracts / forecasting communities** 的方法论
+- 如果没有币圈里那套关于 `pricing disagreement`、`finding edge`、`settling against reality` 的训练，这个方向不会成形
+- 这里也特别致意那些让“市场化聚合观点”变得更可见的玩家与社区，包括早期 prediction market builders、crypto event market 玩家，以及像 **SBF** 这样的交易圈代表人物所体现出的那部分思维影响
 - 我们借用的是：`implied probability`、`sub-markets`、`resolution`、`calibration`
 - 我们**不**借用的是：发币、链上交易、公开投机市场
 
