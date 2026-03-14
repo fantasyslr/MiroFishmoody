@@ -4,97 +4,157 @@
 
 # MiroFishmoody
 
-**A campaign decision market for Moody Lenses**
+**Moody Lenses internal Brandiction Engine v3 alpha**
 
-Turn campaign review from intuition-only discussion into a workflow that can be compared, tracked, resolved, and calibrated.
+Turn campaign decision-making from intuition-only debate into an internal race with evidence, boundaries, and a place to resolve what actually happened.
 
 [中文](./README.md) | [Changelog](./CHANGELOG.md) | [Deployment Guide](./DEPLOY.md) | [Backend Quickstart](./backend/QUICKSTART.md)
 
 </div>
 
-## Overview
+## What this is
 
-**MiroFishmoody** started as a product fork of [MiroFish](https://github.com/666ghj/MiroFish), but the current branch is now focused on a much narrower and more practical use case: **pre-launch campaign review for Moody Lenses**.
+**This is not a creative scoring toy.**
 
-It is built to answer questions like:
+The more accurate definition is: **MiroFishmoody is now an internal campaign race engine**.
 
-- which concept is stronger among multiple campaign options
-- which angle is more eye-catching, credible, and audience-fit
-- which objections or claim risks may hurt conversion
-- whether a concept should be `ship / revise / kill`
-- how post-launch outcomes should feed back into model calibration
+It does four things:
 
-## Current release
+- organizes historical interventions, DTC funnel outcomes, signals, and competitor events into a queryable data spine
+- puts multiple campaign plans into the same operating context
+- ranks them with **Observed Baseline** first
+- keeps `BrandState / diffusion / perception delta` in **Model Hypothesis**
 
-**Documented baseline: `v0.5.0` (2026-03-13)**
+It is designed to answer questions like:
 
-This is the first SemVer baseline for the current `moody-main` branch. It consolidates the P0-P3 implementation milestones plus the most recent UI, admin, and review-flow polish.
+- which plan is more worth backing first
+- how much of that recommendation is supported by real historical evidence
+- where the evidence is sparse
+- how the team can resolve the race after launch instead of starting from scratch every time
 
-| Area | Status | Notes |
-|------|--------|-------|
-| Input layer | Shipped | Brief-first flow, required validation, advanced mode, image upload |
-| Evaluation layer | Shipped | Audience panel, pairwise judges, probability aggregation, dimension scoring |
-| Task layer | Shipped | Async tasks, progress tracking, task list, persistent results, JSON export |
-| Resolution layer | Shipped | Post-launch resolution, judge/persona calibration, readiness messaging |
-| Admin layer | Shipped | Login, `admin` role, dashboard and history views |
+## Definition flip
 
-## What `v0.5.0` includes
+This project used to be described as a “campaign review tool.”  
+That is no longer the best frame.
 
-| Milestone | Included in `v0.5.0` | Summary |
-|-----------|------------------------|---------|
-| P0 | Yes | Required validation, brief parsing entry, readable task metadata |
-| P1 | Yes | Login system, image upload, campaign-review terminology cleanup |
-| P2 | Yes | Orchestrator extraction, market judge flow, probability and dimension fixes |
-| P3 | Yes | Task/result persistence, image rendering in results, JSON export |
-| Recent polish | Yes | UI redesign, `admin` role, review-flow fixes |
+> **It is not replacing judgment. It is constraining judgment.**
 
-See [CHANGELOG.md](./CHANGELOG.md) for release notes.
+Its value is not a magical score.
+Its value is forcing one decision into three separate buckets:
 
-## Shipped capabilities
+- what is **real historical evidence**
+- what is **model inference**
+- what is **weak evidence**
 
-- **Authentication and roles**: `/api/auth/login`, `/logout`, `/me`, plus `admin` and `user` roles.
-- **Review creation**: brief mode by default, advanced field mode, multi-campaign inputs, image upload, and pre-submit validation.
-- **Async review execution**: returns `task_id` and `set_id`, with live progress tracking in the UI.
-- **Persistent outputs**: results are stored on disk and can be reloaded after restart.
-- **Resolution and calibration**: supports post-launch settlement, calibration readiness checks, and recalibration.
-- **Admin views**: dashboard and history pages for internal review operations.
+If those three get blended together, the system creates false certainty.
 
-## Future work
+## Dual-track architecture
 
-`v0.5.0` is still a **campaign review system**.  
-The items below are **future direction**, not shipped capabilities.
+| Track | Core question | Data source | Role in the system | Current trust level |
+|------|---------------|-------------|--------------------|---------------------|
+| **Track 1 · Observed Baseline** | How did similar combinations perform historically? | interventions / outcomes / DTC funnel | **Drives ranking** | current production-facing path |
+| **Track 2 · Model Hypothesis** | What cognition shift might this plan create? | BrandState / rules / diffusion | **Explanation and risk context** | experimental |
 
-Suggested name:
+In short:
 
-- **Moody Brandiction Engine**
+- **Baseline decides rank**
+- **Hypothesis explains the rank**
 
-Here, `Brandiction` is a shorthand for `brand + prediction`: a system for betting on brand cognition paths, then resolving and calibrating those bets against reality.
+## What the codebase does today
 
-Core capabilities that are **not built yet**:
+### Usable now
 
-- `BrandState` modeling
-- `Intervention` objects for structured marketing actions
-- lightweight audience diffusion simulation
-- `MarketContract` pricing for strategic questions
-- argument-driven market maker logic
-- cognition-path-level resolution and calibration
+- **Data Spine** for `interventions / outcomes / signals / competitor_events / evidence`
+- **Baseline Ranking** across `market × platform × channel_family × theme × landing_page`
+- **Race API** through `/api/brandiction/race`
+- **Race History** through `/api/brandiction/race-history`
+- **Frontend Lab** redesigned around “Observed Baseline first, Model Hypothesis second”
 
-Draft design note:
+### Written into the codebase, but still experimental
 
-- [docs/MOODY_BRANDICTION_ENGINE.md](./docs/MOODY_BRANDICTION_ENGINE.md)
+- `BrandState`
+- `predict / replay / backtest`
+- `probability-board`
+- `simulate / compare-scenarios`
+- `agent diffusion`
 
-## Workflow
+### What this repo does **not** honestly claim yet
+
+- it does not replace final human judgment
+- it does not reliably forecast exact future ROAS
+- it does not claim `confidence` is already a calibrated real-world accuracy score
+- it does not claim the perception model is backed by long-horizon brand-tracking data
+
+## Best current use
+
+The current best workflow is:
+
+1. send a batch of plans to `/race`
+2. inspect **Observed Baseline** first: sample size, match quality, historical range
+3. inspect **Model Hypothesis** second: useful explanation, not authority
+4. make an internal ranking or small budget split
+5. write back real outcomes through history / resolution later
+
+More bluntly:
+
+> The system is ready to act like a **decision copilot**, not a **decision autopilot**.
+
+## System map
 
 ```mermaid
 flowchart LR
-  A["Campaign Concepts"] --> B["Brief Parse / Structured Form"]
-  B --> C["Audience Panel"]
-  C --> D["Pairwise Judges"]
-  D --> E["Probability Board"]
-  E --> F["Ranking / Verdict / Objections"]
-  F --> G["Export / Resolve"]
-  G --> H["Judge & Persona Calibration"]
+  A["Historical Data Spine"] --> B["Observed Baseline Ranking"]
+  A --> C["BrandState / Hypothesis Engine"]
+  B --> D["/api/brandiction/race"]
+  C --> D
+  D --> E["Frontend Race Builder / Result Page"]
+  E --> F["Race History"]
+  F --> G["Post-launch Resolve / Calibration"]
 ```
+
+## Main APIs
+
+### Authentication
+
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
+
+Users are now loaded from the `MOODY_USERS` environment variable, not hard-coded in source.
+
+Example:
+
+```bash
+export MOODY_USERS="admin:your-password:Admin:admin,user1:your-password:User One:user"
+```
+
+### Brandiction mainline
+
+| Endpoint | Purpose | Access |
+|----------|---------|--------|
+| `POST /api/brandiction/import-history` | import JSON historical data | `admin` |
+| `POST /api/brandiction/import-csv` | import CSV (`interventions` / `outcomes`) | `admin` |
+| `GET /api/brandiction/interventions` | query historical interventions | login |
+| `GET /api/brandiction/signals` | query brand signals | login |
+| `GET /api/brandiction/competitor-events` | query competitor events | `admin` |
+| `GET /api/brandiction/stats` | inspect data-spine readiness | `admin` |
+| `POST /api/brandiction/race` | run a dual-track race | login |
+| `GET /api/brandiction/race-history` | inspect race history | login |
+| `POST /api/brandiction/race-history/<run_id>/resolve` | resolve whether a recommendation hit | `admin` |
+
+### Experimental APIs
+
+These are already in the repo, but should still be treated as experimental:
+
+- `GET /api/brandiction/brand-state`
+- `GET /api/brandiction/brand-state/latest`
+- `POST /api/brandiction/brand-state/build`
+- `POST /api/brandiction/replay`
+- `POST /api/brandiction/predict`
+- `POST /api/brandiction/probability-board`
+- `POST /api/brandiction/backtest`
+- `POST /api/brandiction/simulate`
+- `POST /api/brandiction/compare-scenarios`
 
 ## Quick start
 
@@ -102,137 +162,131 @@ flowchart LR
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Python | 3.11+ | Backend runtime |
-| Node.js | 18+ | Frontend development and build |
-| Docker | Latest | Recommended deployment path |
-| `uv` | Optional | Backend dependency management |
+| Python | 3.11+ | backend runtime |
+| Node.js | 18+ | frontend development and build |
+| Docker | latest | optional deployment path |
+| `uv` | recommended | backend dependency management |
 
-### Option 1: Docker
+### Local development
 
 ```bash
 git clone https://github.com/fantasyslr/MiroFishmoody.git
 cd MiroFishmoody
 
 cp .env.example .env
-# Edit .env and set at least LLM_API_KEY
+# configure .env as needed
+
+export MOODY_USERS="admin:your-password:Admin:admin"
+
+npm run setup
+npm run setup:backend
+npm run dev
+```
+
+Default local URLs:
+
+- frontend: `http://localhost:5173`
+- backend: `http://localhost:5001`
+
+### Docker
+
+```bash
+git clone https://github.com/fantasyslr/MiroFishmoody.git
+cd MiroFishmoody
+
+cp .env.example .env
+export MOODY_USERS="admin:your-password:Admin:admin"
 
 docker compose up -d --build
 ```
 
-Open `http://localhost:5001`.
-
-### Option 2: Local development
-
-```bash
-git clone https://github.com/fantasyslr/MiroFishmoody.git
-cd MiroFishmoody
-
-cp .env.example .env
-# Edit .env and set at least LLM_API_KEY
-
-npm run setup
-cd backend && uv sync && cd ..
-
-npm run dev
-```
-
-Default local endpoints:
-
-- frontend: `http://localhost:5173/#/login`
-- backend: `http://localhost:5001`
-
-If you do not use `uv`, you can install the backend with `pip` instead:
-
-```bash
-cd backend
-pip install -r requirements.txt
-python run.py
-```
-
-Then start the frontend in another terminal:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-## Authentication and API notes
-
-All `/api/campaign/*` endpoints currently require a logged-in session, except `/health`.  
-Local test users live in `backend/app/auth.py`; replace them before public deployment.
-
-### API smoke test
+## API smoke test
 
 ```bash
 # 1. Login and store the session cookie
 curl -c cookies.txt -X POST http://localhost:5001/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"<username>","password":"<password>"}'
+  -d '{"username":"admin","password":"your-password"}'
 
-# 2. List tasks
-curl -b cookies.txt http://localhost:5001/api/campaign/tasks
-
-# 3. Submit a review
-curl -b cookies.txt -X POST http://localhost:5001/api/campaign/evaluate \
+# 2. Run a race
+curl -b cookies.txt -X POST http://localhost:5001/api/brandiction/race \
   -H "Content-Type: application/json" \
   -d '{
-    "campaigns": [
-      {"name": "Plan A", "core_message": "Natural daily disposable color lenses", "product_line": "colored_lenses"},
-      {"name": "Plan B", "core_message": "Silicone hydrogel high-oxygen tech", "product_line": "moodyplus"}
+    "product_line": "moodyplus",
+    "audience_segment": "general",
+    "market": "cn",
+    "sort_by": "roas_mean",
+    "include_hypothesis": true,
+    "plans": [
+      {
+        "name": "Science Plan",
+        "theme": "science_credibility",
+        "platform": "redbook",
+        "channel_family": "social_seed",
+        "budget": 50000,
+        "market": "cn"
+      },
+      {
+        "name": "Comfort Plan",
+        "theme": "comfort_beauty",
+        "platform": "douyin",
+        "channel_family": "short_video",
+        "budget": 50000,
+        "market": "cn"
+      }
     ]
   }'
 
-# 4. Check progress
-curl -b cookies.txt http://localhost:5001/api/campaign/evaluate/status/<task_id>
-
-# 5. Fetch results
-curl -b cookies.txt http://localhost:5001/api/campaign/result/<set_id>
-
-# 6. Export JSON
-curl -b cookies.txt -OJ http://localhost:5001/api/campaign/export/<set_id>
-
-# 7. Submit post-launch resolution
-curl -b cookies.txt -X POST http://localhost:5001/api/campaign/resolve \
-  -H "Content-Type: application/json" \
-  -d '{"set_id":"<set_id>","winner_campaign_id":"campaign_1","actual_metrics":{"ctr":0.03}}'
-
-# 8. Inspect calibration status
-curl -b cookies.txt http://localhost:5001/api/campaign/calibration
+# 3. Inspect race history
+curl -b cookies.txt http://localhost:5001/api/brandiction/race-history
 ```
 
 ## Repository layout
 
 | Path | Purpose |
 |------|---------|
-| `frontend/` | React + Vite + TypeScript frontend |
-| `backend/` | Flask backend, evaluation logic, resolution, calibration |
-| `backend/tests/` | Backend tests for scorer, calibration, and Phase 5.5 / 5.6 behaviors |
-| `static/` | Static assets, including the project logo |
-| `DEPLOY.md` | Docker / server deployment notes |
-| `CHANGELOG.md` | Release notes |
+| `frontend/` | React + Vite + TypeScript strategy lab |
+| `backend/app/api/brandiction.py` | Brandiction main API |
+| `backend/app/services/baseline_ranker.py` | Track 1 historical baseline ranking |
+| `backend/app/services/brand_state_engine.py` | Track 2 hypothesis engine |
+| `backend/app/services/agent_diffusion.py` | lightweight diffusion simulation |
+| `backend/app/services/brandiction_store.py` | SQLite data spine |
+| `backend/tests/` | backend test suite |
+| `static/` | static assets including the logo |
 
-## Tech stack
-
-- **Frontend**: React 19, Vite 8, TypeScript, React Router, Zustand
-- **Backend**: Flask, Gunicorn, OpenAI-compatible LLM client
-- **Runtime**: local dual-process development or Docker single-port deployment
-- **LLM providers**: OpenAI, Alibaba Bailian / Qwen, and other compatible endpoints
-
-## Testing
+## Run and test
 
 ```bash
+# Backend tests
 cd backend
 python -m pytest tests -q
+
+# Frontend lint / build
+cd ../frontend
+npm run lint
+npm run build
 ```
 
-## Versioning
+## Version note
 
-Starting with `v0.5.0`, this repo documents public baselines with SemVer.  
-Earlier rewrite work still exists in Git history, but is consolidated into the current baseline documentation.
+The package version is still `0.5.0`, but the current branch has already moved into a **Brandiction Engine v3 alpha** product direction.
+
+That means:
+
+- `v0.5.0` is still the published baseline number
+- the current working tree is already shaped around the newer dual-track race model
+
+If you want a cleaner public release label, it should probably happen after the `race + history + resolve + data spine` path stabilizes further.
+
+## Legacy note
+
+Older `/api/campaign/*` flows still exist in the repo.  
+They are no longer the main story of this README, but they have not been hard-deleted.
+
+If you need the earlier “campaign review workflow” framing, check Git history and earlier release notes.
 
 ## Acknowledgements
 
 - Original project: [MiroFish](https://github.com/666ghj/MiroFish)
-- This fork keeps the multi-perspective review idea, but narrows it into a concrete campaign decision workflow
+- This branch has since narrowed from broad social-simulation ambition into a more concrete brand decision system
 - License: `AGPL-3.0`
