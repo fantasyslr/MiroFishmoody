@@ -1,125 +1,114 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { motion } from 'motion/react'
-import {
-  getLatestReviewSession,
-  getTaskStatus,
-  saveLatestReviewSession,
-  type TaskStatusResponse,
-} from '../lib/api'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { getRaceState, raceCampaigns, saveRaceState } from '../lib/api'
+import { CheckCircle2, Circle, Loader2, AlertCircle } from 'lucide-react'
+
+const STEPS = [
+  'Initializing BrandState Engine v3...',
+  'Compiling observed historical baselines...',
+  'Extracting empirical funnel proxies (sessions, PDP, ATC, ROAS)...',
+  'Running perception model hypothesis...',
+  'Synthesizing recommendation...',
+  'Finalizing race resolution...'
+]
 
 export function RunningPage() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const latest = getLatestReviewSession()
-  const taskId = searchParams.get('taskId') ?? latest?.taskId ?? ''
-  const setId = searchParams.get('setId') ?? latest?.setId ?? ''
-
-  const [task, setTask] = useState<TaskStatusResponse | null>(null)
-  const [error, setError] = useState('')
+  const [currentStep, setCurrentStep] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const startedRef = useRef(false)
 
   useEffect(() => {
-    if (!taskId) {
+    const state = getRaceState()
+    if (!state?.payload) {
       navigate('/')
       return
     }
 
-    let cancelled = false
-    let timer: number | undefined
+    // Guard against StrictMode double-fire
+    if (startedRef.current) return
+    startedRef.current = true
 
-    const poll = async () => {
-      try {
-        const next = await getTaskStatus(taskId)
-        if (cancelled) return
+    // Visual step progression
+    const interval = setInterval(() => {
+      setCurrentStep(s => (s < STEPS.length - 1 ? s + 1 : s))
+    }, 2500)
 
-        setTask(next)
-        setError('')
+    // Actual API call — no mock fallback, errors surface honestly
+    raceCampaigns(state.payload).then(result => {
+      saveRaceState({ ...state, result })
+      clearInterval(interval)
+      navigate('/result')
+    }).catch(err => {
+      clearInterval(interval)
+      setError(err.message || 'Race evaluation failed. Check backend connection.')
+    })
 
-        const nextSetId = next.result?.set_id ?? setId
-        if (nextSetId) {
-          saveLatestReviewSession({
-            taskId,
-            setId: nextSetId,
-            reviewName: latest?.reviewName,
-          })
-        }
+    return () => clearInterval(interval)
+  }, [navigate])
 
-        if (next.status === 'completed' && nextSetId) {
-          // Small delay so user sees 100%
-          setTimeout(() => {
-            if (!cancelled) navigate(`/result?setId=${nextSetId}`)
-          }, 800)
-          return
-        }
-
-        if (next.status === 'failed') {
-          setError(next.error ?? '评审任务失败')
-          return
-        }
-
-        // Keep polling
-        timer = window.setTimeout(poll, 2500)
-      } catch (err) {
-        if (cancelled) return
-        setError(err instanceof Error ? err.message : '获取任务状态失败')
-        // Retry after a longer delay
-        timer = window.setTimeout(poll, 5000)
-      }
-    }
-
-    void poll()
-    return () => {
-      cancelled = true
-      if (timer) window.clearTimeout(timer)
-    }
-  }, [taskId, setId, navigate, latest?.reviewName])
-
-  const progress = task?.progress ?? 0
-  const stageText = task?.message ?? '正在连接...'
+  if (error) {
+    return (
+      <div className="min-h-screen bg-primary text-primary-foreground flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-lg space-y-8 text-center">
+          <AlertCircle className="h-12 w-12 text-accent mx-auto" />
+          <h2 className="font-display text-2xl font-semibold">Evaluation Failed</h2>
+          <p className="text-primary-foreground/60 text-sm font-mono">{error}</p>
+          <button
+            onClick={() => navigate('/')}
+            className="lab-button lab-button-outline border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10"
+          >
+            Return to Builder
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#FDFCFB] p-6 font-sans text-stone-900">
-      <div className="flex w-full max-w-md flex-1 flex-col items-center justify-center text-center">
-        {/* Pulsing ring animation */}
-        <div className="relative mb-12 flex h-32 w-32 items-center justify-center">
-          <motion.div
-            animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            className="absolute inset-0 rounded-full border border-stone-300"
-          />
-          <motion.div
-            animate={{ scale: [1, 1.2, 1], opacity: [0.8, 0.2, 0.8] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
-            className="absolute inset-4 rounded-full border border-stone-400"
-          />
-          <div className="h-3 w-3 rounded-full bg-stone-900" />
+    <div className="min-h-screen bg-primary text-primary-foreground flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-lg space-y-12">
+        <div className="space-y-4 text-center">
+          <h2 className="font-display text-4xl font-semibold">Evaluation in Progress</h2>
+          <p className="text-primary-foreground/60 text-sm font-mono uppercase tracking-wider">
+            Processing {getRaceState()?.payload?.plans?.length || 0} strategic directions
+          </p>
         </div>
 
-        <motion.div
-          key={stageText}
-          initial={{ opacity: 0, y: 5 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-3 text-lg font-medium tracking-tight"
-        >
-          {stageText}
-        </motion.div>
+        <div className="space-y-4">
+          {STEPS.map((step, i) => {
+            const isCompleted = i < currentStep
+            const isActive = i === currentStep
 
-        <div className="font-mono text-sm text-stone-400">{progress}%</div>
+            return (
+              <div
+                key={i}
+                className={`flex items-center gap-4 transition-all duration-500 ${
+                  isActive ? 'opacity-100 translate-x-2' :
+                  isCompleted ? 'opacity-50' : 'opacity-20'
+                }`}
+              >
+                {isCompleted ? (
+                  <CheckCircle2 className="h-5 w-5 text-accent" />
+                ) : isActive ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-primary-foreground" />
+                ) : (
+                  <Circle className="h-5 w-5" />
+                )}
+                <span className={`font-mono text-sm ${isActive ? 'text-primary-foreground' : ''}`}>
+                  {step}
+                </span>
+              </div>
+            )
+          })}
+        </div>
 
-        {error && (
-          <div className="mt-8 w-full rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
-            {error}
-            <button
-              onClick={() => navigate('/')}
-              className="mt-2 block text-sm font-medium text-stone-900 underline"
-            >
-              返回首页
-            </button>
-          </div>
-        )}
+        <div className="pt-8 border-t border-primary-foreground/10 text-center">
+          <p className="text-xs text-primary-foreground/40 uppercase tracking-widest">
+            Do not close this window
+          </p>
+        </div>
       </div>
-
-      <div className="pb-8 text-xs text-stone-400">通常需要 1-2 分钟</div>
     </div>
   )
 }

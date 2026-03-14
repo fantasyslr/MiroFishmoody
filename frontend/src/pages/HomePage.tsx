@@ -1,262 +1,243 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, X, UploadCloud, ArrowRight } from 'lucide-react'
-import { motion, AnimatePresence } from 'motion/react'
-import { cn, uuid } from '../utils'
-import { useReviewStore } from '../store'
-import {
-  evaluateCampaigns,
-  getLatestReviewSession,
-  saveLatestReviewSession,
-  uploadImage,
-} from '../lib/api'
+import { Plus, Trash2, Zap, AlertCircle } from 'lucide-react'
+import { type RacePayload, type CampaignPlan, saveRaceState } from '../lib/api'
+
+const DEFAULT_PLAN: CampaignPlan = {
+  name: '',
+  theme: 'science_credibility',
+  platform: 'redbook',
+  channel_family: 'social_seed',
+  budget: 50000,
+}
 
 export function HomePage() {
   const navigate = useNavigate()
-  const { notes, setNotes, plans, addPlan, removePlan, updatePlan, addImages, removeImage } =
-    useReviewStore()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState('')
+  
+  const [market, setMarket] = useState('cn')
+  const [productLine, setProductLine] = useState('moodyplus')
+  const [audience] = useState('general')
+  const [sortBy, setSortBy] = useState<RacePayload['sort_by']>('roas_mean')
+  
+  const [plans, setPlans] = useState<CampaignPlan[]>([
+    { ...DEFAULT_PLAN, name: 'Plan A', theme: 'science_credibility' },
+    { ...DEFAULT_PLAN, name: 'Plan B', theme: 'comfort_beauty', platform: 'douyin' },
+  ])
 
-  const latest = getLatestReviewSession()
-  const canStart = plans.length >= 2 && plans.every((p) => p.name.trim() !== '')
-
-  const handleImageUpload = (planId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files) return
-    const valid = Array.from(files).filter((f) =>
-      ['image/jpeg', 'image/png', 'image/webp'].includes(f.type),
-    )
-    addImages(planId, valid)
-    e.target.value = ''
+  const addPlan = () => {
+    if (plans.length >= 5) return
+    setPlans([...plans, { ...DEFAULT_PLAN, name: `Plan ${String.fromCharCode(65 + plans.length)}` }])
   }
 
-  const handleStart = async () => {
-    if (!canStart || isSubmitting) return
-    setIsSubmitting(true)
-    setSubmitError('')
+  const removePlan = (index: number) => {
+    if (plans.length <= 1) return
+    setPlans(plans.filter((_, i) => i !== index))
+  }
 
-    try {
-      const setId = uuid()
+  const updatePlan = (index: number, updates: Partial<CampaignPlan>) => {
+    const newPlans = [...plans]
+    newPlans[index] = { ...newPlans[index], ...updates }
+    setPlans(newPlans)
+  }
 
-      // Upload images per campaign
-      for (const plan of plans) {
-        for (const file of plan.imageFiles) {
-          try {
-            await uploadImage(file, setId, plan.id)
-          } catch {
-            // non-fatal
-          }
-        }
-      }
-
-      const response = await evaluateCampaigns({
-        set_id: setId,
-        context: notes.trim(),
-        campaigns: plans.map((p) => ({
-          id: p.id,
-          name: p.name.trim(),
-          product_line: p.productLine,
-          target_audience: '',
-          core_message: p.description.trim(),
-          channels: [],
-          creative_direction: '',
-        })),
-      })
-
-      saveLatestReviewSession({
-        taskId: response.task_id,
-        setId: response.set_id,
-        reviewName: plans.map((p) => p.name.trim()).join(' vs '),
-      })
-
-      navigate(`/running?taskId=${response.task_id}&setId=${response.set_id}`)
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : '提交失败，请稍后再试')
-    } finally {
-      setIsSubmitting(false)
+  const handleRace = () => {
+    const payload: RacePayload = {
+      market,
+      product_line: productLine,
+      audience_segment: audience,
+      sort_by: sortBy,
+      include_hypothesis: true,
+      plans: plans.filter(p => p.name.trim() && p.theme)
     }
+    
+    saveRaceState({ payload })
+    navigate('/running')
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pb-24">
-      {latest?.taskId && (
-        <div
-          onClick={() =>
-            navigate(`/running?taskId=${latest.taskId}&setId=${latest.setId}`)
-          }
-          className="mb-8 flex cursor-pointer items-center justify-between rounded-xl border border-stone-200 bg-stone-100 p-4 transition-colors hover:bg-stone-200/50"
-        >
-          <div className="flex items-center gap-3">
-            <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-            <span className="text-sm font-medium">
-              你有一个评审正在运行{latest.reviewName ? `：${latest.reviewName}` : ''}
-            </span>
-          </div>
-          <ArrowRight className="h-4 w-4 text-stone-400" />
-        </div>
-      )}
+    <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-10 items-start">
+      <div className="space-y-10">
+        
+        {/* Header / Positioning */}
+        <section className="space-y-4">
+          <h1 className="font-display text-4xl text-primary font-semibold">Campaign Lab</h1>
+          <p className="text-muted-foreground text-lg leading-relaxed max-w-2xl text-balance">
+            Evaluate up to 5 strategic campaign directions. The engine resolves rankings primarily through 
+            <strong className="text-primary font-medium mx-1">Observed Historical Baselines</strong> (empirical funnel data), 
+            supplemented by <span className="italic">Model Hypothesis</span> for perception shifts and secondary risk flagging.
+          </p>
+        </section>
 
-      <div className="mb-10">
-        <h1 className="mb-2 text-2xl font-semibold tracking-tight">新建评审</h1>
-        <p className="text-sm text-stone-500">输入 2-4 个营销方案，AI 将自动进行两两对决评审。</p>
-      </div>
-
-      <div className="mb-8">
-        <label className="mb-2 block text-sm font-medium text-stone-700">评审备注（可选）</label>
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="简述本轮评审的背景、目标或特殊要求..."
-          className="h-20 w-full resize-none rounded-xl border border-stone-200 bg-white px-4 py-3 outline-none transition-all placeholder:text-stone-400 focus:border-stone-400 focus:ring-1 focus:ring-stone-400"
-        />
-      </div>
-
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">方案列表</h2>
-          {plans.length < 4 && (
-            <button
-              onClick={addPlan}
-              className="flex items-center gap-1.5 rounded-lg bg-stone-100 px-3 py-1.5 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-200 hover:text-stone-900"
+        {/* Global Context */}
+        <section className="lab-card p-6 flex flex-wrap gap-8 items-end">
+          <div className="space-y-1.5 flex-1 min-w-[120px]">
+            <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Market Context</label>
+            <select 
+              value={market} onChange={e => setMarket(e.target.value)}
+              className="lab-input font-medium pb-2 cursor-pointer"
             >
-              <Plus className="h-4 w-4" />
-              添加方案
+              <option value="cn">China (Mainland)</option>
+              <option value="us">United States</option>
+              <option value="sea">Southeast Asia</option>
+            </select>
+          </div>
+          <div className="space-y-1.5 flex-1 min-w-[120px]">
+            <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Product Line</label>
+            <select 
+              value={productLine} onChange={e => setProductLine(e.target.value)}
+              className="lab-input font-medium pb-2 cursor-pointer"
+            >
+              <option value="moodyplus">Moody Plus (Core)</option>
+              <option value="colored_lenses">Colored Lenses</option>
+            </select>
+          </div>
+          <div className="space-y-1.5 flex-1 min-w-[120px]">
+            <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Optimization Target</label>
+            <select 
+              value={sortBy} onChange={e => setSortBy(e.target.value as 'roas_mean' | 'purchase_rate' | 'revenue_mean' | 'cvr_mean')}
+              className="lab-input font-medium pb-2 cursor-pointer"
+            >
+              <option value="roas_mean">ROAS (Mean)</option>
+              <option value="revenue_mean">Revenue Potential</option>
+              <option value="purchase_rate">Conversion Rate</option>
+            </select>
+          </div>
+        </section>
+
+        {/* Plans Builder */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-2xl text-primary">Strategic Directions</h2>
+            <span className="text-sm text-muted-foreground">{plans.length} / 5</span>
+          </div>
+
+          <div className="space-y-4">
+            {plans.map((plan, i) => (
+              <div key={i} className="lab-card p-6 relative group border-l-4 border-l-border focus-within:border-l-primary transition-all">
+                <button 
+                  onClick={() => removePlan(i)}
+                  disabled={plans.length <= 1}
+                  className="absolute right-4 top-4 text-muted-foreground hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                  <div className="space-y-1.5 col-span-1 md:col-span-2">
+                    <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Plan Designation</label>
+                    <input 
+                      type="text" 
+                      value={plan.name} 
+                      onChange={e => updatePlan(i, { name: e.target.value })}
+                      placeholder="e.g., Spring Science Seed"
+                      className="lab-input text-lg font-display"
+                    />
+                  </div>
+                  
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Cognitive Theme</label>
+                    <select 
+                      value={plan.theme} onChange={e => updatePlan(i, { theme: e.target.value })}
+                      className="lab-input text-sm"
+                    >
+                      <option value="science_credibility">Science & Credibility</option>
+                      <option value="comfort_beauty">Comfort & Beauty</option>
+                      <option value="aesthetic">Aesthetic & Visual</option>
+                      <option value="price">Price & Value</option>
+                      <option value="social">Social Proof / KOL</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Primary Platform</label>
+                    <select 
+                      value={plan.platform} onChange={e => updatePlan(i, { platform: e.target.value })}
+                      className="lab-input text-sm"
+                    >
+                      <option value="redbook">Redbook (Xiaohongshu)</option>
+                      <option value="douyin">Douyin</option>
+                      <option value="tmall">Tmall ecosystem</option>
+                      <option value="bilibili">Bilibili</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Budget Allocation (CNY)</label>
+                    <input 
+                      type="number" 
+                      value={plan.budget} 
+                      onChange={e => updatePlan(i, { budget: Number(e.target.value) })}
+                      className="lab-input text-sm font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Channel Family</label>
+                    <select 
+                      value={plan.channel_family} onChange={e => updatePlan(i, { channel_family: e.target.value })}
+                      className="lab-input text-sm"
+                    >
+                      <option value="social_seed">Social Seeding / KOC</option>
+                      <option value="short_video">Short Video</option>
+                      <option value="longform_content">Longform Content</option>
+                      <option value="marketplace">Marketplace / E-Commerce</option>
+                      <option value="influencer">Influencer / KOL</option>
+                      <option value="search">Search Ads</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {plans.length < 5 && (
+            <button 
+              onClick={addPlan}
+              className="w-full py-4 border border-dashed border-border rounded-sm text-muted-foreground hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+            >
+              <Plus className="h-4 w-4" /> Add Strategic Direction
             </button>
           )}
-        </div>
+        </section>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <AnimatePresence mode="popLayout">
-            {plans.map((plan, index) => (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.15 }}
-                key={plan.id}
-                className="group relative rounded-2xl border border-stone-200 bg-white p-6 shadow-sm"
-              >
-                {plans.length > 2 && (
-                  <button
-                    onClick={() => removePlan(plan.id)}
-                    className="absolute right-4 top-4 rounded-lg p-1.5 text-stone-400 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-
-                <div className="mb-6">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-stone-400">
-                    方案 {String.fromCharCode(65 + index)}
-                  </div>
-                  <input
-                    type="text"
-                    value={plan.name}
-                    onChange={(e) => updatePlan(plan.id, { name: e.target.value })}
-                    placeholder="输入方案名称..."
-                    className="w-full border-none bg-transparent p-0 text-2xl font-semibold outline-none placeholder:text-stone-300 focus:ring-0"
-                  />
-                </div>
-
-                <div className="mb-6">
-                  <label className="mb-2 block text-xs font-medium text-stone-500">品类</label>
-                  <div className="inline-flex rounded-lg border border-stone-200 bg-stone-50 p-0.5">
-                    <button
-                      type="button"
-                      onClick={() => updatePlan(plan.id, { productLine: 'moodyplus' })}
-                      className={cn(
-                        'rounded-md px-4 py-1.5 text-sm font-medium',
-                        plan.productLine === 'moodyplus'
-                          ? 'bg-stone-900 text-white shadow-sm'
-                          : 'text-stone-500 hover:text-stone-700',
-                      )}
-                    >
-                      透明片
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updatePlan(plan.id, { productLine: 'colored_lenses' })}
-                      className={cn(
-                        'rounded-md px-4 py-1.5 text-sm font-medium',
-                        plan.productLine === 'colored_lenses'
-                          ? 'bg-stone-900 text-white shadow-sm'
-                          : 'text-stone-500 hover:text-stone-700',
-                      )}
-                    >
-                      彩片
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mb-6">
-                  <label className="mb-2 block text-xs font-medium text-stone-500">方案描述</label>
-                  <textarea
-                    value={plan.description}
-                    onChange={(e) => updatePlan(plan.id, { description: e.target.value })}
-                    placeholder="目标人群、卖点、渠道、促销等..."
-                    className="h-32 w-full resize-none rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none transition-all placeholder:text-stone-400 focus:border-stone-400 focus:bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-xs font-medium text-stone-500">
-                    参考图片 ({plan.imageFiles.length}/5)
-                  </label>
-                  {plan.imagePreviews.length > 0 && (
-                    <div className="mb-3 grid grid-cols-5 gap-2">
-                      {plan.imagePreviews.map((url, i) => (
-                        <div
-                          key={i}
-                          className="group/img relative aspect-square overflow-hidden rounded-lg border border-stone-200 bg-stone-50"
-                        >
-                          <img src={url} alt="" className="h-full w-full object-cover" />
-                          <button
-                            onClick={() => removeImage(plan.id, i)}
-                            className="absolute right-1 top-1 rounded-md bg-black/50 p-1 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover/img:opacity-100"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {plan.imageFiles.length < 5 && (
-                    <label className="flex h-24 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-stone-200 transition-all hover:border-stone-400 hover:bg-stone-50">
-                      <UploadCloud className="mb-2 h-6 w-6 text-stone-400" />
-                      <p className="text-xs text-stone-400">点击上传图片</p>
-                      <input
-                        type="file"
-                        className="hidden"
-                        multiple
-                        accept="image/jpeg,image/png,image/webp"
-                        onChange={(e) => handleImageUpload(plan.id, e)}
-                      />
-                    </label>
-                  )}
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
       </div>
 
-      {submitError && (
-        <div className="mt-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
-          {submitError}
-        </div>
-      )}
+      {/* Right Sidebar: Execution Summary & CTA */}
+      <div className="sticky top-24 space-y-6">
+        <div className="lab-card p-5 space-y-5 bg-card/50">
+          <div>
+            <h3 className="text-xs uppercase tracking-wider font-bold text-primary mb-3">Evaluation Matrix</h3>
+            <ul className="space-y-3 text-sm text-muted-foreground">
+              <li className="flex gap-2">
+                <span className="baseline-tag shrink-0 mt-0.5">Tier 1</span>
+                <span>Historical Funnel Baseline & Empirical Comparables</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="hypothesis-tag shrink-0 mt-0.5">Tier 2</span>
+                <span>Perception Model Hypothesis (experimental)</span>
+              </li>
+              <li className="flex gap-2 text-xs">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-accent" />
+                <span>Model hypothesis does not override empirical ranking. It provides perception context only.</span>
+              </li>
+            </ul>
+          </div>
 
-      <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-20 flex justify-center bg-gradient-to-t from-[#FDFCFB] via-[#FDFCFB] to-transparent p-6">
-        <button
-          onClick={handleStart}
-          disabled={!canStart || isSubmitting}
-          className="pointer-events-auto flex w-full max-w-md items-center justify-center gap-2 rounded-2xl bg-stone-900 py-4 text-lg font-medium text-white shadow-xl shadow-stone-900/10 transition-all hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          {isSubmitting ? '正在提交...' : '开始评审'}
-          {!isSubmitting && <ArrowRight className="h-5 w-5" />}
-        </button>
+          <div className="pt-4 border-t border-border">
+            <button 
+              onClick={handleRace}
+              disabled={plans.length === 0}
+              className="lab-button lab-button-primary w-full h-12 text-base gap-2 group"
+            >
+              <Zap className="h-4 w-4 text-accent-foreground group-hover:animate-pulse" />
+              Initialize Race
+            </button>
+            <p className="text-[10px] text-center text-muted-foreground mt-3 uppercase tracking-wider">
+              Requires ~15 seconds compute time
+            </p>
+          </div>
+        </div>
       </div>
-    </motion.div>
+    </div>
   )
 }

@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { LogOut } from 'lucide-react'
+import { LogOut, Activity, Database, History, FlaskConical } from 'lucide-react'
 import { logout as logoutApi, type AuthUser } from '../../lib/api'
 
 export function Layout({
@@ -23,57 +23,82 @@ export function Layout({
 
   // Running page: immersive, no header
   if (location.pathname === '/running') {
-    return <Outlet />
+    return <div className="min-h-screen bg-background text-foreground"><Outlet /></div>
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] font-sans text-stone-900 selection:bg-stone-200">
-      <header className="sticky top-0 z-10 border-b border-stone-200/50 bg-[#FDFCFB]/80 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
-          <div className="flex items-center gap-6">
-            <span className="text-lg font-semibold tracking-tight">MiroFishmoody</span>
-            {isAdmin && (
-              <nav className="hidden items-center gap-1 sm:flex">
-                <NavLink
-                  to="/admin/dashboard"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-sm transition-colors ${
-                      isActive
-                        ? 'bg-stone-100 font-medium text-stone-900'
-                        : 'text-stone-500 hover:text-stone-700'
-                    }`
-                  }
-                >
-                  总览台
-                </NavLink>
-                <NavLink
-                  to="/admin/history"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-sm transition-colors ${
-                      isActive
-                        ? 'bg-stone-100 font-medium text-stone-900'
-                        : 'text-stone-500 hover:text-stone-700'
-                    }`
-                  }
-                >
-                  结算历史
-                </NavLink>
-              </nav>
-            )}
+    <div className="min-h-screen bg-background font-sans text-foreground selection:bg-secondary selection:text-secondary-foreground">
+      <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+          <div className="flex items-center gap-8">
+            <div className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-accent" />
+              <span className="font-display text-xl font-semibold tracking-tight text-primary">
+                Brandiction Engine <span className="text-muted-foreground text-sm font-sans tracking-normal ml-1">v3</span>
+              </span>
+            </div>
+            
+            <nav className="hidden items-center gap-2 sm:flex">
+              <NavLink
+                to="/"
+                className={({ isActive }) =>
+                  `flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-sm transition-colors ${
+                    isActive
+                      ? 'bg-primary/5 font-medium text-primary'
+                      : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
+                  }`
+                }
+              >
+                <FlaskConical className="h-4 w-4" />
+                Race Builder
+              </NavLink>
+              
+              {isAdmin && (
+                <>
+                  <NavLink
+                    to="/admin/dashboard"
+                    className={({ isActive }) =>
+                      `flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-sm transition-colors ${
+                        isActive
+                          ? 'bg-primary/5 font-medium text-primary'
+                          : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
+                      }`
+                    }
+                  >
+                    <Database className="h-4 w-4" />
+                    Data Spine
+                  </NavLink>
+                  <NavLink
+                    to="/admin/history"
+                    className={({ isActive }) =>
+                      `flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-sm transition-colors ${
+                        isActive
+                          ? 'bg-primary/5 font-medium text-primary'
+                          : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
+                      }`
+                    }
+                  >
+                    <History className="h-4 w-4" />
+                    Past Races
+                  </NavLink>
+                </>
+              )}
+            </nav>
           </div>
-          <div className="flex items-center gap-4 text-sm text-stone-500">
-            <span>{user.display_name}</span>
+
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span className="font-medium tracking-wide uppercase text-[10px]">{user.display_name}</span>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 transition-colors hover:text-stone-900"
+              aria-label="Log out"
+              className="flex items-center gap-1.5 transition-colors hover:text-primary"
             >
               <LogOut className="h-4 w-4" />
-              退出
             </button>
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-6 py-8">
+      <main className="mx-auto max-w-6xl px-6 py-10">
         <Outlet />
       </main>
     </div>

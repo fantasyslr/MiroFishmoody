@@ -3,7 +3,6 @@ import { createHashRouter, Navigate, RouterProvider } from 'react-router-dom'
 
 import { getMe, type AuthUser } from './lib/api'
 import { Layout } from './components/layout/Layout'
-import { AppShell } from './components/layout/AppShell'
 import { LoginPage } from './pages/LoginPage'
 import { HomePage } from './pages/HomePage'
 import { RunningPage } from './pages/RunningPage'
@@ -37,21 +36,15 @@ export default function App() {
         { path: '/', element: <HomePage /> },
         { path: '/running', element: <RunningPage /> },
         { path: '/result', element: <ResultPage /> },
+        // Admin routes integrated into the same layout
+        ...(isAdmin
+          ? [
+              { path: '/admin/dashboard', element: <DashboardPage /> },
+              { path: '/admin/history', element: <HistoryPage /> },
+            ]
+          : []),
       ],
     },
-    // Admin routes with old-style layout
-    ...(isAdmin
-      ? [
-          {
-            path: '/admin',
-            element: <AppShell user={user} onLogout={() => setUser(null)} />,
-            children: [
-              { path: 'dashboard', element: <DashboardPage /> },
-              { path: 'history', element: <HistoryPage /> },
-            ],
-          },
-        ]
-      : []),
     { path: '*', element: <Navigate to="/" replace /> },
   ]
 

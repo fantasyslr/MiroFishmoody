@@ -1,160 +1,6 @@
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
-const LATEST_REVIEW_KEY = 'mirofishmoody.latest-review'
 
-export type CampaignInput = {
-  id: string
-  name: string
-  product_line: 'moodyplus' | 'colored_lenses'
-  target_audience: string
-  core_message: string
-  channels: string[]
-  creative_direction: string
-  budget_range?: string
-  kv_description?: string
-  promo_mechanic?: string
-}
-
-export type EvaluatePayload = {
-  set_id?: string
-  context: string
-  submitted_by?: string
-  campaigns: CampaignInput[]
-}
-
-export type EvaluateResponse = {
-  task_id: string
-  set_id: string
-  campaign_count: number
-  message: string
-}
-
-export type TaskStatusResponse = {
-  task_id: string
-  status: 'pending' | 'processing' | 'completed' | 'failed'
-  progress: number
-  message: string
-  error?: string | null
-  result?: {
-    set_id: string
-    campaign_count: number
-    top_campaign?: string | null
-    top_verdict?: string | null
-    top_overall_score?: number | null
-    too_close_to_call?: boolean
-    lead_margin?: number
-  } | null
-}
-
-export type Ranking = {
-  campaign_id: string
-  campaign_name: string
-  rank: number
-  composite_score: number
-  panel_avg: number
-  pairwise_wins: number
-  pairwise_losses: number
-  verdict: 'ship' | 'revise' | 'kill'
-  top_objections: string[]
-  top_strengths: string[]
-}
-
-export type ScoreBoardCampaign = {
-  campaign_id: string
-  campaign_name: string
-  overall_score: number
-  dimension_scores?: Record<string, number>
-  rank: number
-  verdict: 'ship' | 'revise' | 'kill'
-  lead_margin_to_next: number | null
-  verdict_rationale: string
-}
-
-export type DimensionDetail = {
-  dimension_key: string
-  dimension_label: string
-  campaign_id: string
-  score: number
-  raw_score: number
-}
-
-export type CampaignImageMap = {
-  /** All images for this set (key "_all"), or per-campaign keyed by campaign_id */
-  _all?: string[]
-  [campaignId: string]: string[] | undefined
-}
-
-export type EvaluationResult = {
-  set_id: string
-  rankings: Ranking[]
-  summary: string
-  assumptions: string[]
-  confidence_notes: string[]
-  scoreboard?: {
-    campaigns: ScoreBoardCampaign[]
-    lead_margin: number
-    too_close_to_call: boolean
-    confidence_threshold: number
-    rationale_for_uncertainty: string
-    dimension_details?: DimensionDetail[]
-  }
-  resolution_ready_fields?: Record<string, string>
-  campaign_image_map?: CampaignImageMap
-}
-
-export type ParseBriefPayload = {
-  brief_text: string
-  product_line: 'moodyplus' | 'colored_lenses'
-}
-
-export type ParseBriefResponse = {
-  parsed: {
-    name: string
-    product_line: string
-    target_audience: string
-    core_message: string
-    channels: string[]
-    creative_direction: string
-    budget_range: string
-    promo_mechanic: string
-    kv_description: string
-  }
-  confidence: 'high' | 'medium' | 'low'
-}
-
-export type ResolvePayload = {
-  set_id: string
-  winner_campaign_id: string
-  actual_metrics: Record<string, number>
-  notes?: string
-}
-
-export type ResolveResponse = {
-  status: 'resolved'
-  set_id: string
-  winner: string
-  predicted_win_prob: number
-  recalibrate: string
-}
-
-export type CalibrationResponse = {
-  resolution_count: number
-  resolved_set_count: number
-  sets_with_predictions: number
-  calibration_supported: boolean
-  calibration_ready: boolean
-  last_calibrated_at?: string | null
-  judge_stats_count: number
-  persona_calibration: string
-  judge_calibration: string
-  message: string
-}
-
-export type LatestReviewSession = {
-  setId: string
-  taskId?: string
-  reviewName?: string
-}
-
+// --- Auth Types ---
 export type AuthUser = {
   username: string
   display_name: string
@@ -191,45 +37,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return data as T
 }
 
-export function evaluateCampaigns(payload: EvaluatePayload) {
-  return request<EvaluateResponse>('/api/campaign/evaluate', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
-
-export function getTaskStatus(taskId: string) {
-  return request<TaskStatusResponse>(`/api/campaign/evaluate/status/${taskId}`)
-}
-
-export function getResult(setId: string) {
-  return request<EvaluationResult>(`/api/campaign/result/${setId}`)
-}
-
-export function resolveEvaluation(payload: ResolvePayload) {
-  return request<ResolveResponse>('/api/campaign/resolve', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
-
-export function getCalibration() {
-  return request<CalibrationResponse>('/api/campaign/calibration')
-}
-
-export function parseBrief(payload: ParseBriefPayload) {
-  return request<ParseBriefResponse>('/api/campaign/parse-brief', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
-
-export function triggerRecalibrate() {
-  return request<Record<string, unknown>>('/api/campaign/recalibrate', {
-    method: 'POST',
-  })
-}
-
+// --- Auth APIs ---
 export function login(username: string, password: string) {
   return request<AuthUser>('/api/auth/login', {
     method: 'POST',
@@ -247,113 +55,117 @@ export function getMe() {
   return request<AuthUser>('/api/auth/me')
 }
 
-export type TaskListItem = {
-  task_id: string
-  task_type: string
-  status: 'pending' | 'processing' | 'completed' | 'failed'
-  created_at: string
-  updated_at: string
-  progress: number
-  message: string
-  result?: Record<string, unknown> | null
-  error?: string | null
-  metadata?: {
-    set_id?: string
-    submitted_by?: string
-    campaign_names?: string[]
-    campaign_count?: number
-    submitted_at?: string
+// --- V3 Brandiction Types ---
+
+export type CampaignPlan = {
+  id?: string
+  name: string
+  theme: string
+  platform: string
+  channel_family: string
+  landing_page?: string
+  budget: number
+  objective?: string
+  message_arc?: string
+  market?: string
+}
+
+export type RacePayload = {
+  plans: CampaignPlan[]
+  sort_by: 'roas_mean' | 'purchase_rate' | 'revenue_mean' | 'cvr_mean'
+  include_hypothesis: boolean
+  product_line?: string
+  audience_segment?: string
+  market?: string
+}
+
+// Matches BaselineStats.to_dict() from baseline_ranker.py
+export type ObservedBaseline = {
+  sample_size: number
+  roas_mean?: number
+  roas_std?: number
+  ctr_mean?: number
+  cvr_mean?: number
+  cpa?: number
+  sessions_mean?: number
+  purchase_rate?: number
+  aov_mean?: number
+  revenue_mean?: number
+  drift_30d?: Record<string, number>
+  drift_60d?: Record<string, number>
+  drift_90d?: Record<string, number>
+  match_dimensions: string[]
+  match_quality: 'exact' | 'partial' | 'fallback' | 'no_data'
+}
+
+// Single entry in the ranking array from rank_campaigns()
+export type RankingEntry = {
+  rank: number
+  plan: CampaignPlan
+  observed_baseline: ObservedBaseline
+  score: number
+  data_sufficient: boolean
+}
+
+// Hypothesis from predict_impact() — per-plan
+export type HypothesisPlan = {
+  plan: CampaignPlan
+  predicted_delta?: Record<string, number>
+  confidence?: number
+  reasoning?: string
+  similar_interventions?: number
+  note?: string
+  error?: string
+}
+
+// Full /race response shape — matches brandiction.py race_campaigns()
+export type RaceResult = {
+  observed_baseline: {
+    ranking: RankingEntry[]
+    sort_by: string
+    recommendation: string
   }
+  model_hypothesis: {
+    note: string
+    plans: HypothesisPlan[]
+  } | null
 }
 
-export function getTasks() {
-  return request<{ tasks: TaskListItem[] }>('/api/campaign/tasks')
-}
+// --- V3 Brandiction APIs ---
 
-export type ImageUploadResponse = {
-  image_id: string
-  path: string
-  size: number
-}
-
-export async function uploadImage(file: File, setId?: string, campaignId?: string): Promise<ImageUploadResponse> {
-  const formData = new FormData()
-  formData.append('file', file)
-  if (setId) formData.append('set_id', setId)
-  if (campaignId) formData.append('campaign_id', campaignId)
-
-  const response = await fetch(`${API_BASE}/api/campaign/upload-image`, {
+export async function raceCampaigns(payload: RacePayload): Promise<RaceResult> {
+  return request<RaceResult>('/api/brandiction/race', {
     method: 'POST',
-    body: formData,
-    credentials: 'include',
+    body: JSON.stringify(payload),
   })
-
-  const text = await response.text()
-  const data = text ? JSON.parse(text) : null
-
-  if (!response.ok) {
-    const message = data?.error ?? `Upload failed: ${response.status}`
-    throw new ApiError(response.status, message)
-  }
-
-  return data as ImageUploadResponse
 }
 
-export type CampaignImageListItem = {
-  filename: string
-  url: string
+// Temporary store for passing data between pages
+const RACE_STATE_KEY = 'mirofishmoody.race_state'
+export function saveRaceState(state: { payload: RacePayload, result?: RaceResult }) {
+  localStorage.setItem(RACE_STATE_KEY, JSON.stringify(state))
+}
+export function getRaceState() {
+  const raw = localStorage.getItem(RACE_STATE_KEY)
+  if (!raw) return null
+  try { return JSON.parse(raw) as { payload: RacePayload, result?: RaceResult } } catch { return null }
+}
+export function clearRaceState() {
+  localStorage.removeItem(RACE_STATE_KEY)
 }
 
-export function getCampaignImages(setId: string) {
-  return request<{ images: CampaignImageListItem[] }>(`/api/campaign/images/${setId}`)
+// --- Admin APIs ---
+export function getBrandictionStats() {
+  return request<Record<string, unknown>>('/api/brandiction/stats')
 }
 
-/**
- * Build the full URL for a campaign image path returned by the API.
- * Handles both absolute URLs and relative paths like "/api/campaign/image-file/...".
- */
-export function campaignImageUrl(path: string): string {
-  if (path.startsWith('http://') || path.startsWith('https://')) return path
-  return `${API_BASE}${path}`
-}
-
-export async function exportResult(setId: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/api/campaign/export/${setId}`, {
-    credentials: 'include',
-  })
-
-  if (!response.ok) {
-    const text = await response.text()
-    const data = text ? JSON.parse(text) : null
-    const message = data?.error ?? `Export failed: ${response.status}`
-    throw new ApiError(response.status, message)
-  }
-
-  const blob = await response.blob()
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `evaluation_${setId}.json`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
-}
-
-export function saveLatestReviewSession(session: LatestReviewSession) {
-  localStorage.setItem(LATEST_REVIEW_KEY, JSON.stringify(session))
-}
-
-export function getLatestReviewSession(): LatestReviewSession | null {
-  const raw = localStorage.getItem(LATEST_REVIEW_KEY)
-  if (!raw) {
-    return null
-  }
-
-  try {
-    return JSON.parse(raw) as LatestReviewSession
-  } catch {
-    localStorage.removeItem(LATEST_REVIEW_KEY)
-    return null
-  }
+export function getRaceHistory() {
+  return request<{ runs: Array<{
+    id: string
+    date: string
+    plans_count: number
+    top_recommendation: string
+    status: string
+    hit: boolean | null
+  }> }>('/api/brandiction/race-history')
 }

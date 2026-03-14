@@ -1,314 +1,102 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-
-import { SectionCard } from '../components/ui/SectionCard'
-import { StatusBadge } from '../components/ui/StatusBadge'
-import { getLatestReviewSession, getTasks, type TaskListItem } from '../lib/api'
-import { dashboardNotes } from '../data/campaignDecisionData'
-
-const statusToneMap = {
-  pending: 'draft',
-  processing: 'running',
-  completed: 'done',
-  failed: 'warning',
-} as const
-
-const statusLabelMap = {
-  pending: '排队中',
-  processing: '运行中',
-  completed: '已完成',
-  failed: '失败',
-} as const
+import { getBrandictionStats } from '../lib/api'
+import { Database, TrendingUp, AlertCircle } from 'lucide-react'
 
 export function DashboardPage() {
-  const latest = getLatestReviewSession()
-
-  const [tasks, setTasks] = useState<TaskListItem[]>([])
-  const [loaded, setLoaded] = useState(false)
-  const [usingApi, setUsingApi] = useState(false)
+  const [stats, setStats] = useState<Record<string, unknown> | null>(null)
 
   useEffect(() => {
-    let cancelled = false
-
-    getTasks()
-      .then((response) => {
-        if (cancelled) return
-        setTasks(response.tasks)
-        setUsingApi(true)
-      })
-      .catch(() => {
-        // backend offline — dashboard stays in example mode
-      })
-      .finally(() => {
-        if (!cancelled) setLoaded(true)
-      })
-
-    return () => {
-      cancelled = true
-    }
+    getBrandictionStats().then(setStats)
   }, [])
 
-  const getTaskTitle = (task: TaskListItem) => {
-    const meta = task.metadata
-    if (meta?.campaign_names?.length) {
-      return meta.campaign_names.join(' vs ')
-    }
-    const resultSetId = (task.result as Record<string, unknown>)?.set_id
-    return resultSetId ? String(resultSetId) : task.task_id
-  }
-
-  const getTaskSubtitle = (task: TaskListItem) => {
-    const parts: string[] = []
-    const meta = task.metadata
-    if (meta?.submitted_by) parts.push(meta.submitted_by)
-    if (meta?.submitted_at) parts.push(meta.submitted_at)
-    return parts.join(' · ')
-  }
-
-  const runningCount = tasks.filter((t) => t.status === 'processing' || t.status === 'pending').length
-  const completedCount = tasks.filter((t) => t.status === 'completed').length
-  const failedCount = tasks.filter((t) => t.status === 'failed').length
+  if (!stats) return <div className="p-6">Loading data spine...</div>
 
   return (
-    <div className="space-y-8">
-      <section className="grid gap-6 lg:grid-cols-[1.45fr,0.95fr]">
-        <div className="rounded-panel border border-line bg-paper/95 p-6 shadow-paper sm:p-8">
-          <p className="section-label">总览台</p>
-          <h2 className="mt-3 max-w-3xl font-serif text-3xl font-semibold leading-tight text-coffee sm:text-4xl">
-            一个给内部团队推进评审的前端壳，不是交易终端，也不是普通后台。
-          </h2>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-ink/85">
-            这里的任务不是制造"平台感"，而是把当前要推进的评审、已出的结论和待回填的事项摆清楚。
-          </p>
+    <div className="space-y-12">
+      <section className="space-y-4">
+        <h1 className="font-display text-4xl text-primary font-semibold">Data Spine Overview</h1>
+        <p className="text-muted-foreground text-lg max-w-2xl text-balance">
+          System readiness and empirical evidence coverage for the Brandiction Engine v3.
+        </p>
+      </section>
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link className="primary-button" to="/new-review">
-              新建评审
-            </Link>
-            <Link className="secondary-button" to="/history">
-              去看结算 / 历史
-            </Link>
-          </div>
-
-          {latest?.setId ? (
-            <div className="mt-8 grid gap-4 lg:grid-cols-[1.1fr,0.9fr]">
-              <div className="rounded-panel border border-line/60 bg-cream px-5 py-5">
-                <p className="field-label">最近一次评审</p>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <h3 className="font-serif text-2xl font-semibold text-coffee">
-                    {latest.reviewName || '未命名评审'}
-                  </h3>
-                  <StatusBadge label="最近" tone="running" />
-                </div>
-                <p className="mt-3 text-sm leading-7 text-ink/80">
-                  set_id: {latest.setId}
-                  {latest.taskId ? ` · task_id: ${latest.taskId}` : ''}
-                </p>
-              </div>
-
-              <div className="rounded-panel border border-mist/25 bg-mist-soft/40 px-5 py-5">
-                <p className="field-label">快速跳转</p>
-                <div className="mt-3 flex flex-col gap-2">
-                  {latest.taskId ? (
-                    <Link
-                      className="secondary-button justify-center"
-                      to={`/running?taskId=${latest.taskId}&setId=${latest.setId}`}
-                    >
-                      查看运行状态
-                    </Link>
-                  ) : null}
-                  <Link
-                    className="secondary-button justify-center"
-                    to={`/result?setId=${latest.setId}`}
-                  >
-                    查看结果页
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-8 rounded-panel border border-mist/25 bg-mist-soft/40 px-5 py-5">
-              <p className="field-label">还没有评审记录</p>
-              <p className="mt-3 text-sm leading-7 text-ink/80">
-                从新建评审页提交第一个评审任务后，这里会显示最近的评审信息。
-              </p>
-            </div>
-          )}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="lab-card p-6">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Interventions Indexed</div>
+          <div className="font-display text-4xl text-primary">{stats.interventions_count?.toLocaleString()}</div>
         </div>
+        <div className="lab-card p-6">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Outcomes Tracked</div>
+          <div className="font-display text-4xl text-primary">{stats.outcomes_count?.toLocaleString()}</div>
+        </div>
+        <div className="lab-card p-6">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Brand Signals</div>
+          <div className="font-display text-4xl text-primary">{stats.signals_count?.toLocaleString()}</div>
+        </div>
+        <div className="lab-card p-6">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Competitor Events</div>
+          <div className="font-display text-4xl text-primary">{stats.competitor_events_count?.toLocaleString()}</div>
+        </div>
+      </div>
 
-        <SectionCard
-          title="本轮页面收口原则"
-          eyebrow={usingApi ? '已连接后端' : '示例说明'}
-          description={usingApi ? '总览台正在读取后端真实任务列表。' : '所有数字和状态都明确标注为示例，不让假数据伪装成经营真值。'}
-          action={<StatusBadge label={usingApi ? '已接后端' : '示例数据'} tone={usingApi ? 'done' : 'draft'} />}
-        >
-          <div className="space-y-3 text-sm leading-7 text-ink/85">
-            {dashboardNotes.focus.map((item) => (
-              <div key={item} className="rounded-3xl border border-line/70 bg-cream px-4 py-3">
-                {item}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        <section className="space-y-4">
+          <h2 className="font-display text-2xl text-primary flex items-center gap-2">
+            <Database className="h-5 w-5" /> Market Coverage
+          </h2>
+          <div className="lab-card p-6 space-y-4">
+            {Object.entries(stats.market_coverage || {}).map(([market, ratio]) => (
+              <div key={market} className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="uppercase">{market}</span>
+                  <span className="font-mono text-muted-foreground">{((ratio as number) * 100).toFixed(0)}%</span>
+                </div>
+                <div className="h-1 bg-border rounded-full overflow-hidden">
+                  <div className="h-full bg-primary" style={{ width: `${(ratio as number) * 100}%` }} />
+                </div>
               </div>
             ))}
           </div>
-        </SectionCard>
-      </section>
+        </section>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          {
-            label: '运行中',
-            value: usingApi ? `${runningCount} 项` : '—',
-            note: usingApi ? '当前正在排队或运行的评审任务。' : '后端未连接，无法读取真实任务状态。',
-            highlight: true,
-          },
-          {
-            label: '已完成',
-            value: usingApi ? `${completedCount} 项` : '—',
-            note: usingApi ? '已产出结果，下一步是查看结论或回填真实投放表现。' : '后端未连接。',
-          },
-          {
-            label: '失败',
-            value: usingApi ? `${failedCount} 项` : '—',
-            note: usingApi ? '检查 LLM 配置或网络连接后重新提交。' : '后端未连接。',
-          },
-          {
-            label: '总任务数',
-            value: usingApi ? `${tasks.length} 项` : '—',
-            note: usingApi ? '后端内存中保留的所有评审任务。' : '后端未连接。',
-          },
-        ].map((metric, index) => (
-          <article
-            key={metric.label}
-            className="group rounded-panel border border-line/80 bg-paper/95 p-5 shadow-card transition-shadow duration-300 hover:shadow-paper"
-          >
-            <p className="section-label">{metric.label}</p>
-            <p className={`mt-3 font-serif text-2xl font-semibold ${index === 0 && metric.highlight ? 'text-coffee' : 'text-ink/90'}`}>{metric.value}</p>
-            <p className="mt-2 text-sm leading-6 text-ink/70">{metric.note}</p>
-          </article>
-        ))}
+        <section className="space-y-4">
+          <h2 className="font-display text-2xl text-primary flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" /> Platform Coverage
+          </h2>
+          <div className="lab-card p-6 space-y-4">
+            {Object.entries(stats.platform_coverage || {}).map(([platform, ratio]) => (
+              <div key={platform} className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="capitalize">{platform}</span>
+                  <span className="font-mono text-muted-foreground">{((ratio as number) * 100).toFixed(0)}%</span>
+                </div>
+                <div className="h-1 bg-border rounded-full overflow-hidden">
+                  <div className="h-full bg-secondary-foreground" style={{ width: `${(ratio as number) * 100}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
       </div>
 
-      {usingApi && tasks.length > 0 ? (
-        <div className="grid gap-6 xl:grid-cols-[1.55fr,0.95fr]">
-          <SectionCard
-            title="任务列表"
-            eyebrow="真实后端数据"
-            description="这些任务来自后端 /api/campaign/tasks 接口。"
-            action={<StatusBadge label="已接后端" tone="done" />}
-          >
-            <div className="space-y-4">
-              {tasks.map((task) => (
-                <article
-                  key={task.task_id}
-                  className="rounded-3xl border border-line/70 bg-cream px-4 py-4 transition-all duration-200 hover:border-mist/60 hover:bg-paper hover:shadow-sm"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-semibold text-coffee">
-                          {getTaskTitle(task)}
-                        </h3>
-                        <StatusBadge label={statusLabelMap[task.status]} tone={statusToneMap[task.status]} />
-                      </div>
-                      {getTaskSubtitle(task) && (
-                        <p className="mt-1 text-sm text-ink/60">{getTaskSubtitle(task)}</p>
-                      )}
-                      <div className="mt-2 flex flex-wrap gap-2 text-xs text-ink/70">
-                        <span className="rounded-full border border-line bg-paper px-3 py-1">
-                          {task.progress}%
-                        </span>
-                        <span className="rounded-full border border-line bg-paper px-3 py-1">
-                          {task.message || '无消息'}
-                        </span>
-                      </div>
-                    </div>
-                    {task.status === 'completed' && (task.result as Record<string, unknown>)?.set_id ? (
-                      <Link
-                        className="secondary-button whitespace-nowrap"
-                        to={`/result?setId=${String((task.result as Record<string, unknown>).set_id)}`}
-                      >
-                        查看结果
-                      </Link>
-                    ) : task.status === 'processing' || task.status === 'pending' ? (
-                      <Link
-                        className="secondary-button whitespace-nowrap"
-                        to={`/running?taskId=${task.task_id}`}
-                      >
-                        查看进度
-                      </Link>
-                    ) : null}
-                  </div>
-                  {task.error ? (
-                    <p className="mt-3 text-sm leading-6 text-wine">{task.error}</p>
-                  ) : null}
-                </article>
-              ))}
-            </div>
-          </SectionCard>
-
-          <div className="space-y-6">
-            <SectionCard
-              title="本周重点"
-              eyebrow="不是数据墙"
-              description="右侧只保留短决策句，避免把页面又做回普通 SaaS 卡片拼盘。"
-            >
-              <div className="space-y-3">
-                {dashboardNotes.workbench.map((item) => (
-                  <div key={item} className="rounded-3xl border border-line/70 bg-cream px-4 py-3 text-sm leading-6 text-ink/80">
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-
-            <SectionCard
-              title="联调提示"
-              eyebrow="当前总览已接后端"
-              description="如果后端重启，内存中的任务会清空，需要重新提交。"
-            >
-              <div className="space-y-3 text-sm leading-6 text-ink/80">
-                <div className="rounded-3xl border border-line/70 bg-cream px-4 py-3">
-                  前端通过 Vite 代理把 `/api` 和 `/health` 转发到 `http://localhost:5001`。
-                </div>
-                <div className="rounded-3xl border border-line/70 bg-cream px-4 py-3">
-                  后端 MVP 阶段使用内存存储，重启后任务列表会清空。
-                </div>
-              </div>
-            </SectionCard>
+      <section className="space-y-4">
+        <h2 className="font-display text-2xl text-primary flex items-center gap-2 text-accent">
+          <AlertCircle className="h-5 w-5" /> Sparsity Alerts
+        </h2>
+        <div className="lab-card p-6 bg-accent/5 border-accent/20">
+          <p className="text-sm mb-4">The following perceptual dimensions have limited historical intervention evidence. Model hypothesis confidence will be lower for these areas.</p>
+          <div className="flex gap-2">
+            {((stats.weakest_dimensions as string[]) || []).map((dim: string) => (
+              <span key={dim} className="text-xs uppercase tracking-wider font-semibold text-accent border border-accent/30 px-2 py-1 rounded-sm bg-background">
+                {dim.replace('_', ' ')}
+              </span>
+            ))}
           </div>
         </div>
-      ) : loaded && !usingApi ? (
-        <div className="grid gap-6 xl:grid-cols-[1.55fr,0.95fr]">
-          <SectionCard
-            title="后端未连接"
-            eyebrow="离线模式"
-            description="无法读取真实任务列表。请确认后端服务是否已启动。"
-          >
-            <div className="space-y-4">
-              <div className="rounded-3xl border border-wine/20 bg-wine/10 px-4 py-4 text-sm leading-6 text-ink/80">
-                总览台尝试连接 `/api/campaign/tasks` 失败。新建评审页仍可正常提交（提交时会直接调用后端）。
-              </div>
-              <div className="rounded-3xl border border-mist/25 bg-mist-soft/40 px-4 py-4 text-sm leading-6 text-ink/80">
-                如果只是想查看页面样式，可以继续浏览其他页面。
-              </div>
-            </div>
-          </SectionCard>
+      </section>
 
-          <SectionCard
-            title="本周重点"
-            eyebrow="示例说明"
-            description="右侧只保留短决策句，避免把页面又做回普通 SaaS 卡片拼盘。"
-            action={<StatusBadge label="示例数据" tone="draft" />}
-          >
-            <div className="space-y-3">
-              {dashboardNotes.workbench.map((item) => (
-                <div key={item} className="rounded-3xl border border-line/70 bg-cream px-4 py-3 text-sm leading-6 text-ink/80">
-                  {item}
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-        </div>
-      ) : null}
     </div>
   )
 }

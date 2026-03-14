@@ -56,6 +56,9 @@ def create_app(config_class=Config):
     from .api.auth import auth_bp
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
+    from .api.brandiction import brandiction_bp
+    app.register_blueprint(brandiction_bp, url_prefix='/api/brandiction')
+
     @app.route('/health')
     def health():
         return {'status': 'ok', 'service': 'Campaign Ranker Engine'}

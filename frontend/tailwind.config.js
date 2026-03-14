@@ -4,27 +4,38 @@ export default {
   theme: {
     extend: {
       colors: {
-        cream: '#f6f1e8',
-        paper: '#fffdf8',
-        stone: '#ebe2d6',
-        line: '#d9cfc2',
-        coffee: '#2f241d',
-        ink: '#5c4b42',
-        mist: '#7f93a1',
-        'mist-soft': '#dfe7ea',
-        wine: '#8c6167',
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        primary: {
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
+        },
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
+        },
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
+        },
       },
       fontFamily: {
-        sans: ['"Noto Sans SC"', '"PingFang SC"', '"Hiragino Sans GB"', 'sans-serif'],
-        serif: ['"Noto Serif SC"', 'serif'],
-      },
-      boxShadow: {
-        paper: '0 18px 40px rgba(74, 58, 50, 0.08)',
-        card: '0 10px 24px rgba(74, 58, 50, 0.08)',
-        soft: '0 4px 12px rgba(74, 58, 50, 0.05)',
+        sans: ['"Instrument Sans"', 'sans-serif'],
+        display: ['"Cormorant Garamond"', 'serif'],
       },
       borderRadius: {
-        panel: '28px',
+        sm: 'var(--radius)',
       },
     },
   },

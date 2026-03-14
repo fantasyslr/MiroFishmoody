@@ -17,10 +17,10 @@ export type CampaignDraft = {
 
 export const navigation: Array<{ to: string; label: string; description: string }> = [
   { to: '/', label: '总览台', description: '看队列、重点与最近结论' },
-  { to: '/new-review', label: '新建评审', description: '把输入写成可比较方案' },
+  { to: '/', label: '新建评审', description: '把输入写成可比较方案' },
   { to: '/running', label: '运行状态', description: '只看当前阶段与进度' },
   { to: '/result', label: '结果页', description: '收口建议与方案差异' },
-  { to: '/history', label: '结算历史', description: '回填真实结果并做复盘' },
+  { to: '/admin/history', label: '结算历史', description: '回填真实结果并做复盘' },
 ]
 
 export const dashboardMetrics = [

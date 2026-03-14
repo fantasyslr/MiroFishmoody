@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700;900&family=Noto+Serif+SC:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Instrument+Sans:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,146 +6,81 @@
 
 @layer base {
   :root {
-    color-scheme: light;
-    font-synthesis: none;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
+    /* Ivory / Bone background */
+    --background: 40 20% 97%;
+    --foreground: 20 10% 10%;
 
-  * {
-    box-sizing: border-box;
-  }
+    --card: 40 20% 99%;
+    --card-foreground: 20 10% 10%;
 
-  html {
-    min-width: 320px;
-    scroll-behavior: smooth;
-    scrollbar-color: #d9cfc2 transparent;
-  }
+    --popover: 40 20% 99%;
+    --popover-foreground: 20 10% 10%;
 
-  ::selection {
-    background: rgba(127, 147, 161, 0.22);
-  }
+    /* Espresso / Ink primary */
+    --primary: 20 10% 10%;
+    --primary-foreground: 40 20% 97%;
 
-  body {
-    margin: 0;
-    min-height: 100vh;
-    background:
-      radial-gradient(circle at top left, rgba(223, 231, 234, 0.85), transparent 34%),
-      radial-gradient(circle at right 15%, rgba(140, 97, 103, 0.08), transparent 28%),
-      linear-gradient(180deg, #fffdf8 0%, #f6f1e8 100%);
-    color: #2f241d;
-    font-family: 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
-  }
+    /* Olive / Moss secondary */
+    --secondary: 70 10% 85%;
+    --secondary-foreground: 70 20% 25%;
 
-  button,
-  input,
-  textarea,
-  select {
-    font: inherit;
-  }
+    /* Muted plum for hypothesis/experimental */
+    --muted: 280 10% 90%;
+    --muted-foreground: 280 10% 40%;
 
-  a {
-    color: inherit;
-    text-decoration: none;
+    /* Copper / Lipstick Red for accent/emphasis */
+    --accent: 10 70% 45%;
+    --accent-foreground: 40 20% 97%;
+
+    /* Warm sand for subtle borders */
+    --border: 40 15% 85%;
+    --input: 40 15% 90%;
+    --ring: 20 10% 10%;
+
+    --radius: 0.25rem;
   }
 }
 
-@layer components {
-  .ambient-orb {
-    @apply pointer-events-none fixed rounded-full blur-3xl;
-    width: 26rem;
-    height: 26rem;
+@layer base {
+  * {
+    @apply border-border;
   }
-
-  .ambient-orb-left {
-    top: -8rem;
-    left: -8rem;
-    background: rgba(223, 231, 234, 0.9);
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Instrument Sans', sans-serif;
   }
-
-  .ambient-orb-right {
-    top: 8rem;
-    right: -9rem;
-    background: rgba(140, 97, 103, 0.08);
+  h1, h2, h3, h4, h5, h6, .font-display {
+    font-family: 'Cormorant Garamond', serif;
+    @apply tracking-tight;
   }
+}
 
-  .section-label {
-    @apply text-[11px] font-semibold uppercase tracking-[0.28em] text-mist;
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
   }
-
-  .field-label {
-    @apply text-xs font-semibold uppercase tracking-[0.24em] text-mist;
+  .lab-card {
+    @apply bg-card border border-border shadow-sm rounded-sm;
   }
-
-  .field-input {
-    @apply w-full rounded-[22px] border border-line bg-paper px-4 py-3 text-sm text-coffee outline-none transition placeholder:text-ink/45 focus:border-mist focus:ring-2 focus:ring-mist/20;
+  .lab-input {
+    @apply bg-transparent border-b border-border focus:border-primary outline-none py-1 transition-colors rounded-none w-full;
   }
-
-  .field-textarea {
-    @apply field-input min-h-[7rem] resize-y leading-6;
+  .lab-button {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium transition-colors border rounded-sm;
   }
-
-  .field-select {
-    @apply w-full rounded-[22px] border border-line bg-paper px-4 py-3 text-sm text-coffee outline-none transition focus:border-mist focus:ring-2 focus:ring-mist/20;
+  .lab-button-primary {
+    @apply bg-primary text-primary-foreground border-primary hover:bg-primary/90;
   }
-
-  .primary-button {
-    @apply inline-flex items-center rounded-full border border-coffee bg-coffee px-5 py-3 text-sm font-semibold text-paper transition-all duration-200 hover:bg-ink hover:shadow-card active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40;
+  .lab-button-secondary {
+    @apply bg-secondary text-secondary-foreground border-transparent hover:bg-secondary/80;
   }
-
-  .secondary-button {
-    @apply inline-flex items-center rounded-full border border-line bg-paper px-5 py-3 text-sm font-semibold text-coffee transition-all duration-200 hover:border-mist hover:bg-cream hover:text-coffee active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40;
+  .lab-button-outline {
+    @apply border-border bg-transparent hover:border-primary hover:bg-primary/5;
   }
-
-  .tag-chip {
-    @apply inline-flex items-center rounded-full border border-mist/25 bg-mist-soft/45 px-3 py-1.5 text-xs font-semibold text-ink;
+  .hypothesis-tag {
+    @apply text-[10px] uppercase tracking-wider font-semibold text-muted-foreground border border-muted-foreground/30 px-1.5 py-0.5 rounded-sm;
   }
-
-  .tag-chip-warning {
-    @apply border-wine/20 bg-wine/10 text-wine;
-  }
-
-  .nav-scroll-fade::after {
-    content: '';
-    pointer-events: none;
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 2.5rem;
-    background: linear-gradient(to right, transparent, rgba(255, 253, 248, 0.85));
-  }
-
-  .scrollbar-thin {
-    scrollbar-width: thin;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar {
-    height: 3px;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: #d9cfc2;
-    border-radius: 2px;
-  }
-
-  .page-enter {
-    animation: page-fade-in 0.35s ease-out;
-  }
-
-  @keyframes page-fade-in {
-    from {
-      opacity: 0;
-      transform: translateY(6px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  .baseline-tag {
+    @apply text-[10px] uppercase tracking-wider font-semibold text-secondary-foreground bg-secondary px-1.5 py-0.5 rounded-sm;
   }
 }
