@@ -50,9 +50,9 @@ export function Layout({
                 }
               >
                 <FlaskConical className="h-4 w-4" />
-                Race Builder
+                营销实验室
               </NavLink>
-              
+
               {isAdmin && (
                 <>
                   <NavLink
@@ -66,7 +66,7 @@ export function Layout({
                     }
                   >
                     <Database className="h-4 w-4" />
-                    Data Spine
+                    数据总览
                   </NavLink>
                   <NavLink
                     to="/admin/history"
@@ -79,7 +79,7 @@ export function Layout({
                     }
                   >
                     <History className="h-4 w-4" />
-                    Past Races
+                    历史记录
                   </NavLink>
                 </>
               )}
@@ -90,7 +90,7 @@ export function Layout({
             <span className="font-medium tracking-wide uppercase text-[10px]">{user.display_name}</span>
             <button
               onClick={handleLogout}
-              aria-label="Log out"
+              aria-label="退出登录"
               className="flex items-center gap-1.5 transition-colors hover:text-primary"
             >
               <LogOut className="h-4 w-4" />

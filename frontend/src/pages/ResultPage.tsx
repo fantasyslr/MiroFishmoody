@@ -30,13 +30,13 @@ export function ResultPage() {
       <section className="space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="font-display text-4xl text-primary font-semibold mb-2">Race Resolution</h1>
+            <h1 className="font-display text-4xl text-primary font-semibold mb-2">评估结果</h1>
             <p className="text-muted-foreground max-w-2xl text-balance">
-              Strategic directions evaluated by <strong className="text-primary font-medium">{observed_baseline.sort_by.replace(/_/g, ' ').toUpperCase()}</strong>.
+              按 <strong className="text-primary font-medium">{observed_baseline.sort_by.replace(/_/g, ' ').toUpperCase()}</strong> 评估策略方向。
               {topEntry && (
                 <>
-                  {' '}<span className="text-primary font-medium">{topEntry.plan.name || `Plan #${topEntry.rank}`}</span> emerges as the dominant strategy
-                  {topEntry.data_sufficient ? '.' : ' (limited historical evidence).'}
+                  {' '}<span className="text-primary font-medium">{topEntry.plan.name || `方案 #${topEntry.rank}`}</span> 为最优策略
+                  {topEntry.data_sufficient ? '。' : '（历史数据有限）。'}
                 </>
               )}
             </p>
@@ -45,7 +45,7 @@ export function ResultPage() {
             onClick={() => { clearRaceState(); navigate('/') }}
             className="lab-button lab-button-outline"
           >
-            New Race
+            新评估
           </button>
         </div>
 
@@ -54,7 +54,7 @@ export function ResultPage() {
           <div className="lab-card p-5 flex gap-4 items-start bg-primary/5 border-primary/20">
             <AlertTriangle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
             <div>
-              <h3 className="text-xs uppercase tracking-wider font-bold text-primary mb-2">Strategic Recommendation</h3>
+              <h3 className="text-xs uppercase tracking-wider font-bold text-primary mb-2">策略建议</h3>
               <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{observed_baseline.recommendation}</p>
             </div>
           </div>
@@ -63,7 +63,7 @@ export function ResultPage() {
 
       {/* Rankings List */}
       <section className="space-y-6">
-        <h2 className="font-display text-2xl text-primary border-b border-border pb-4">Evaluation Tracks</h2>
+        <h2 className="font-display text-2xl text-primary border-b border-border pb-4">评估轨道</h2>
 
         <div className="space-y-4">
           {ranking.map((entry: RankingEntry) => {
@@ -91,9 +91,9 @@ export function ResultPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-3 mb-1">
-                        <h3 className="text-lg font-semibold">{entry.plan.name || `Plan #${entry.rank}`}</h3>
-                        {entry.rank === 1 && <span className="baseline-tag bg-accent text-accent-foreground">Top Choice</span>}
-                        {!entry.data_sufficient && <span className="hypothesis-tag">Sparse Data</span>}
+                        <h3 className="text-lg font-semibold">{entry.plan.name || `方案 #${entry.rank}`}</h3>
+                        {entry.rank === 1 && <span className="baseline-tag bg-accent text-accent-foreground">最优选择</span>}
+                        {!entry.data_sufficient && <span className="hypothesis-tag">数据稀疏</span>}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
                         <span>{(entry.plan.theme || '').replace(/_/g, ' ').toUpperCase()}</span>
@@ -111,7 +111,7 @@ export function ResultPage() {
                       <div className="font-mono text-lg font-medium">{entry.score.toFixed(2)}</div>
                     </div>
                     <div className="text-right hidden sm:block">
-                      <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Sample Size</div>
+                      <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">样本量</div>
                       <div className="font-mono text-lg">{entry.observed_baseline.sample_size}</div>
                     </div>
                     <button className="p-2 text-muted-foreground hover:text-primary">
@@ -128,44 +128,44 @@ export function ResultPage() {
                     <div className="p-6 border-b border-border/50 space-y-6">
                       <div className="flex items-center gap-2 mb-4">
                         <Activity className="h-4 w-4 text-primary" />
-                        <h4 className="font-semibold text-sm uppercase tracking-widest text-primary">Track 1: Observed Historical Baseline</h4>
-                        <span className="baseline-tag ml-2">Primary Driver</span>
+                        <h4 className="font-semibold text-sm uppercase tracking-widest text-primary">轨道 1：历史基线数据</h4>
+                        <span className="baseline-tag ml-2">主要依据</span>
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                         {entry.observed_baseline.roas_mean != null && (
                           <div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">ROAS (Mean)</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">ROAS（均值）</div>
                             <div className="font-mono text-xl">{entry.observed_baseline.roas_mean.toFixed(2)}</div>
                           </div>
                         )}
                         {entry.observed_baseline.cvr_mean != null && (
                           <div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">CVR (Mean)</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">CVR（均值）</div>
                             <div className="font-mono text-xl">{(entry.observed_baseline.cvr_mean * 100).toFixed(1)}%</div>
                           </div>
                         )}
                         {entry.observed_baseline.purchase_rate != null && (
                           <div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Purchase Rate</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">购买率</div>
                             <div className="font-mono text-xl">{(entry.observed_baseline.purchase_rate * 100).toFixed(1)}%</div>
                           </div>
                         )}
                         {entry.observed_baseline.revenue_mean != null && (
                           <div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Revenue (Mean)</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">收入（均值）</div>
                             <div className="font-mono text-xl">{entry.observed_baseline.revenue_mean.toLocaleString()}</div>
                           </div>
                         )}
                         {entry.observed_baseline.sessions_mean != null && (
                           <div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Sessions (Mean)</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">会话数（均值）</div>
                             <div className="font-mono text-xl">{Math.round(entry.observed_baseline.sessions_mean).toLocaleString()}</div>
                           </div>
                         )}
                         {entry.observed_baseline.aov_mean != null && (
                           <div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">AOV (Mean)</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">AOV（均值）</div>
                             <div className="font-mono text-xl">{entry.observed_baseline.aov_mean.toFixed(0)}</div>
                           </div>
                         )}
@@ -176,7 +176,7 @@ export function ResultPage() {
                           </div>
                         )}
                         <div>
-                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Match Quality</div>
+                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">匹配质量</div>
                           <div className="font-mono text-sm mt-1 uppercase bg-secondary/50 inline-block px-2 py-1 rounded-sm text-secondary-foreground">
                             {entry.observed_baseline.match_quality}
                           </div>
@@ -185,7 +185,7 @@ export function ResultPage() {
 
                       {entry.observed_baseline.match_dimensions.length > 0 && (
                         <div className="pt-4">
-                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Matched Dimensions</div>
+                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">匹配维度</div>
                           <div className="flex flex-wrap gap-2">
                             {entry.observed_baseline.match_dimensions.map(dim => (
                               <span key={dim} className="text-xs font-mono bg-secondary/30 px-2 py-1 rounded-sm">
@@ -199,7 +199,7 @@ export function ResultPage() {
                       {/* Drift indicators */}
                       {entry.observed_baseline.drift_30d && (
                         <div className="pt-4 border-t border-border/30">
-                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Recent Trend (30d vs All-Time)</div>
+                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">近期趋势（30天 vs 全量）</div>
                           <div className="flex flex-wrap gap-4">
                             {Object.entries(entry.observed_baseline.drift_30d).map(([metric, drift]) => (
                               <div key={metric} className="text-xs font-mono">
@@ -219,16 +219,16 @@ export function ResultPage() {
                           <div className="flex items-center gap-2 mb-2">
                             <Snowflake className="h-3 w-3 text-primary" />
                             <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                              Season: {entry.observed_baseline.seasonal_drift.current_season}
+                              季节：{entry.observed_baseline.seasonal_drift.current_season}
                               <span className="ml-2 text-muted-foreground/70">
-                                ({entry.observed_baseline.seasonal_drift.sample_in_season} in-season / {entry.observed_baseline.seasonal_drift.sample_regular} regular)
+                                （{entry.observed_baseline.seasonal_drift.sample_in_season} 季节内 / {entry.observed_baseline.seasonal_drift.sample_regular} 常规）
                               </span>
                             </div>
                           </div>
                           <div className="flex flex-wrap gap-4">
                             {entry.observed_baseline.seasonal_drift.season_vs_regular_roas != null && (
                               <div className="text-xs font-mono">
-                                <span className="text-muted-foreground">ROAS vs regular: </span>
+                                <span className="text-muted-foreground">ROAS vs 常规：</span>
                                 <span className={entry.observed_baseline.seasonal_drift.season_vs_regular_roas > 0 ? 'text-green-600' : entry.observed_baseline.seasonal_drift.season_vs_regular_roas < 0 ? 'text-red-600' : ''}>
                                   {entry.observed_baseline.seasonal_drift.season_vs_regular_roas > 0 ? '+' : ''}{entry.observed_baseline.seasonal_drift.season_vs_regular_roas.toFixed(2)}
                                 </span>
@@ -236,7 +236,7 @@ export function ResultPage() {
                             )}
                             {entry.observed_baseline.seasonal_drift.season_vs_regular_cvr != null && (
                               <div className="text-xs font-mono">
-                                <span className="text-muted-foreground">CVR vs regular: </span>
+                                <span className="text-muted-foreground">CVR vs 常规：</span>
                                 <span className={entry.observed_baseline.seasonal_drift.season_vs_regular_cvr > 0 ? 'text-green-600' : entry.observed_baseline.seasonal_drift.season_vs_regular_cvr < 0 ? 'text-red-600' : ''}>
                                   {entry.observed_baseline.seasonal_drift.season_vs_regular_cvr > 0 ? '+' : ''}{(entry.observed_baseline.seasonal_drift.season_vs_regular_cvr * 100).toFixed(1)}%
                                 </span>
@@ -252,20 +252,20 @@ export function ResultPage() {
                           <div className="flex items-center gap-2 mb-2">
                             <Lightbulb className="h-3 w-3 text-amber-500" />
                             <div className="text-[10px] text-amber-600 uppercase tracking-wider font-semibold">
-                              {entry.observed_baseline.cold_start_hint.type === 'cross_category' ? 'Cross-Category Transfer' : 'Distribution Estimate'}
+                              {entry.observed_baseline.cold_start_hint.type === 'cross_category' ? '跨品类迁移' : '分布估计'}
                             </div>
                           </div>
                           <p className="text-xs text-muted-foreground mb-3">{entry.observed_baseline.cold_start_hint.note}</p>
                           {entry.observed_baseline.cold_start_hint.type === 'cross_category' && entry.observed_baseline.cold_start_hint.source_product_lines && (
                             <div className="text-xs font-mono text-muted-foreground">
-                              Source: {entry.observed_baseline.cold_start_hint.source_product_lines.join(', ')} | Discount: {((entry.observed_baseline.cold_start_hint.discount_applied ?? 1) * 100).toFixed(0)}%
+                              来源：{entry.observed_baseline.cold_start_hint.source_product_lines.join(', ')} | 折扣：{((entry.observed_baseline.cold_start_hint.discount_applied ?? 1) * 100).toFixed(0)}%
                             </div>
                           )}
                           {entry.observed_baseline.cold_start_hint.type === 'distribution_estimate' && (
                             <div className="grid grid-cols-3 gap-4">
                               {entry.observed_baseline.cold_start_hint.roas_range && (
                                 <div className="text-xs">
-                                  <div className="text-muted-foreground mb-1">ROAS Range</div>
+                                  <div className="text-muted-foreground mb-1">ROAS 范围</div>
                                   <div className="font-mono">
                                     P25: {entry.observed_baseline.cold_start_hint.roas_range.p25} / P50: {entry.observed_baseline.cold_start_hint.roas_range.p50} / P75: {entry.observed_baseline.cold_start_hint.roas_range.p75}
                                   </div>
@@ -273,7 +273,7 @@ export function ResultPage() {
                               )}
                               {entry.observed_baseline.cold_start_hint.cvr_range && (
                                 <div className="text-xs">
-                                  <div className="text-muted-foreground mb-1">CVR Range</div>
+                                  <div className="text-muted-foreground mb-1">CVR 范围</div>
                                   <div className="font-mono">
                                     P25: {(entry.observed_baseline.cold_start_hint.cvr_range.p25 * 100).toFixed(1)}% / P50: {(entry.observed_baseline.cold_start_hint.cvr_range.p50 * 100).toFixed(1)}% / P75: {(entry.observed_baseline.cold_start_hint.cvr_range.p75 * 100).toFixed(1)}%
                                   </div>
@@ -281,7 +281,7 @@ export function ResultPage() {
                               )}
                               {entry.observed_baseline.cold_start_hint.revenue_range && (
                                 <div className="text-xs">
-                                  <div className="text-muted-foreground mb-1">Revenue Range</div>
+                                  <div className="text-muted-foreground mb-1">收入范围</div>
                                   <div className="font-mono">
                                     P25: {entry.observed_baseline.cold_start_hint.revenue_range.p25.toLocaleString()} / P50: {entry.observed_baseline.cold_start_hint.revenue_range.p50.toLocaleString()} / P75: {entry.observed_baseline.cold_start_hint.revenue_range.p75.toLocaleString()}
                                   </div>
@@ -298,8 +298,8 @@ export function ResultPage() {
                       <div className="p-6 bg-muted/20 space-y-6">
                         <div className="flex items-center gap-2 mb-4">
                           <Beaker className="h-4 w-4 text-muted-foreground" />
-                          <h4 className="font-semibold text-sm uppercase tracking-widest text-muted-foreground">Track 2: Perception Model Hypothesis</h4>
-                          <span className="hypothesis-tag ml-2">Experimental Context</span>
+                          <h4 className="font-semibold text-sm uppercase tracking-widest text-muted-foreground">轨道 2：认知模型假设</h4>
+                          <span className="hypothesis-tag ml-2">实验性参考</span>
                         </div>
 
                         <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl">
@@ -308,17 +308,17 @@ export function ResultPage() {
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-2">
                           <div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Model Confidence</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">模型置信度</div>
                             <div className="font-mono text-sm">{((hypothesis.confidence || 0) * 100).toFixed(0)}%</div>
                           </div>
                           <div>
-                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Similar Interventions</div>
-                            <div className="font-mono text-sm">{hypothesis.similar_interventions || 0} found</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">相似干预</div>
+                            <div className="font-mono text-sm">找到 {hypothesis.similar_interventions || 0} 条</div>
                           </div>
                         </div>
 
                         <div className="pt-2 border-t border-muted-foreground/10">
-                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-3">Predicted Perception Shifts (7D)</div>
+                          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-3">预测认知偏移（7天）</div>
                           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
                             {Object.entries(hypothesis.predicted_delta).map(([dim, val]) => (
                               <div key={dim} className="bg-background border border-border p-2 text-center rounded-sm">
@@ -337,7 +337,7 @@ export function ResultPage() {
 
                     {hypothesis?.error && (
                       <div className="p-6 bg-muted/20">
-                        <p className="text-sm text-muted-foreground">Track 2 unavailable: {hypothesis.error}</p>
+                        <p className="text-sm text-muted-foreground">轨道 2 不可用：{hypothesis.error}</p>
                       </div>
                     )}
                   </div>

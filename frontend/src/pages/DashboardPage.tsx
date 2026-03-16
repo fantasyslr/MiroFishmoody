@@ -9,32 +9,32 @@ export function DashboardPage() {
     getBrandictionStats().then(setStats)
   }, [])
 
-  if (!stats) return <div className="p-6">Loading data spine...</div>
+  if (!stats) return <div className="p-6">正在加载数据...</div>
 
   return (
     <div className="space-y-12">
       <section className="space-y-4">
-        <h1 className="font-display text-4xl text-primary font-semibold">Data Spine Overview</h1>
+        <h1 className="font-display text-4xl text-primary font-semibold">数据总览</h1>
         <p className="text-muted-foreground text-lg max-w-2xl text-balance">
-          System readiness and empirical evidence coverage for the Brandiction Engine v3.
+          Brandiction 引擎 v3 的系统就绪状态与经验数据覆盖情况。
         </p>
       </section>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="lab-card p-6">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Interventions Indexed</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">已索引干预</div>
           <div className="font-display text-4xl text-primary">{stats.interventions_count?.toLocaleString()}</div>
         </div>
         <div className="lab-card p-6">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Outcomes Tracked</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">已追踪结果</div>
           <div className="font-display text-4xl text-primary">{stats.outcomes_count?.toLocaleString()}</div>
         </div>
         <div className="lab-card p-6">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Brand Signals</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">品牌信号</div>
           <div className="font-display text-4xl text-primary">{stats.signals_count?.toLocaleString()}</div>
         </div>
         <div className="lab-card p-6">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Competitor Events</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">竞品事件</div>
           <div className="font-display text-4xl text-primary">{stats.competitor_events_count?.toLocaleString()}</div>
         </div>
       </div>
@@ -43,7 +43,7 @@ export function DashboardPage() {
         
         <section className="space-y-4">
           <h2 className="font-display text-2xl text-primary flex items-center gap-2">
-            <Database className="h-5 w-5" /> Market Coverage
+            <Database className="h-5 w-5" /> 市场覆盖
           </h2>
           <div className="lab-card p-6 space-y-4">
             {Object.entries(stats.market_coverage || {}).map(([market, ratio]) => (
@@ -62,7 +62,7 @@ export function DashboardPage() {
 
         <section className="space-y-4">
           <h2 className="font-display text-2xl text-primary flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" /> Platform Coverage
+            <TrendingUp className="h-5 w-5" /> 平台覆盖
           </h2>
           <div className="lab-card p-6 space-y-4">
             {Object.entries(stats.platform_coverage || {}).map(([platform, ratio]) => (
@@ -83,10 +83,10 @@ export function DashboardPage() {
 
       <section className="space-y-4">
         <h2 className="font-display text-2xl text-primary flex items-center gap-2 text-accent">
-          <AlertCircle className="h-5 w-5" /> Sparsity Alerts
+          <AlertCircle className="h-5 w-5" /> 稀疏度预警
         </h2>
         <div className="lab-card p-6 bg-accent/5 border-accent/20">
-          <p className="text-sm mb-4">The following perceptual dimensions have limited historical intervention evidence. Model hypothesis confidence will be lower for these areas.</p>
+          <p className="text-sm mb-4">以下认知维度的历史干预证据有限，模型假设的置信度会较低。</p>
           <div className="flex gap-2">
             {((stats.weakest_dimensions as string[]) || []).map((dim: string) => (
               <span key={dim} className="text-xs uppercase tracking-wider font-semibold text-accent border border-accent/30 px-2 py-1 rounded-sm bg-background">
