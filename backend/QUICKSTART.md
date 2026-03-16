@@ -1,140 +1,182 @@
 # MiroFishmoody Backend Quickstart
 
-## 1. Install dependencies
+这份文档只讲后端最短启动路径。  
+如果你想看完整操作流程，优先读 [使用教程](../docs/USAGE_GUIDE.md)。
 
-Recommended with `uv`:
+## 1. 安装依赖
+
+推荐使用 `uv`：
 
 ```bash
 cd backend
 uv sync
 ```
 
-Or with `pip`:
+如果你不用 `uv`：
 
 ```bash
 cd backend
 pip install -r requirements.txt
-pip install pytest  # optional, for tests
+pip install pytest
 ```
 
-## 2. Configure `.env`
+## 2. 准备环境变量
+
+在项目根目录创建 `.env`：
 
 ```bash
 cd ..
 cp .env.example .env
 ```
 
-Edit `.env` and set at least:
+至少配置以下变量：
 
-- `LLM_API_KEY`
-- `LLM_BASE_URL` if you are not using the default OpenAI endpoint
-- `LLM_MODEL_NAME` if needed
-- `SECRET_KEY` for a non-default session secret
+```env
+LLM_API_KEY=your-api-key
+SECRET_KEY=replace-with-a-random-string
+MOODY_USERS=admin:StrongPassword123:Admin:admin
+```
 
-## 3. Start the backend
+说明：
 
-With `uv`:
+- `LLM_API_KEY` 不填，后端启动时会直接报错退出
+- `MOODY_USERS` 是登录用户表，不再写死在代码里
+- `SECRET_KEY` 用于 Flask Session，生产环境必须替换
+
+## 3. 启动后端
+
+使用 `uv`：
 
 ```bash
 cd backend
 uv run python run.py
 ```
 
-Or with plain Python:
+或使用系统 Python：
 
 ```bash
 cd backend
-python run.py
+python3 run.py
 ```
 
-Default address: `http://0.0.0.0:5001`
+默认地址：<http://localhost:5001>
 
-## 4. Health check
+## 4. 健康检查
 
 ```bash
 curl http://localhost:5001/health
 ```
 
-Expected response:
+健康检查会返回：
 
-```json
-{"service":"Campaign Ranker Engine","status":"ok"}
-```
+- `status`
+- `db`
+- `uploads_writable`
+- `disk_free_gb`
 
-## 5. Authentication note
+`status=ok` 表示基本可用；`status=degraded` 说明数据库、上传目录或磁盘存在问题。
 
-All `/api/campaign/*` endpoints require a logged-in session.  
-Local users are defined in `backend/app/auth.py`; update them before sharing or deploying publicly.
-
-## 6. Minimal backend smoke test
-
-### Login and store the session cookie
+## 5. 登录验证
 
 ```bash
 curl -c cookies.txt -X POST http://localhost:5001/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"<username>","password":"<password>"}'
+  -d '{"username":"admin","password":"StrongPassword123"}'
 ```
 
-### Submit an evaluation
+## 6. Brandiction 最小烟测
+
+运行一轮最小 race：
+
+```bash
+curl -b cookies.txt -X POST http://localhost:5001/api/brandiction/race \
+  -H "Content-Type: application/json" \
+  -d '{
+    "product_line": "moodyplus",
+    "audience_segment": "general",
+    "market": "cn",
+    "sort_by": "roas_mean",
+    "include_hypothesis": true,
+    "plans": [
+      {
+        "name": "Science Plan",
+        "theme": "science_credibility",
+        "platform": "redbook",
+        "channel_family": "social_seed",
+        "budget": 50000,
+        "market": "cn"
+      },
+      {
+        "name": "Comfort Plan",
+        "theme": "comfort_beauty",
+        "platform": "douyin",
+        "channel_family": "short_video",
+        "budget": 50000,
+        "market": "cn"
+      }
+    ]
+  }'
+```
+
+查看历史记录：
+
+```bash
+curl -b cookies.txt http://localhost:5001/api/brandiction/race-history
+```
+
+## 7. Campaign Evaluation 最小烟测
+
+提交一轮异步评审：
 
 ```bash
 curl -b cookies.txt -X POST http://localhost:5001/api/campaign/evaluate \
   -H "Content-Type: application/json" \
   -d '{
     "campaigns": [
-      {"name": "方案A", "core_message": "自然美瞳日抛新体验", "product_line": "colored_lenses"},
-      {"name": "方案B", "core_message": "硅水凝胶透氧黑科技", "product_line": "moodyplus"}
+      {
+        "name": "方案 A",
+        "core_message": "自然美瞳日抛新体验",
+        "product_line": "colored_lenses"
+      },
+      {
+        "name": "方案 B",
+        "core_message": "硅水凝胶透氧黑科技",
+        "product_line": "moodyplus"
+      }
     ]
   }'
 ```
 
-This returns `task_id` and `set_id`.
+返回值里会有 `task_id` 和 `set_id`。
 
-### Check task progress
+轮询状态：
 
 ```bash
 curl -b cookies.txt http://localhost:5001/api/campaign/evaluate/status/<task_id>
 ```
 
-When `status=completed`, fetch the result:
+获取结果：
 
 ```bash
 curl -b cookies.txt http://localhost:5001/api/campaign/result/<set_id>
 ```
 
-### Export the result JSON
+导出 JSON：
 
 ```bash
 curl -b cookies.txt -OJ http://localhost:5001/api/campaign/export/<set_id>
 ```
 
-### Post-launch resolution
-
-```bash
-curl -b cookies.txt -X POST http://localhost:5001/api/campaign/resolve \
-  -H "Content-Type: application/json" \
-  -d '{"set_id":"<set_id>","winner_campaign_id":"campaign_1","actual_metrics":{"ctr":0.03}}'
-```
-
-### Check calibration status
-
-```bash
-curl -b cookies.txt http://localhost:5001/api/campaign/calibration
-```
-
-## 7. Run tests
-
-With `uv`:
+## 8. 运行测试
 
 ```bash
 cd backend
 uv run pytest tests -q
 ```
 
-Or with Python directly:
+如果只想先看 Brandiction 排序链路：
 
 ```bash
 cd backend
-python -m pytest tests -q
+uv run pytest tests/test_v3_baseline_ranker.py -q
 ```

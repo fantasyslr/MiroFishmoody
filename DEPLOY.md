@@ -1,9 +1,10 @@
-# Moody Campaign Choice Engine — 部署说明
+# MiroFishmoody — 部署说明
 
 ## 前提
 
 - 服务器有 Docker + Docker Compose
 - 有一个可用的 LLM API Key（百炼/千问/OpenAI 兼容接口均可）
+- 已准备至少一个登录账号（通过 `MOODY_USERS` 配置）
 
 ## 1. 配置 .env
 
@@ -18,10 +19,12 @@ LLM_API_KEY=sk-xxxxx
 LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 LLM_MODEL_NAME=qwen-plus
 SECRET_KEY=随便写一串随机字符串
+MOODY_USERS=admin:StrongPassword123:Admin:admin
 ```
 
 > `FLASK_DEBUG` 已在 `.env.example` 中默认设为 `False`，不需要额外改。
-> `SECRET_KEY` 留空会使用硬编码默认值，生产环境建议填一个随机值。
+> `SECRET_KEY` 生产环境必须替换成随机值。
+> `MOODY_USERS` 是当前登录入口的唯一用户来源，不配置则无法登录。
 
 ## 2. 构建并启动
 
@@ -37,7 +40,7 @@ docker compose ps
 
 # 手动验证
 curl http://localhost:5001/health
-# 预期返回：{"service":"Campaign Ranker Engine","status":"ok"}
+# 预期返回中至少包含 status / db / uploads_writable / disk_free_gb
 ```
 
 浏览器打开 `http://<服务器IP>:5001` 即可使用前端页面。
@@ -70,4 +73,5 @@ gunicorn --chdir backend --bind 0.0.0.0:5001 --workers 2 --threads 4 --timeout 3
 | `LLM_API_KEY` | LLM API 密钥（必填） | `sk-xxxxx` |
 | `LLM_BASE_URL` | OpenAI 兼容接口地址 | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
 | `LLM_MODEL_NAME` | 模型名 | `qwen-plus` |
-| `SECRET_KEY` | Flask session 密钥（建议填） | 任意随机字符串 |
+| `SECRET_KEY` | Flask session 密钥（必填） | 任意随机字符串 |
+| `MOODY_USERS` | 登录用户表 | `admin:StrongPassword123:Admin:admin` |
