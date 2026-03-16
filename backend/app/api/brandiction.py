@@ -572,6 +572,7 @@ def race_campaigns():
     product_line = data.get("product_line", "moodyplus")
     audience_segment = data.get("audience_segment", "general")
     market = data.get("market", "cn")
+    season_tag = data.get("season_tag")  # 618 / double11 / cny / regular
 
     # Inject top-level market into plans that don't specify their own
     for plan in plans:
@@ -584,6 +585,7 @@ def race_campaigns():
         baseline_result = ranker.rank_campaigns(
             plans=plans, sort_by=sort_by,
             product_line=product_line, audience_segment=audience_segment,
+            season_tag=season_tag,
         )
     except ValueError as e:
         return jsonify({"error": str(e)}), 400

@@ -7,7 +7,7 @@ import warnings
 
 warnings.filterwarnings("ignore", message=".*resource_tracker.*")
 
-from flask import Flask, request, send_from_directory
+from flask import Flask, request, session, send_from_directory
 from flask_cors import CORS
 
 from .config import Config
@@ -44,9 +44,22 @@ def create_app(config_class=Config):
         req_logger.debug(f"请求: {request.method} {request.path}")
 
     @app.after_request
-    def log_response(response):
-        req_logger = get_logger('ranker.request')
-        req_logger.debug(f"响应: {response.status_code}")
+    def audit_log(response):
+        """审计日志：写操作 + 导出操作记录用户、动作、IP"""
+        user = session.get('user', {})
+        username = user.get('username', 'anonymous')
+        is_write = request.method in ('POST', 'PUT', 'DELETE')
+        is_export = request.path.startswith('/api/campaign/export')
+
+        if is_write or is_export:
+            audit_logger = get_logger('ranker.audit')
+            audit_logger.info(
+                f"AUDIT | user={username} | {request.method} {request.path} | "
+                f"status={response.status_code} | ip={request.remote_addr}"
+            )
+        else:
+            req_logger = get_logger('ranker.request')
+            req_logger.debug(f"响应: {response.status_code}")
         return response
 
     # 注册蓝图
@@ -61,7 +74,44 @@ def create_app(config_class=Config):
 
     @app.route('/health')
     def health():
-        return {'status': 'ok', 'service': 'Campaign Ranker Engine'}
+        """增强健康检查：DB 连通性、磁盘空间、上传目录可写性"""
+        import sqlite3 as _sqlite3
+        checks = {"service": "Campaign Ranker Engine"}
+
+        # DB connectivity
+        try:
+            db_path = os.path.join(Config.UPLOAD_FOLDER, "tasks.db")
+            conn = _sqlite3.connect(db_path, timeout=2)
+            conn.execute("SELECT 1")
+            conn.close()
+            checks["db"] = "ok"
+        except Exception as e:
+            checks["db"] = f"error: {e}"
+
+        # Uploads dir writable
+        try:
+            test_file = os.path.join(Config.UPLOAD_FOLDER, ".health_check")
+            with open(test_file, 'w') as f:
+                f.write("ok")
+            os.remove(test_file)
+            checks["uploads_writable"] = "ok"
+        except Exception as e:
+            checks["uploads_writable"] = f"error: {e}"
+
+        # Disk space
+        try:
+            stat = os.statvfs(Config.UPLOAD_FOLDER)
+            free_gb = round((stat.f_bavail * stat.f_frsize) / (1024 ** 3), 2)
+            checks["disk_free_gb"] = free_gb
+            checks["disk"] = "warning: <1GB free" if free_gb < 1.0 else "ok"
+        except Exception:
+            checks["disk"] = "unknown"
+
+        overall = "ok" if all(
+            v == "ok" or isinstance(v, (int, float))
+            for k, v in checks.items() if k != "service"
+        ) else "degraded"
+        return {"status": overall, **checks}
 
     # 生产模式：Flask 托管前端静态文件
     dist = os.path.abspath(FRONTEND_DIST)

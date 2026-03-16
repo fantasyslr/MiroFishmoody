@@ -51,14 +51,16 @@ def _cleanup(db_path):
 
 def _user_session(client):
     """Set a normal user session"""
+    from app.auth import _password_version
     with client.session_transaction() as sess:
-        sess['user'] = {"username": "tester1", "display_name": "Tester", "role": "user"}
+        sess['user'] = {"username": "tester1", "display_name": "Tester1", "role": "user", "_pw_ver": _password_version("tester1")}
 
 
 def _admin_session(client):
     """Set an admin user session"""
+    from app.auth import _password_version
     with client.session_transaction() as sess:
-        sess['user'] = {"username": "slr", "display_name": "Liren", "role": "admin"}
+        sess['user'] = {"username": "slr", "display_name": "Liren", "role": "admin", "_pw_ver": _password_version("slr")}
 
 
 # ------------------------------------------------------------------

@@ -31,6 +31,7 @@ class HistoricalIntervention:
     platform: Optional[str] = None       # 投放平台（douyin / redbook / meta / google）
     channel_family: Optional[str] = None # 渠道大类（paid_social / paid_search / kol_seed …）
     objective: Optional[str] = None      # 投放目标（awareness / traffic / conversion）
+    season_tag: Optional[str] = None     # 时间标签（618 / double11 / cny / regular）
     notes: Optional[str] = None          # 人工备注
     extra: Dict[str, Any] = field(default_factory=dict)
 

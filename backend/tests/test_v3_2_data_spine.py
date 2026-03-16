@@ -610,13 +610,15 @@ def _make_app():
 
 
 def _admin_session(client):
+    from app.auth import _password_version
     with client.session_transaction() as sess:
-        sess["user"] = {"username": "slr", "display_name": "Liren", "role": "admin"}
+        sess["user"] = {"username": "slr", "display_name": "Liren", "role": "admin", "_pw_ver": _password_version("slr")}
 
 
 def _user_session(client):
+    from app.auth import _password_version
     with client.session_transaction() as sess:
-        sess["user"] = {"username": "tester", "display_name": "Tester", "role": "user"}
+        sess["user"] = {"username": "tester1", "display_name": "Tester1", "role": "user", "_pw_ver": _password_version("tester1")}
 
 
 class TestAPIInterventionsEndpoint(unittest.TestCase):

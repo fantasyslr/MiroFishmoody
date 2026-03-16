@@ -110,16 +110,27 @@ class TaskManager:
             conn.close()
 
     def _load_all_from_db(self):
-        """Load every row from SQLite into the in-memory dict."""
+        """Load every row from SQLite into the in-memory dict.
+        Tasks stuck in PROCESSING/PENDING are marked FAILED (server restart recovery).
+        """
         conn = sqlite3.connect(self._db_path())
         conn.row_factory = sqlite3.Row
+        interrupted = []
         try:
             rows = conn.execute("SELECT * FROM tasks").fetchall()
             for row in rows:
                 task = self._row_to_task(row)
+                if task.status in (TaskStatus.PROCESSING, TaskStatus.PENDING):
+                    task.status = TaskStatus.FAILED
+                    task.error = "服务重启，任务中断"
+                    task.message = "服务重启，任务中断（可重新提交）"
+                    task.updated_at = datetime.now()
+                    interrupted.append(task)
                 self._tasks[task.task_id] = task
         finally:
             conn.close()
+        for task in interrupted:
+            self._persist_task(task)
 
     @staticmethod
     def _row_to_task(row) -> Task:

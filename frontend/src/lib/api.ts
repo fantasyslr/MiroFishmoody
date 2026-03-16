@@ -77,6 +77,7 @@ export type RacePayload = {
   product_line?: string
   audience_segment?: string
   market?: string
+  season_tag?: string
 }
 
 // Matches BaselineStats.to_dict() from baseline_ranker.py
@@ -94,8 +95,25 @@ export type ObservedBaseline = {
   drift_30d?: Record<string, number>
   drift_60d?: Record<string, number>
   drift_90d?: Record<string, number>
+  seasonal_drift?: {
+    current_season: string
+    sample_in_season: number
+    sample_regular: number
+    season_vs_regular_roas?: number
+    season_vs_regular_cvr?: number
+  }
+  cold_start_hint?: {
+    type: 'cross_category' | 'distribution_estimate'
+    note: string
+    source_product_lines?: string[]
+    discount_applied?: number
+    total_interventions_in_db?: number
+    roas_range?: { p25: number; p50: number; p75: number }
+    cvr_range?: { p25: number; p50: number; p75: number }
+    revenue_range?: { p25: number; p50: number; p75: number }
+  }
   match_dimensions: string[]
-  match_quality: 'exact' | 'partial' | 'fallback' | 'no_data'
+  match_quality: 'exact' | 'partial' | 'fallback' | 'cross_category' | 'cold_start' | 'no_data'
 }
 
 // Single entry in the ranking array from rank_campaigns()

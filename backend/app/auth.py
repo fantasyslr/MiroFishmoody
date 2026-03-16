@@ -11,6 +11,7 @@
 """
 
 import os
+import hashlib
 import warnings
 from functools import wraps
 from flask import session, jsonify, request
@@ -46,12 +47,36 @@ def _load_users():
 USERS = _load_users()
 
 
+def _password_version(username: str) -> str:
+    """基于当前密码生成版本标识，密码变更时自动失效旧 session"""
+    user = USERS.get(username, {})
+    pw = user.get("password", "")
+    return hashlib.sha256(f"{username}:{pw}".encode()).hexdigest()[:16]
+
+
+def _validate_session(user_data: dict):
+    """验证 session 中的用户数据是否仍然有效。返回 None 表示有效，否则返回错误响应。"""
+    username = user_data.get('username', '')
+    if username not in USERS:
+        session.pop('user', None)
+        return jsonify({"error": "用户已不存在"}), 401
+    expected_ver = _password_version(username)
+    if user_data.get('_pw_ver') != expected_ver:
+        session.pop('user', None)
+        return jsonify({"error": "密码已变更，请重新登录"}), 401
+    return None
+
+
 def login_required(f):
     """登录校验装饰器"""
     @wraps(f)
     def decorated(*args, **kwargs):
-        if 'user' not in session:
+        user = session.get('user')
+        if not user:
             return jsonify({"error": "未登录，请先登录"}), 401
+        invalid = _validate_session(user)
+        if invalid:
+            return invalid
         return f(*args, **kwargs)
     return decorated
 
@@ -63,6 +88,9 @@ def admin_required(f):
         user = session.get('user')
         if not user:
             return jsonify({"error": "未登录，请先登录"}), 401
+        invalid = _validate_session(user)
+        if invalid:
+            return invalid
         username = user.get('username', '')
         user_info = USERS.get(username, {})
         if user_info.get('role') != 'admin':

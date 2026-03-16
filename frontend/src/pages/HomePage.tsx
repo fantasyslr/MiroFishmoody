@@ -18,6 +18,7 @@ export function HomePage() {
   const [productLine, setProductLine] = useState('moodyplus')
   const [audience] = useState('general')
   const [sortBy, setSortBy] = useState<RacePayload['sort_by']>('roas_mean')
+  const [seasonTag, setSeasonTag] = useState('')
   
   const [plans, setPlans] = useState<CampaignPlan[]>([
     { ...DEFAULT_PLAN, name: 'Plan A', theme: 'science_credibility' },
@@ -47,7 +48,8 @@ export function HomePage() {
       audience_segment: audience,
       sort_by: sortBy,
       include_hypothesis: true,
-      plans: plans.filter(p => p.name.trim() && p.theme)
+      plans: plans.filter(p => p.name.trim() && p.theme),
+      ...(seasonTag ? { season_tag: seasonTag } : {}),
     }
     
     saveRaceState({ payload })
@@ -93,13 +95,27 @@ export function HomePage() {
           </div>
           <div className="space-y-1.5 flex-1 min-w-[120px]">
             <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Optimization Target</label>
-            <select 
+            <select
               value={sortBy} onChange={e => setSortBy(e.target.value as 'roas_mean' | 'purchase_rate' | 'revenue_mean' | 'cvr_mean')}
               className="lab-input font-medium pb-2 cursor-pointer"
             >
               <option value="roas_mean">ROAS (Mean)</option>
               <option value="revenue_mean">Revenue Potential</option>
               <option value="purchase_rate">Conversion Rate</option>
+            </select>
+          </div>
+          <div className="space-y-1.5 flex-1 min-w-[120px]">
+            <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Season Context</label>
+            <select
+              value={seasonTag} onChange={e => setSeasonTag(e.target.value)}
+              className="lab-input font-medium pb-2 cursor-pointer"
+            >
+              <option value="">Regular (No Season)</option>
+              <option value="618">618 大促</option>
+              <option value="double11">双十一</option>
+              <option value="38">38 女王节</option>
+              <option value="99">99 划算节</option>
+              <option value="cny">春节 / CNY</option>
             </select>
           </div>
         </section>

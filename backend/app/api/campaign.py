@@ -133,7 +133,12 @@ def upload_image():
     if not file.filename or not _allowed_image(file.filename):
         return jsonify({"error": "只支持 JPG、PNG、WEBP 格式"}), 400
 
-    # Read and check size
+    # Fast-path size rejection via Content-Length header
+    content_length = request.content_length
+    if content_length and content_length > MAX_IMAGE_SIZE:
+        return jsonify({"error": "图片不能超过 5MB"}), 413
+
+    # Read and check actual size (Content-Length can be spoofed)
     file_data = file.read()
     if len(file_data) > MAX_IMAGE_SIZE:
         return jsonify({"error": "图片不能超过 5MB"}), 400
@@ -168,12 +173,17 @@ def upload_image():
     else:
         filename = f"__{uid}__{safe_name}"
     save_path = os.path.join(save_dir, filename)
+
+    # Path traversal guard: ensure resolved path stays within IMAGES_DIR
+    if not os.path.realpath(save_path).startswith(os.path.realpath(IMAGES_DIR)):
+        return jsonify({"error": "非法文件路径"}), 400
+
     with open(save_path, 'wb') as f:
         f.write(file_data)
 
     return jsonify({
         "image_id": filename,
-        "path": save_path,
+        "url": f"/api/campaign/image-file/{secure_filename(set_id)}/{filename}",
         "size": len(file_data),
     })
 
@@ -566,3 +576,44 @@ def list_tasks():
     """列出所有评审任务"""
     tasks = task_manager.list_tasks("campaign_evaluation")
     return jsonify({"tasks": tasks})
+
+
+@campaign_bp.route('/tasks/<task_id>/cancel', methods=['POST'])
+@login_required
+def cancel_task(task_id: str):
+    """手动取消一个卡住的任务"""
+    task = task_manager.get_task(task_id)
+    if not task:
+        return jsonify({"error": "任务不存在"}), 404
+    if task.status in (TaskStatus.COMPLETED, TaskStatus.FAILED):
+        return jsonify({"error": f"任务已结束 ({task.status.value})，无法取消"}), 400
+    task_manager.fail_task(task_id, "用户手动取消")
+    return jsonify({"status": "cancelled", "task_id": task_id})
+
+
+@campaign_bp.route('/tasks/<task_id>/retry', methods=['POST'])
+@login_required
+def retry_task(task_id: str):
+    """清除失败任务的旧结果，允许使用相同 set_id 重新提交"""
+    task = task_manager.get_task(task_id)
+    if not task:
+        return jsonify({"error": "任务不存在"}), 404
+    if task.status != TaskStatus.FAILED:
+        return jsonify({"error": f"只能重试失败的任务，当前状态: {task.status.value}"}), 400
+
+    set_id = task.metadata.get("set_id")
+    if not set_id:
+        return jsonify({"error": "任务缺少 set_id 元数据，无法重试"}), 400
+
+    # 清除旧结果，允许重新提交
+    _evaluation_store.pop(set_id, None)
+    result_path = os.path.join(_RESULTS_DIR, f"{set_id}.json")
+    if os.path.exists(result_path):
+        os.remove(result_path)
+
+    task_manager.update_task(task_id, error="已标记可重试，请重新提交评审")
+    return jsonify({
+        "status": "retry_ready",
+        "set_id": set_id,
+        "message": "旧结果已清除，请使用相同 set_id 重新 POST /api/campaign/evaluate",
+    })

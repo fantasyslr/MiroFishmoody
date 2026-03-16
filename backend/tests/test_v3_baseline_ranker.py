@@ -143,7 +143,7 @@ class TestQueryBaseline(unittest.TestCase):
         plan = {"platform": "google", "channel_family": "search",
                 "theme": "science", "market": "us"}
         stats = self.ranker.query_baseline(plan, min_samples=2)
-        self.assertIn(stats.match_quality, ("partial", "fallback", "no_data"))
+        self.assertIn(stats.match_quality, ("partial", "fallback", "no_data", "cross_category", "cold_start"))
 
     def test_partial_match_fallback(self):
         """Plan with unknown landing_page should fall back to fewer match dims."""
@@ -153,11 +153,14 @@ class TestQueryBaseline(unittest.TestCase):
         stats = self.ranker.query_baseline(plan)
         self.assertEqual(stats.sample_size, 2)
 
-    def test_no_data(self):
+    def test_no_data_triggers_cold_start(self):
+        """When no similar data exists, cold start fallback kicks in."""
         plan = {"platform": "snapchat", "market": "kr"}
         stats = self.ranker.query_baseline(plan)
         self.assertEqual(stats.sample_size, 0)
-        self.assertEqual(stats.match_quality, "no_data")
+        # Cold start fallback uses cross_category or distribution estimate
+        self.assertIn(stats.match_quality, ("cross_category", "cold_start"))
+        self.assertIsNotNone(stats.cold_start_hint)
 
     def test_stats_cpa(self):
         plan = {"platform": "redbook", "channel_family": "social_seed",
@@ -219,13 +222,17 @@ class TestContextIsolation(unittest.TestCase):
         self.assertEqual(stats.sample_size, 1)
         self.assertAlmostEqual(stats.roas_mean, 4.0, places=1)
 
-    def test_product_line_isolation(self):
-        """colored_lenses should not see moodyplus data."""
+    def test_product_line_cross_category_fallback(self):
+        """colored_lenses with no own data falls back to cross-category transfer."""
         plan = {"market": "cn"}
         stats = self.ranker.query_baseline(
             plan, product_line="colored_lenses", min_samples=1,
         )
-        self.assertEqual(stats.sample_size, 0)
+        # Cross-category fallback uses moodyplus data with discount
+        self.assertIn(stats.match_quality, ("cross_category", "cold_start"))
+        if stats.match_quality == "cross_category":
+            self.assertIsNotNone(stats.cold_start_hint)
+            self.assertEqual(stats.cold_start_hint["type"], "cross_category")
 
     def test_audience_segment_isolation(self):
         """young_female segment should not see general data."""
@@ -548,8 +555,9 @@ def _make_app():
 
 
 def _user_session(client):
+    from app.auth import _password_version
     with client.session_transaction() as sess:
-        sess["user"] = {"username": "slr", "display_name": "Liren", "role": "admin"}
+        sess["user"] = {"username": "slr", "display_name": "Liren", "role": "admin", "_pw_ver": _password_version("slr")}
 
 
 class TestRaceAPI(unittest.TestCase):
@@ -740,6 +748,175 @@ class TestRaceHistoryAPI(unittest.TestCase):
             self.assertIn("platform_coverage", data)
             self.assertIn("weakest_dimensions", data)
             self.assertIsInstance(data["market_coverage"], dict)
+
+
+# =====================================================================
+# 7. [P1 Regression] 跨品类 audience_segment 隔离
+# =====================================================================
+
+class TestCrossCategoryAudienceIsolation(unittest.TestCase):
+    """P1 fix: cross-category fallback must preserve audience_segment hard filter."""
+
+    def setUp(self):
+        self.store = _fresh_store()
+        # moodyplus data for "general" segment
+        self.store.save_intervention(HistoricalIntervention(
+            intervention_id="mp1", run_id="r1", platform="redbook",
+            channel_family="social_seed", theme="science", market="cn",
+            product_line="moodyplus", audience_segment="general",
+            spend=50000,
+        ))
+        self.store.save_outcome(HistoricalOutcomeWindow(
+            outcome_id="omp1", intervention_id="mp1", roas=3.0,
+            sessions=5000, purchases=400,
+        ))
+        self.store.save_intervention(HistoricalIntervention(
+            intervention_id="mp2", run_id="r1", platform="redbook",
+            channel_family="social_seed", theme="science", market="cn",
+            product_line="moodyplus", audience_segment="general",
+            spend=60000,
+        ))
+        self.store.save_outcome(HistoricalOutcomeWindow(
+            outcome_id="omp2", intervention_id="mp2", roas=2.5,
+            sessions=6000, purchases=480,
+        ))
+        self.ranker = HistoricalBaselineRanker(self.store)
+
+    def test_cross_category_respects_audience_segment(self):
+        """colored_lenses + young_female should NOT borrow moodyplus + general data."""
+        plan = {"market": "cn"}
+        stats = self.ranker.query_baseline(
+            plan, product_line="colored_lenses",
+            audience_segment="young_female", min_samples=1,
+        )
+        # moodyplus data is audience_segment=general, so cross-category should not match
+        if stats.match_quality == "cross_category":
+            self.fail("Cross-category borrowed data with wrong audience_segment")
+        # Should fall through to cold_start (distribution estimate)
+        self.assertIn(stats.match_quality, ("cold_start", "no_data"))
+
+
+# =====================================================================
+# 8. [P1 Regression] season_tag 影响 purchase_rate 和 cpa
+# =====================================================================
+
+class TestSeasonWeightingOnAllMetrics(unittest.TestCase):
+    """P1 fix: season_tag weighting must affect purchase_rate and cpa, not just mean metrics."""
+
+    def setUp(self):
+        self.store = _fresh_store()
+        # 618 season: high conversion
+        self.store.save_intervention(HistoricalIntervention(
+            intervention_id="s618", run_id="r1", platform="redbook",
+            channel_family="social_seed", theme="science", market="cn",
+            product_line="moodyplus", audience_segment="general",
+            spend=50000, season_tag="618",
+        ))
+        self.store.save_outcome(HistoricalOutcomeWindow(
+            outcome_id="os618", intervention_id="s618",
+            roas=5.0, sessions=10000, purchases=1000, revenue=150000,
+        ))
+        # regular season: low conversion
+        self.store.save_intervention(HistoricalIntervention(
+            intervention_id="sreg", run_id="r1", platform="redbook",
+            channel_family="social_seed", theme="science", market="cn",
+            product_line="moodyplus", audience_segment="general",
+            spend=50000, season_tag="regular",
+        ))
+        self.store.save_outcome(HistoricalOutcomeWindow(
+            outcome_id="osreg", intervention_id="sreg",
+            roas=2.0, sessions=10000, purchases=200, revenue=40000,
+        ))
+        self.ranker = HistoricalBaselineRanker(self.store)
+
+    def test_season_618_boosts_purchase_rate(self):
+        """With season_tag=618, purchase_rate should be closer to 618 data."""
+        plan = {"platform": "redbook", "channel_family": "social_seed",
+                "theme": "science", "market": "cn"}
+
+        # Without season
+        stats_no_season = self.ranker.query_baseline(plan)
+        # With season 618
+        stats_618 = self.ranker.query_baseline(plan, season_tag="618")
+
+        # 618 data: purchase_rate = 1000/10000 = 0.10
+        # regular data: purchase_rate = 200/10000 = 0.02
+        # Unweighted: (1000+200)/(10000+10000) = 0.06
+        # 618-weighted: purchases = 1000*2 + 200*1 = 2200, sessions = 10000*2 + 10000*1 = 30000
+        #   → 2200/30000 = 0.0733
+        self.assertIsNotNone(stats_618.purchase_rate)
+        self.assertIsNotNone(stats_no_season.purchase_rate)
+        self.assertGreater(stats_618.purchase_rate, stats_no_season.purchase_rate)
+
+    def test_season_618_affects_cpa(self):
+        """With season_tag=618, CPA should be closer to 618 data (lower)."""
+        plan = {"platform": "redbook", "channel_family": "social_seed",
+                "theme": "science", "market": "cn"}
+
+        stats_no_season = self.ranker.query_baseline(plan)
+        stats_618 = self.ranker.query_baseline(plan, season_tag="618")
+
+        # 618 data: CPA = 50000/1000 = 50
+        # regular data: CPA = 50000/200 = 250
+        # 618-weighted CPA should be lower (better) than unweighted
+        self.assertIsNotNone(stats_618.cpa)
+        self.assertIsNotNone(stats_no_season.cpa)
+        self.assertLess(stats_618.cpa, stats_no_season.cpa)
+
+
+# =====================================================================
+# 9. [P1 Regression] seasonal_drift 只用 regular 做对照
+# =====================================================================
+
+class TestSeasonalDriftRegularOnly(unittest.TestCase):
+    """P1 fix: seasonal_drift must compare against regular-only, not all non-current seasons."""
+
+    def setUp(self):
+        self.store = _fresh_store()
+        # 618 data
+        self.store.save_intervention(HistoricalIntervention(
+            intervention_id="d618", run_id="r1", platform="redbook",
+            channel_family="social_seed", theme="science", market="cn",
+            product_line="moodyplus", spend=50000, season_tag="618",
+        ))
+        self.store.save_outcome(HistoricalOutcomeWindow(
+            outcome_id="od618", intervention_id="d618",
+            roas=5.0, cvr=0.10, sessions=5000, purchases=500,
+        ))
+        # double11 data (high ROAS — should NOT be in "regular" baseline)
+        self.store.save_intervention(HistoricalIntervention(
+            intervention_id="d1111", run_id="r1", platform="redbook",
+            channel_family="social_seed", theme="science", market="cn",
+            product_line="moodyplus", spend=50000, season_tag="double11",
+        ))
+        self.store.save_outcome(HistoricalOutcomeWindow(
+            outcome_id="od1111", intervention_id="d1111",
+            roas=6.0, cvr=0.12, sessions=5000, purchases=600,
+        ))
+        # regular data (low ROAS)
+        self.store.save_intervention(HistoricalIntervention(
+            intervention_id="dreg", run_id="r1", platform="redbook",
+            channel_family="social_seed", theme="science", market="cn",
+            product_line="moodyplus", spend=50000, season_tag="regular",
+        ))
+        self.store.save_outcome(HistoricalOutcomeWindow(
+            outcome_id="odreg", intervention_id="dreg",
+            roas=2.0, cvr=0.03, sessions=5000, purchases=150,
+        ))
+        self.ranker = HistoricalBaselineRanker(self.store)
+
+    def test_drift_excludes_other_promos(self):
+        """When season=618, drift should compare vs regular only, not vs double11."""
+        plan = {"platform": "redbook", "channel_family": "social_seed",
+                "theme": "science", "market": "cn"}
+        stats = self.ranker.query_baseline(plan, season_tag="618")
+
+        sd = stats.seasonal_drift
+        self.assertIsNotNone(sd)
+        # 618 ROAS=5.0, regular ROAS=2.0 → drift = +3.0
+        # If double11 (6.0) was mixed into "regular", drift would be lower
+        self.assertEqual(sd["sample_regular"], 1)  # only the regular one
+        self.assertAlmostEqual(sd["season_vs_regular_roas"], 3.0, places=1)
 
 
 if __name__ == "__main__":

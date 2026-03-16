@@ -216,6 +216,7 @@ class BrandictionStore:
                 ("interventions", "platform", "TEXT"),
                 ("interventions", "channel_family", "TEXT"),
                 ("interventions", "objective", "TEXT"),
+                ("interventions", "season_tag", "TEXT"),
                 # V3 data spine — outcomes (DTC funnel)
                 ("outcomes", "sessions", "INTEGER"),
                 ("outcomes", "pdp_views", "INTEGER"),
@@ -318,6 +319,7 @@ class BrandictionStore:
                 "platform": iv.platform,
                 "channel_family": iv.channel_family,
                 "objective": iv.objective,
+                "season_tag": iv.season_tag,
                 "notes": iv.notes,
                 "extra": json.dumps(iv.extra) if iv.extra else None,
             })

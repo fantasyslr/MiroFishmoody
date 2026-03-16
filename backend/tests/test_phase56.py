@@ -277,7 +277,7 @@ def test_resolve_rejects_duplicate_set_id():
 
                     client = app.test_client()
                     with client.session_transaction() as sess:
-                        sess['user'] = {"username": "tester", "display_name": "Tester"}
+                        from app.auth import _password_version as _pv; sess['user'] = {"username": "slr", "display_name": "Liren", "role": "admin", "_pw_ver": _pv("slr")}
 
                     resp1 = client.post('/api/campaign/resolve', json={
                         "set_id": "resolve-dup-test",
@@ -325,7 +325,7 @@ def test_evaluate_rejects_duplicate_set_id():
             try:
                 client = app.test_client()
                 with client.session_transaction() as sess:
-                    sess['user'] = {"username": "tester", "display_name": "Tester"}
+                    from app.auth import _password_version as _pv; sess['user'] = {"username": "slr", "display_name": "Liren", "role": "admin", "_pw_ver": _pv("slr")}
                 resp = client.post('/api/campaign/evaluate', json={
                     "set_id": "existing-set",
                     "campaigns": [
@@ -361,7 +361,7 @@ def test_evaluate_rejects_duplicate_set_id_in_memory():
         try:
             client = app.test_client()
             with client.session_transaction() as sess:
-                sess['user'] = {"username": "tester", "display_name": "Tester"}
+                from app.auth import _password_version as _pv; sess['user'] = {"username": "slr", "display_name": "Liren", "role": "admin", "_pw_ver": _pv("slr")}
             resp = client.post('/api/campaign/evaluate', json={
                 "set_id": "mem-set",
                 "campaigns": [

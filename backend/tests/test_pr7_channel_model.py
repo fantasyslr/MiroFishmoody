@@ -14,6 +14,7 @@ PR7: 三层渠道模型测试 — channel_family → platform → market
 
 import sys
 import os
+import tempfile
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -34,6 +35,17 @@ from app.services.brandiction_store import BrandictionStore
 
 def _fresh_engine():
     return BrandStateEngine(BrandictionStore())
+
+
+def _isolated_engine():
+    """Return a BrandStateEngine backed by a fresh temp SQLite DB (no singleton)."""
+    tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+    tmp.close()
+    # Bypass singleton so each call gets a truly empty store
+    store = object.__new__(BrandictionStore)
+    store._db_path = tmp.name
+    store._init_db()
+    return BrandStateEngine(store)
 
 
 class TestChannelFamilies(unittest.TestCase):
@@ -750,7 +762,7 @@ class TestSignalMarketIsolation(unittest.TestCase):
     PL = "sig_iso_test_line"
 
     def setUp(self):
-        self.engine = _fresh_engine()
+        self.engine = _isolated_engine()
         store = self.engine.store
         from app.models.brandiction import BrandSignalSnapshot
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getRaceState, type RaceResult, type RankingEntry, clearRaceState } from '../lib/api'
-import { ChevronDown, ChevronUp, AlertTriangle, Activity, Beaker } from 'lucide-react'
+import { ChevronDown, ChevronUp, AlertTriangle, Activity, Beaker, Snowflake, Lightbulb } from 'lucide-react'
 
 export function ResultPage() {
   const navigate = useNavigate()
@@ -210,6 +210,85 @@ export function ResultPage() {
                               </div>
                             ))}
                           </div>
+                        </div>
+                      )}
+
+                      {/* Seasonal drift */}
+                      {entry.observed_baseline.seasonal_drift && (
+                        <div className="pt-4 border-t border-border/30">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Snowflake className="h-3 w-3 text-primary" />
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                              Season: {entry.observed_baseline.seasonal_drift.current_season}
+                              <span className="ml-2 text-muted-foreground/70">
+                                ({entry.observed_baseline.seasonal_drift.sample_in_season} in-season / {entry.observed_baseline.seasonal_drift.sample_regular} regular)
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-4">
+                            {entry.observed_baseline.seasonal_drift.season_vs_regular_roas != null && (
+                              <div className="text-xs font-mono">
+                                <span className="text-muted-foreground">ROAS vs regular: </span>
+                                <span className={entry.observed_baseline.seasonal_drift.season_vs_regular_roas > 0 ? 'text-green-600' : entry.observed_baseline.seasonal_drift.season_vs_regular_roas < 0 ? 'text-red-600' : ''}>
+                                  {entry.observed_baseline.seasonal_drift.season_vs_regular_roas > 0 ? '+' : ''}{entry.observed_baseline.seasonal_drift.season_vs_regular_roas.toFixed(2)}
+                                </span>
+                              </div>
+                            )}
+                            {entry.observed_baseline.seasonal_drift.season_vs_regular_cvr != null && (
+                              <div className="text-xs font-mono">
+                                <span className="text-muted-foreground">CVR vs regular: </span>
+                                <span className={entry.observed_baseline.seasonal_drift.season_vs_regular_cvr > 0 ? 'text-green-600' : entry.observed_baseline.seasonal_drift.season_vs_regular_cvr < 0 ? 'text-red-600' : ''}>
+                                  {entry.observed_baseline.seasonal_drift.season_vs_regular_cvr > 0 ? '+' : ''}{(entry.observed_baseline.seasonal_drift.season_vs_regular_cvr * 100).toFixed(1)}%
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Cold start hint */}
+                      {entry.observed_baseline.cold_start_hint && (
+                        <div className="pt-4 border-t border-border/30">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Lightbulb className="h-3 w-3 text-amber-500" />
+                            <div className="text-[10px] text-amber-600 uppercase tracking-wider font-semibold">
+                              {entry.observed_baseline.cold_start_hint.type === 'cross_category' ? 'Cross-Category Transfer' : 'Distribution Estimate'}
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground mb-3">{entry.observed_baseline.cold_start_hint.note}</p>
+                          {entry.observed_baseline.cold_start_hint.type === 'cross_category' && entry.observed_baseline.cold_start_hint.source_product_lines && (
+                            <div className="text-xs font-mono text-muted-foreground">
+                              Source: {entry.observed_baseline.cold_start_hint.source_product_lines.join(', ')} | Discount: {((entry.observed_baseline.cold_start_hint.discount_applied ?? 1) * 100).toFixed(0)}%
+                            </div>
+                          )}
+                          {entry.observed_baseline.cold_start_hint.type === 'distribution_estimate' && (
+                            <div className="grid grid-cols-3 gap-4">
+                              {entry.observed_baseline.cold_start_hint.roas_range && (
+                                <div className="text-xs">
+                                  <div className="text-muted-foreground mb-1">ROAS Range</div>
+                                  <div className="font-mono">
+                                    P25: {entry.observed_baseline.cold_start_hint.roas_range.p25} / P50: {entry.observed_baseline.cold_start_hint.roas_range.p50} / P75: {entry.observed_baseline.cold_start_hint.roas_range.p75}
+                                  </div>
+                                </div>
+                              )}
+                              {entry.observed_baseline.cold_start_hint.cvr_range && (
+                                <div className="text-xs">
+                                  <div className="text-muted-foreground mb-1">CVR Range</div>
+                                  <div className="font-mono">
+                                    P25: {(entry.observed_baseline.cold_start_hint.cvr_range.p25 * 100).toFixed(1)}% / P50: {(entry.observed_baseline.cold_start_hint.cvr_range.p50 * 100).toFixed(1)}% / P75: {(entry.observed_baseline.cold_start_hint.cvr_range.p75 * 100).toFixed(1)}%
+                                  </div>
+                                </div>
+                              )}
+                              {entry.observed_baseline.cold_start_hint.revenue_range && (
+                                <div className="text-xs">
+                                  <div className="text-muted-foreground mb-1">Revenue Range</div>
+                                  <div className="font-mono">
+                                    P25: {entry.observed_baseline.cold_start_hint.revenue_range.p25.toLocaleString()} / P50: {entry.observed_baseline.cold_start_hint.revenue_range.p50.toLocaleString()} / P75: {entry.observed_baseline.cold_start_hint.revenue_range.p75.toLocaleString()}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

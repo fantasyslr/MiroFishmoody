@@ -88,8 +88,9 @@ def test_get_result_without_evaluation_store():
             app = create_app()
             with app.app_context():
                 client = app.test_client()
+                from app.auth import _password_version
                 with client.session_transaction() as sess:
-                    sess['user'] = {"username": "tester", "display_name": "Tester"}
+                    sess['user'] = {"username": "slr", "display_name": "Liren", "role": "admin", "_pw_ver": _password_version("slr")}
                 resp = client.get('/api/campaign/result/restart-set')
             body = resp.get_json()
 

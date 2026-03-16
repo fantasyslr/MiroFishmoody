@@ -58,3 +58,4 @@ backend/uploads/
 
 # Docker 数据
 /data/
+backend/.playwright_meta_session/

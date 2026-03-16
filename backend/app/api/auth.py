@@ -3,7 +3,7 @@ Auth API — 登录 / 登出 / 当前用户
 """
 
 from flask import Blueprint, request, jsonify, session
-from ..auth import USERS
+from ..auth import USERS, _password_version, _validate_session
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -25,6 +25,7 @@ def login():
         "username": username,
         "display_name": user["display_name"],
         "role": user.get("role", "user"),
+        "_pw_ver": _password_version(username),
     }
     return jsonify({
         "username": username,
@@ -44,4 +45,12 @@ def me():
     user = session.get('user')
     if not user:
         return jsonify({"error": "未登录"}), 401
-    return jsonify(user)
+    invalid = _validate_session(user)
+    if invalid:
+        return invalid
+    # 返回时不暴露内部字段
+    return jsonify({
+        "username": user["username"],
+        "display_name": user["display_name"],
+        "role": user.get("role", "user"),
+    })
