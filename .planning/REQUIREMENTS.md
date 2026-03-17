@@ -25,8 +25,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Evaluate Frontend
 
-- [ ] **EVAL-01**: Evaluate 推演页面 — 用户可在前端发起深度评审推演，包含进度轮询和结果展示
-- [ ] **EVAL-02**: 异步任务进度展示 — 用户可看到 Evaluate 推演的实时进度（当前阶段、已完成百分比）
+- [x] **EVAL-01**: Evaluate 推演页面 — 用户可在前端发起深度评审推演，包含进度轮询和结果展示
+- [x] **EVAL-02**: 异步任务进度展示 — 用户可看到 Evaluate 推演的实时进度（当前阶段、已完成百分比）
 - [ ] **EVAL-03**: Evaluate 结果页面展示评审团打分详情 — 包含每个人格的评分、两两对比结果、BT 综合排名
 
 ### Unified Entry
@@ -106,8 +106,8 @@ Deferred to future release. Tracked but not in current roadmap.
 | PERF-02 | Phase 4: Concurrent Image Analysis | Complete |
 | QUAL-01 | Phase 5: Evaluate Quality | Complete |
 | QUAL-02 | Phase 5: Evaluate Quality | Complete |
-| EVAL-01 | Phase 6: Evaluate Frontend | Pending |
-| EVAL-02 | Phase 6: Evaluate Frontend | Pending |
+| EVAL-01 | Phase 6: Evaluate Frontend | Complete |
+| EVAL-02 | Phase 6: Evaluate Frontend | Complete |
 | EVAL-03 | Phase 6: Evaluate Frontend | Pending |
 | UNIF-01 | Phase 7: Unified Entry | Pending |
 | UNIF-02 | Phase 7: Unified Entry | Pending |
