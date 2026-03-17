@@ -81,7 +81,7 @@ def create_app(config_class=Config):
         # DB connectivity
         try:
             db_path = os.path.join(Config.UPLOAD_FOLDER, "tasks.db")
-            conn = _sqlite3.connect(db_path, timeout=2)
+            conn = _sqlite3.connect(db_path, timeout=10)
             conn.execute("SELECT 1")
             conn.close()
             checks["db"] = "ok"

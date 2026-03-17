@@ -85,10 +85,17 @@ class TaskManager:
     def _db_path(self) -> str:
         return os.path.join(Config.UPLOAD_FOLDER, "tasks.db")
 
+    def _connect(self) -> sqlite3.Connection:
+        """Create a SQLite connection with WAL mode and busy_timeout."""
+        conn = sqlite3.connect(self._db_path(), timeout=10)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
+        return conn
+
     def _init_db(self):
         """Create the tasks table if it does not exist."""
         os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
-        conn = sqlite3.connect(self._db_path())
+        conn = self._connect()
         try:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS tasks (
@@ -113,7 +120,7 @@ class TaskManager:
         """Load every row from SQLite into the in-memory dict.
         Tasks stuck in PROCESSING/PENDING are marked FAILED (server restart recovery).
         """
-        conn = sqlite3.connect(self._db_path())
+        conn = self._connect()
         conn.row_factory = sqlite3.Row
         interrupted = []
         try:
@@ -154,7 +161,7 @@ class TaskManager:
 
     def _persist_task(self, task: Task):
         """Upsert a single task into SQLite (called inside _task_lock)."""
-        conn = sqlite3.connect(self._db_path())
+        conn = self._connect()
         try:
             conn.execute(
                 """
@@ -183,7 +190,7 @@ class TaskManager:
 
     def _delete_task_from_db(self, task_id: str):
         """Delete a single task from SQLite (called inside _task_lock)."""
-        conn = sqlite3.connect(self._db_path())
+        conn = self._connect()
         try:
             conn.execute("DELETE FROM tasks WHERE task_id = ?", (task_id,))
             conn.commit()
@@ -230,7 +237,7 @@ class TaskManager:
             if task is not None:
                 return task
         # Fallback: check SQLite in case memory was cleared
-        conn = sqlite3.connect(self._db_path())
+        conn = self._connect()
         conn.row_factory = sqlite3.Row
         try:
             row = conn.execute(
