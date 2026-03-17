@@ -1,5 +1,14 @@
 # Milestones
 
+## v1.1 加固与增强 (Shipped: 2026-03-17)
+
+**Phases completed:** 4 phases, 8 plans, 0 tasks
+
+**Key accomplishments:**
+- (none recorded)
+
+---
+
 ## v1.0 Campaign 推演引擎 MVP (Shipped: 2026-03-17)
 
 **Phases completed:** 8 phases, 12 plans, 0 tasks

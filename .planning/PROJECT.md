@@ -2,7 +2,7 @@
 
 ## What This Is
 
-品牌 campaign 推演工具，帮助 Moody Lenses 的品牌/创意/媒介团队在 campaign 上线前，将多套方案（含 KV 主视觉、产品图、模特图等视觉素材）进行推演对比，快速筛选最优方案。支持快速排名（Race）和深度评审（Evaluate）两条推演路径，统一入口一键发起。按品类（透明片/彩片）配置独立评审人格，多维度可视化对比结果。
+品牌 campaign 推演工具，帮助 Moody Lenses 的品牌/创意/媒介团队在 campaign 上线前，将多套方案（含 KV 主视觉、产品图、模特图等视觉素材）进行推演对比，快速筛选最优方案。支持快速排名（Race）和深度评审（Evaluate）两条推演路径，统一入口一键发起。按品类（透明片/彩片）配置独立评审人格，多维度可视化对比结果。支持推演结果导出 PDF/图片、方案迭代版本对比、跨 campaign 趋势追踪。
 
 ## Core Value
 
@@ -40,17 +40,18 @@
 - ✓ 多维度雷达图可视化（recharts）— v1.0
 - ✓ 历史基线分位展示（PercentileBar）— v1.0
 - ✓ 诊断建议在 Race 结果页展示（DiagnosticsPanel）— v1.0
+- ✓ Both 模式跨页导航（ResultPage → EvaluateResultPage）— v1.1
+- ✓ Evaluate 诊断面板数据接入（visual_diagnostics）— v1.1
+- ✓ _evaluation_store 线程安全（threading.Lock）— v1.1
+- ✓ SQLite WAL 模式 + busy_timeout — v1.1
+- ✓ 密码哈希存储（bcrypt）— v1.1
+- ✓ 结果导出 PDF/图片（html2canvas + jsPDF）— v1.1
+- ✓ 方案迭代推演（版本对比）— v1.1
+- ✓ 推演趋势 Dashboard — v1.1
 
 ### Active
 
-- [ ] Both 模式 ResultPage → EvaluateResultPage 导航链接（getBothModeState 未消费）
-- [ ] Evaluate 结果页诊断面板数据接入（当前 diagnosticsMap 为空）
-- [ ] _evaluation_store 线程安全（threading.Lock）
-- [ ] SQLite WAL 模式 + busy_timeout
-- [ ] 密码哈希存储（bcrypt）
-- [ ] 结果导出 PDF/图片
-- [ ] 方案迭代推演（版本对比）
-- [ ] 推演趋势 Dashboard
+(None — all v1.1 requirements shipped. Define next milestone.)
 
 ### Out of Scope
 
@@ -63,18 +64,6 @@
 - 眼动追踪/注意力热力图 — 需专用模型，非通用 LLM 能力
 - BrandStateEngine 重构 — 当前能用，等 characterization tests 建好后再拆
 
-## Current Milestone: v1.1 加固与增强
-
-**Goal:** 修复 v1.0 遗留技术债，补全 Both 模式和 Evaluate 诊断，新增结果导出、迭代推演和趋势 Dashboard
-
-**Target features:**
-- Both 模式跨页导航
-- Evaluate 诊断面板数据接入
-- 线程安全 + SQLite WAL + 密码哈希
-- 结果导出 PDF/图片
-- 方案迭代推演（版本对比）
-- 推演趋势 Dashboard
-
 ## Context
 
 **产品背景：**
@@ -82,26 +71,28 @@
 - 品牌竞争点是功能+美学，绝不以折扣/价格为卖点
 - Campaign 以视觉素材为核心，推演已纳入视觉分析
 
-**技术现状（v1.0 shipped）：**
-- 后端 Flask + SQLite + Qwen（通过百炼 OpenAI-compatible API）
-- 前端 React 19 + TypeScript + Tailwind + Vite + recharts
-- 40 个 Python 文件（~10,100 LOC）+ 23 个 TypeScript 文件（~3,900 LOC）
+**技术现状（v1.1 shipped）：**
+- 后端 Flask + SQLite (WAL mode) + Qwen（通过百炼 OpenAI-compatible API）
+- 前端 React 19 + TypeScript + Tailwind + Vite + recharts + html2canvas + jsPDF
 - 两条推演路径（Race + Evaluate）完整可用
 - 品类人格配置：moodyPlus 6 人格，colored_lenses 5 人格
 - 并发图片分析 + Judge 去偏 + 结构化诊断
+- 结果导出 PDF/图片
+- 方案迭代推演 + 版本对比
+- 推演趋势 Dashboard
 
 **已知技术债：**
-- _evaluation_store 无线程锁（跨团队使用有风险）
-- Both 模式缺少跨页面导航
-- Evaluate 管线不产生图片诊断
 - BrandStateEngine God class (1319 lines)
 - BaselineRanker 全量加载历史数据
+- Campaign.parent_campaign_id 字段未使用（版本链靠 set 级 parent_set_id）
+- Race→Evaluate 跨模式迭代 parentSetId 传空（Race 结果无 set_id）
+- Phase 11 导出功能 3 项人工验证待确认
 
 ## Constraints
 
 - **LLM Provider**: 通义千问 via 百炼 OpenAI-compatible API
 - **Multimodal**: 必须支持视觉分析（图片 base64 → LLM vision）
-- **存储**: SQLite — 短期内不迁移到 PostgreSQL
+- **存储**: SQLite (WAL mode) — 短期内不迁移到 PostgreSQL
 - **部署**: Docker 单容器
 - **UI 文案**: 中文，品类用"品类"不用"产线"
 
@@ -118,6 +109,9 @@
 | ThreadPoolExecutor + Semaphore 并发 | 复用现有模式，Semaphore 统一控制 LLM 并发 | ✓ Good |
 | PairwiseJudge 位置互换去偏 | 正反序各评一次，标记不一致判断，不改变 winner 确定逻辑 | ✓ Good |
 | recharts 用于雷达图可视化 | 轻量 SVG，React-native，适合多维度对比 | ✓ Good |
+| 前端导出（html2canvas + jsPDF） | 零后端依赖，Docker 不需 headless browser | ✓ Good |
+| 版本链靠 set 级 parent_set_id | Campaign 级 parent_campaign_id 过于复杂，set 级版本链够用 | ✓ Good |
+| 趋势 API 聚合现有结果 JSON | 不需要新表，从已有推演结果文件提取趋势数据 | ✓ Good |
 
 ---
-*Last updated: 2026-03-17 after v1.1 milestone started*
+*Last updated: 2026-03-17 after v1.1 milestone complete*
