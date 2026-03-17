@@ -28,6 +28,8 @@ class Campaign:
     promo_mechanic: Optional[str] = None
     image_paths: List[str] = field(default_factory=list)
     extra: Dict[str, Any] = field(default_factory=dict)
+    parent_campaign_id: Optional[str] = None
+    version: int = 1
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -43,6 +45,8 @@ class Campaign:
             "promo_mechanic": self.promo_mechanic,
             "image_paths": self.image_paths,
             "extra": self.extra,
+            "parent_campaign_id": self.parent_campaign_id,
+            "version": self.version,
         }
 
 

@@ -103,12 +103,22 @@ def _parse_campaigns(data: dict) -> CampaignSet:
         ))
 
     set_id = data.get("set_id", str(uuid.uuid4()))
-    return CampaignSet(
+    parent_set_id = data.get("parent_set_id")
+
+    campaign_set = CampaignSet(
         set_id=set_id,
         campaigns=campaigns,
         context=data.get("context", ""),
         created_at=datetime.now().isoformat(),
     )
+
+    # Store parent_set_id in CampaignSet extra for downstream use
+    if parent_set_id:
+        campaign_set.context = campaign_set.context  # keep original
+        for c in campaign_set.campaigns:
+            c.extra["parent_set_id"] = parent_set_id
+
+    return campaign_set
 
 
 
@@ -290,8 +300,21 @@ def evaluate():
 
         campaign_set = _parse_campaigns(data)
         category = data.get("category")  # None -> default personas, "moodyplus"/"colored_lenses" -> category-specific
+        parent_set_id = data.get("parent_set_id")
         current_user = get_current_user()
         submitted_by = current_user["display_name"] if current_user else data.get("submitted_by", "")
+
+        # Compute version by walking parent chain
+        version = 1
+        if parent_set_id:
+            cursor = parent_set_id
+            while cursor:
+                version += 1
+                parent_result = _load_result(cursor)
+                if parent_result:
+                    cursor = parent_result.get("parent_set_id")
+                else:
+                    break
 
         # 防重复 set_id：检查内存和磁盘是否已有该 set_id 的结果
         with _store_lock:
@@ -310,13 +333,22 @@ def evaluate():
                 "campaign_count": len(campaign_set.campaigns),
                 "submitted_at": datetime.now().strftime("%m/%d %H:%M"),
                 "category": category,
+                "parent_set_id": parent_set_id,
+                "version": version,
             }
         )
+
+        # Wrap save_result_fn to inject parent_set_id and version into saved result
+        def _save_result_with_version(set_id: str, result: dict) -> None:
+            if parent_set_id:
+                result["parent_set_id"] = parent_set_id
+            result["version"] = version
+            _save_result(set_id, result)
 
         orchestrator = EvaluationOrchestrator(
             task_manager=task_manager,
             evaluation_store=_evaluation_store,
-            save_result_fn=_save_result,
+            save_result_fn=_save_result_with_version,
             store_lock=_store_lock,
         )
         thread = threading.Thread(
@@ -628,4 +660,128 @@ def retry_task(task_id: str):
         "status": "retry_ready",
         "set_id": set_id,
         "message": "旧结果已清除，请使用相同 set_id 重新 POST /api/campaign/evaluate",
+    })
+
+
+@campaign_bp.route('/version-history/<set_id>', methods=['GET'])
+@login_required
+def version_history(set_id: str):
+    """获取 campaign 版本链：从当前 set_id 追溯到根，再收集所有版本"""
+    # Walk backwards to find root
+    root_id = set_id
+    visited = {set_id}
+    cursor = set_id
+    while True:
+        result = _load_result(cursor)
+        if not result:
+            break
+        parent = result.get("parent_set_id")
+        if not parent or parent in visited:
+            root_id = cursor
+            break
+        visited.add(parent)
+        cursor = parent
+    else:
+        root_id = cursor
+
+    # Build parent -> child index by scanning all result files
+    parent_to_children: dict = {}
+    all_results: dict = {}
+    if os.path.isdir(_RESULTS_DIR):
+        for fname in os.listdir(_RESULTS_DIR):
+            if not fname.endswith('.json'):
+                continue
+            sid = fname[:-5]
+            r = _load_result(sid)
+            if r:
+                all_results[sid] = r
+                p = r.get("parent_set_id")
+                if p:
+                    parent_to_children.setdefault(p, []).append(sid)
+
+    # Walk forward from root
+    versions = []
+    queue = [root_id]
+    seen = set()
+    while queue:
+        sid = queue.pop(0)
+        if sid in seen:
+            continue
+        seen.add(sid)
+        r = all_results.get(sid) or _load_result(sid)
+        if r:
+            # Extract campaign names and overall scores from scoreboard
+            sb = r.get("scoreboard", {})
+            campaign_names = [c.get("campaign_name", "") for c in sb.get("campaigns", [])]
+            overall_scores = {c.get("campaign_name", ""): c.get("overall_score", 0) for c in sb.get("campaigns", [])}
+            versions.append({
+                "set_id": sid,
+                "version": r.get("version", 1),
+                "created_at": r.get("created_at", ""),
+                "campaign_names": campaign_names,
+                "overall_scores": overall_scores,
+            })
+            # Add children to queue
+            for child_id in parent_to_children.get(sid, []):
+                queue.append(child_id)
+
+    # Sort by version
+    versions.sort(key=lambda v: v["version"])
+
+    return jsonify({"versions": versions})
+
+
+@campaign_bp.route('/compare', methods=['GET'])
+@login_required
+def compare_versions():
+    """对比两个版本的评审结果，计算维度分数差异"""
+    v1_id = request.args.get("v1")
+    v2_id = request.args.get("v2")
+    if not v1_id or not v2_id:
+        return jsonify({"error": "需要 v1 和 v2 参数"}), 400
+
+    r1 = _load_result(v1_id)
+    r2 = _load_result(v2_id)
+    if not r1:
+        return jsonify({"error": f"结果 {v1_id} 不存在"}), 404
+    if not r2:
+        return jsonify({"error": f"结果 {v2_id} 不存在"}), 404
+
+    sb1 = r1.get("scoreboard", {})
+    sb2 = r2.get("scoreboard", {})
+
+    # Build campaign name -> scores map for each version
+    def _campaign_map(sb):
+        return {
+            c["campaign_name"]: c
+            for c in sb.get("campaigns", [])
+            if "campaign_name" in c
+        }
+
+    map1 = _campaign_map(sb1)
+    map2 = _campaign_map(sb2)
+
+    # Compute deltas for matching campaign names
+    deltas = {}
+    for name in set(map1.keys()) | set(map2.keys()):
+        c1 = map1.get(name)
+        c2 = map2.get(name)
+        if c1 and c2:
+            overall_delta = round(c2.get("overall_score", 0) - c1.get("overall_score", 0), 4)
+            dim1 = c1.get("dimension_scores", {})
+            dim2 = c2.get("dimension_scores", {})
+            dimension_deltas = {}
+            for dk in set(list(dim1.keys()) + list(dim2.keys())):
+                d1 = dim1.get(dk, 0)
+                d2 = dim2.get(dk, 0)
+                dimension_deltas[dk] = round(d2 - d1, 4)
+            deltas[name] = {
+                "overall_delta": overall_delta,
+                "dimension_deltas": dimension_deltas,
+            }
+
+    return jsonify({
+        "v1": {"set_id": v1_id, "version": r1.get("version", 1), "scoreboard": sb1},
+        "v2": {"set_id": v2_id, "version": r2.get("version", 1), "scoreboard": sb2},
+        "deltas": deltas,
     })
