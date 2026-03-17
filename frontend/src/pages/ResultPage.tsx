@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getRaceState, type RaceResult, type RankingEntry, type VisualProfile, clearRaceState, getBothModeState, clearBothModeState, getEvaluateStatus, getEvaluateResult, saveEvaluateState, getEvaluateState } from '../lib/api'
-import { ChevronDown, ChevronUp, AlertTriangle, Activity, Beaker, Snowflake, Lightbulb, Eye, ImageIcon, Loader2, ArrowRight, Download } from 'lucide-react'
+import { getRaceState, type RaceResult, type RankingEntry, type VisualProfile, clearRaceState, getBothModeState, clearBothModeState, getEvaluateStatus, getEvaluateResult, saveEvaluateState, getEvaluateState, saveIterateState } from '../lib/api'
+import { ChevronDown, ChevronUp, AlertTriangle, Activity, Beaker, Snowflake, Lightbulb, Eye, ImageIcon, Loader2, ArrowRight, Download, RefreshCcw } from 'lucide-react'
 import { captureElementAsImage, captureElementAsPDF } from '../lib/exportUtils'
 import { RadarScoreChart } from '../components/RadarScoreChart'
 import { PercentileBar } from '../components/PercentileBar'
@@ -133,6 +133,19 @@ export function ResultPage() {
             >
               {exporting === 'image' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               导出图片
+            </button>
+            <button
+              onClick={() => {
+                saveIterateState({
+                  parentSetId: '',
+                  parentCampaignNames: ranking.map(e => e.plan.name || ''),
+                })
+                navigate('/')
+              }}
+              className="lab-button lab-button-outline flex items-center gap-2 text-sm"
+            >
+              <RefreshCcw className="h-4 w-4" />
+              迭代优化
             </button>
             <button
               onClick={() => { clearRaceState(); navigate('/') }}

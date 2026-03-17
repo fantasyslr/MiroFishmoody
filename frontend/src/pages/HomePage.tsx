@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Trash2, Zap, Search, Layers, AlertCircle, ImagePlus, X, Loader2 } from 'lucide-react'
-import { type RacePayload, type EvaluatePayload, type CampaignPlan, saveRaceState, saveEvaluateState, evaluateCampaigns, saveBothModeState, uploadCampaignImage } from '../lib/api'
+import { Plus, Trash2, Zap, Search, Layers, AlertCircle, ImagePlus, X, Loader2, RefreshCcw } from 'lucide-react'
+import { type RacePayload, type EvaluatePayload, type CampaignPlan, saveRaceState, saveEvaluateState, evaluateCampaigns, saveBothModeState, uploadCampaignImage, getIterateState, clearIterateState } from '../lib/api'
 import { uuid } from '../utils'
 
 type SimulationMode = 'race' | 'evaluate' | 'both'
@@ -60,6 +60,7 @@ export function HomePage() {
   const [draftSetId] = useState(() => `race_${uuid()}`)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [iterateState] = useState(() => getIterateState())
 
   const [plans, setPlans] = useState<CampaignPlan[]>([
     makePlan({ name: 'Plan A', theme: 'science_credibility' }),
@@ -261,11 +262,15 @@ export function HomePage() {
           image_paths: p.image_paths ?? [],
         })),
       category: productLine,
+      ...(iterateState?.parentSetId ? { parent_set_id: iterateState.parentSetId } : {}),
     }
     return { payload, setId }
   }
 
   const handleSubmit = async () => {
+    // Clear iterate state on any submission
+    clearIterateState()
+
     if (mode === 'race') {
       const payload = buildRacePayload()
       saveRaceState({ payload })
@@ -309,6 +314,22 @@ export function HomePage() {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-10 items-start">
       <div className="space-y-10">
+        {iterateState && (
+          <section className="lab-card p-4 flex items-center gap-3 bg-violet-50 border-violet-200">
+            <RefreshCcw className="h-5 w-5 text-violet-600 shrink-0" />
+            <div>
+              <h3 className="text-sm font-semibold text-violet-700">基于上一版本迭代</h3>
+              <p className="text-xs text-violet-600/70">请修改方案后重新提交，系统将自动关联为同一 campaign 的新版本</p>
+            </div>
+            <button
+              onClick={() => { clearIterateState(); window.location.reload() }}
+              className="ml-auto text-xs text-violet-600 hover:text-violet-800 underline shrink-0"
+            >
+              取消迭代
+            </button>
+          </section>
+        )}
+
         <section className="space-y-4">
           <h1 className="font-display text-4xl text-primary font-semibold">营销实验室</h1>
           <p className="text-muted-foreground text-lg leading-relaxed max-w-2xl text-balance">

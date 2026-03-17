@@ -260,6 +260,7 @@ export type EvaluatePayload = {
     image_paths?: string[]
   }>
   category?: string
+  parent_set_id?: string
 }
 
 export type TaskStatusResponse = {
@@ -400,6 +401,50 @@ export function getBothModeState() {
 }
 export function clearBothModeState() {
   localStorage.removeItem(BOTH_MODE_KEY)
+}
+
+// --- Version / Iteration Types ---
+
+export type VersionInfo = {
+  set_id: string
+  version: number
+  created_at: string
+  campaign_names: string[]
+  overall_scores: Record<string, number>
+}
+
+export type VersionCompareResult = {
+  v1: { set_id: string; version: number; scoreboard: EvalScoreboard }
+  v2: { set_id: string; version: number; scoreboard: EvalScoreboard }
+  deltas: Record<string, {
+    overall_delta: number
+    dimension_deltas: Record<string, number>
+  }>
+}
+
+// --- Version / Iteration APIs ---
+
+export function getVersionHistory(setId: string) {
+  return request<{ versions: VersionInfo[] }>(`/api/campaign/version-history/${setId}`)
+}
+
+export function getVersionCompare(v1SetId: string, v2SetId: string) {
+  return request<VersionCompareResult>(`/api/campaign/compare?v1=${v1SetId}&v2=${v2SetId}`)
+}
+
+// --- Iterate State Helpers ---
+
+const ITERATE_STATE_KEY = 'mirofishmoody.iterate_state'
+export function saveIterateState(state: { parentSetId: string; parentCampaignNames: string[] }) {
+  localStorage.setItem(ITERATE_STATE_KEY, JSON.stringify(state))
+}
+export function getIterateState() {
+  const raw = localStorage.getItem(ITERATE_STATE_KEY)
+  if (!raw) return null
+  try { return JSON.parse(raw) as { parentSetId: string; parentCampaignNames: string[] } } catch { return null }
+}
+export function clearIterateState() {
+  localStorage.removeItem(ITERATE_STATE_KEY)
 }
 
 // --- Admin APIs ---

@@ -8,8 +8,11 @@ import {
   type EvalPanelScore,
   type EvalPairwiseResult,
   type EvalScoreboard,
+  saveIterateState,
+  getVersionHistory,
+  type VersionInfo,
 } from '../lib/api'
-import { User, Trophy, AlertTriangle, ChevronDown, ChevronUp, BarChart3, Users, GitCompare, Download, Loader2 } from 'lucide-react'
+import { User, Trophy, AlertTriangle, ChevronDown, ChevronUp, BarChart3, Users, GitCompare, Download, Loader2, RefreshCcw, History } from 'lucide-react'
 import { captureElementAsImage, captureElementAsPDF } from '../lib/exportUtils'
 import { RadarScoreChart } from '../components/RadarScoreChart'
 import { DiagnosticsPanel } from '../components/DiagnosticsPanel'
@@ -48,12 +51,23 @@ export function EvaluateResultPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('ranking')
   const [exporting, setExporting] = useState<'pdf' | 'image' | null>(null)
   const exportRef = useRef<HTMLDivElement>(null)
+  const [versionHistory, setVersionHistory] = useState<VersionInfo[]>([])
+
+  const evalState = getEvaluateState()
+  const setId = evalState?.setId ?? ''
 
   useEffect(() => {
     if (!result) {
       navigate('/')
+      return
     }
-  }, [navigate, result])
+    // Fetch version history for this set_id
+    if (setId) {
+      getVersionHistory(setId)
+        .then(data => setVersionHistory(data.versions ?? []))
+        .catch(() => {/* ignore — no version history */})
+    }
+  }, [navigate, result, setId])
 
   if (!result) return null
 
@@ -139,6 +153,32 @@ export function EvaluateResultPage() {
               {exporting === 'image' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               导出图片
             </button>
+            <button
+              onClick={() => {
+                saveIterateState({
+                  parentSetId: setId,
+                  parentCampaignNames: rankings.map(r => r.campaign_name),
+                })
+                navigate('/')
+              }}
+              className="lab-button lab-button-outline flex items-center gap-2 text-sm"
+            >
+              <RefreshCcw className="h-4 w-4" />
+              迭代优化
+            </button>
+            {versionHistory.length > 1 && (
+              <button
+                onClick={() => {
+                  const prev = versionHistory[versionHistory.length - 2]
+                  const curr = versionHistory[versionHistory.length - 1]
+                  navigate(`/compare?v1=${prev.set_id}&v2=${curr.set_id}`)
+                }}
+                className="lab-button lab-button-outline flex items-center gap-2 text-sm"
+              >
+                <History className="h-4 w-4" />
+                版本对比
+              </button>
+            )}
             <button
               onClick={() => { clearEvaluateState(); navigate('/') }}
               className="lab-button lab-button-outline"
