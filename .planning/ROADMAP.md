@@ -146,11 +146,11 @@ Plans:
   2. 并发数据库写入（如多个推演同时保存结果）不会触发 SQLite "database is locked" 错误
   3. 用户密码以 bcrypt 哈希存储，数据库中不存在明文密码
   4. 已有明文密码在首次登录时自动迁移为 bcrypt 哈希
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 10-01: _evaluation_store threading.Lock + SQLite WAL 模式 + busy_timeout
-- [ ] 10-02: 密码哈希 bcrypt 迁移（注册/登录/存量迁移）
+- [ ] 10-01-PLAN.md — _evaluation_store threading.Lock + SQLite WAL 模式 + busy_timeout
+- [ ] 10-02-PLAN.md — 密码 bcrypt 哈希（加载时哈希 + bcrypt 验证）
 
 ### Phase 11: Export
 **Goal**: 用户可将推演结果导出为 PDF 报告或图片，方便分享和存档
