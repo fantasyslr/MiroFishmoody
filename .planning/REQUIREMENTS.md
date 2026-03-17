@@ -96,13 +96,31 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (To be filled by roadmapper) | | |
+| BUG-01 | Phase 1: Image Pipeline Fix | Pending |
+| BUG-02 | Phase 1: Image Pipeline Fix | Pending |
+| PERS-01 | Phase 2: PersonaRegistry Service | Pending |
+| PERS-03 | Phase 2: PersonaRegistry Service | Pending |
+| PERS-02 | Phase 3: Category Persona Config | Pending |
+| UNIF-03 | Phase 3: Category Persona Config | Pending |
+| PERF-01 | Phase 4: Concurrent Image Analysis | Pending |
+| PERF-02 | Phase 4: Concurrent Image Analysis | Pending |
+| QUAL-01 | Phase 5: Evaluate Quality | Pending |
+| QUAL-02 | Phase 5: Evaluate Quality | Pending |
+| EVAL-01 | Phase 6: Evaluate Frontend | Pending |
+| EVAL-02 | Phase 6: Evaluate Frontend | Pending |
+| EVAL-03 | Phase 6: Evaluate Frontend | Pending |
+| UNIF-01 | Phase 7: Unified Entry | Pending |
+| UNIF-02 | Phase 7: Unified Entry | Pending |
+| RES-01 | Phase 8: Results Enhancement | Pending |
+| RES-02 | Phase 8: Results Enhancement | Pending |
+| RES-03 | Phase 8: Results Enhancement | Pending |
+| QUAL-03 | Phase 8: Results Enhancement | Pending |
 
 **Coverage:**
 - v1 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18 ⚠️
+- Mapped to phases: 18
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-17*
-*Last updated: 2026-03-17 after initial definition*
+*Last updated: 2026-03-17 after roadmap creation*
