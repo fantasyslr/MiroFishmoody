@@ -45,10 +45,10 @@ Plans:
   1. PersonaRegistry 作为独立服务存在，AudiencePanel 通过 registry 获取人格列表而非硬编码数组
   2. 人格配置使用 JSON 预设模板，每个人格通过 schema 校验（包含 name、role、evaluation_focus 等必需字段）
   3. 无效人格配置（缺少必需字段或格式错误）被拒绝并返回明确错误信息
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 02-01: TBD
+- [ ] 02-01-PLAN.md — 创建 PersonaRegistry 服务 + JSON 预设 + schema 校验 + 接入 AudiencePanel
 
 ### Phase 3: Category Persona Config
 **Goal**: 透明片和彩片使用不同的评审人格集，系统根据品类自动加载
