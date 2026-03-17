@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 3: Category Persona Config** - 按品类配置独立评审人格集并自动加载
 - [ ] **Phase 4: Concurrent Image Analysis** - 并行图片分析 + LLM 速率控制
 - [ ] **Phase 5: Evaluate Quality** - PairwiseJudge 去偏 + 视觉诊断结构化
-- [ ] **Phase 6: Evaluate Frontend** - Evaluate 推演前端页面（发起、进度、结果）
+- [x] **Phase 6: Evaluate Frontend** - Evaluate 推演前端页面（发起、进度、结果） (completed 2026-03-17)
 - [ ] **Phase 7: Unified Entry** - 统一推演入口（模式选择 + 统一表单）
 - [ ] **Phase 8: Results Enhancement** - 多方案并排对比 + 多维可视化 + 历史基线
 
@@ -143,6 +143,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 3. Category Persona Config | 0/2 | Planned | - |
 | 4. Concurrent Image Analysis | 0/1 | Planned | - |
 | 5. Evaluate Quality | 0/1 | Planned | - |
-| 6. Evaluate Frontend | 0/2 | Not started | - |
+| 6. Evaluate Frontend | 2/2 | Complete   | 2026-03-17 |
 | 7. Unified Entry | 0/1 | Not started | - |
 | 8. Results Enhancement | 0/2 | Not started | - |
