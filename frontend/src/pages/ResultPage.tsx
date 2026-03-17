@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getRaceState, type RaceResult, type RankingEntry, type VisualProfile, clearRaceState } from '../lib/api'
-import { ChevronDown, ChevronUp, AlertTriangle, Activity, Beaker, Snowflake, Lightbulb, Eye, ImageIcon } from 'lucide-react'
+import { getRaceState, type RaceResult, type RankingEntry, type VisualProfile, clearRaceState, getBothModeState, clearBothModeState, getEvaluateStatus, getEvaluateResult, saveEvaluateState, getEvaluateState } from '../lib/api'
+import { ChevronDown, ChevronUp, AlertTriangle, Activity, Beaker, Snowflake, Lightbulb, Eye, ImageIcon, Loader2, ArrowRight } from 'lucide-react'
 import { RadarScoreChart } from '../components/RadarScoreChart'
 import { PercentileBar } from '../components/PercentileBar'
 import { DiagnosticsPanel } from '../components/DiagnosticsPanel'
@@ -13,6 +13,30 @@ export function ResultPage() {
     return state?.result || null
   })
   const [expandedPlan, setExpandedPlan] = useState<number | null>(null)
+  const [bothMode] = useState(() => getBothModeState())
+  const [evalStatus, setEvalStatus] = useState<'polling' | 'completed' | 'failed' | null>(null)
+
+  // Poll evaluate task status when in Both mode
+  useEffect(() => {
+    if (!bothMode) return
+    setEvalStatus('polling')
+    const interval = setInterval(async () => {
+      try {
+        const res = await getEvaluateStatus(bothMode.evaluateTaskId)
+        if (res.status === 'completed') {
+          clearInterval(interval)
+          setEvalStatus('completed')
+        } else if (res.status === 'failed') {
+          clearInterval(interval)
+          setEvalStatus('failed')
+        }
+      } catch {
+        clearInterval(interval)
+        setEvalStatus('failed')
+      }
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [bothMode])
 
   useEffect(() => {
     if (!result) {
@@ -21,6 +45,24 @@ export function ResultPage() {
   }, [navigate, result])
 
   if (!result) return null
+
+  const handleEvalNavigate = async () => {
+    if (!bothMode) return
+    try {
+      const result = await getEvaluateResult(bothMode.evaluateSetId)
+      const evalState = getEvaluateState()
+      saveEvaluateState({
+        taskId: bothMode.evaluateTaskId,
+        setId: bothMode.evaluateSetId,
+        payload: evalState?.payload ?? {} as any,
+        result,
+      })
+      clearBothModeState()
+      navigate('/evaluate-result')
+    } catch {
+      setEvalStatus('failed')
+    }
+  }
 
   const { observed_baseline, model_hypothesis, visual_analysis } = result
   const ranking = observed_baseline.ranking
@@ -64,6 +106,46 @@ export function ResultPage() {
           </div>
         )}
       </section>
+
+      {/* Both Mode: Evaluate Result Link */}
+      {bothMode && evalStatus && (
+        <section className="space-y-4">
+          <div className="lab-card p-5 flex items-center justify-between bg-violet-50 border-violet-200">
+            {evalStatus === 'polling' && (
+              <>
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-5 w-5 text-violet-600 animate-spin" />
+                  <div>
+                    <h3 className="text-sm font-semibold text-violet-700">深度评审进行中</h3>
+                    <p className="text-xs text-violet-600/70">Both 模式已同时启动 Evaluate 推演，完成后可查看详细评审结果</p>
+                  </div>
+                </div>
+              </>
+            )}
+            {evalStatus === 'completed' && (
+              <>
+                <div>
+                  <h3 className="text-sm font-semibold text-violet-700">深度评审已完成</h3>
+                  <p className="text-xs text-violet-600/70">点击查看评审团打分、两两对比和综合排名</p>
+                </div>
+                <button onClick={handleEvalNavigate} className="lab-button flex items-center gap-2 text-sm">
+                  查看深度评审结果
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </>
+            )}
+            {evalStatus === 'failed' && (
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                <div>
+                  <h3 className="text-sm font-semibold text-amber-700">深度评审失败</h3>
+                  <p className="text-xs text-amber-600/70">Evaluate 推演未能完成，可返回首页重新发起</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Side-by-Side Comparison */}
       <section className="space-y-6">
