@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   getEvaluateState,
@@ -9,7 +9,8 @@ import {
   type EvalPairwiseResult,
   type EvalScoreboard,
 } from '../lib/api'
-import { User, Trophy, AlertTriangle, ChevronDown, ChevronUp, BarChart3, Users, GitCompare } from 'lucide-react'
+import { User, Trophy, AlertTriangle, ChevronDown, ChevronUp, BarChart3, Users, GitCompare, Download, Loader2 } from 'lucide-react'
+import { captureElementAsImage, captureElementAsPDF } from '../lib/exportUtils'
 import { RadarScoreChart } from '../components/RadarScoreChart'
 import { DiagnosticsPanel } from '../components/DiagnosticsPanel'
 import type { VisualDiagnostics } from '../lib/api'
@@ -45,6 +46,8 @@ export function EvaluateResultPage() {
     return state?.result || null
   })
   const [activeTab, setActiveTab] = useState<TabKey>('ranking')
+  const [exporting, setExporting] = useState<'pdf' | 'image' | null>(null)
+  const exportRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!result) {
@@ -65,6 +68,33 @@ export function EvaluateResultPage() {
 
   // Build diagnostics map from backend visual_diagnostics
   const diagnosticsMap: Record<string, VisualDiagnostics> = result.visual_diagnostics ?? {}
+
+  const handleExportPDF = async () => {
+    if (!exportRef.current || exporting) return
+    setExporting('pdf')
+    try {
+      const topName = rankings[0]?.campaign_name || '评审'
+      const date = new Date().toLocaleDateString('zh-CN')
+      const title = `MiroFishmoody 推演报告 — ${topName} — ${date}`
+      const filename = `${topName}_推演报告_${date}`
+      await captureElementAsPDF(exportRef.current, filename, title)
+    } finally {
+      setExporting(null)
+    }
+  }
+
+  const handleExportImage = async () => {
+    if (!exportRef.current || exporting) return
+    setExporting('image')
+    try {
+      const topName = rankings[0]?.campaign_name || '评审'
+      const date = new Date().toLocaleDateString('zh-CN')
+      const filename = `${topName}_对比_${date}`
+      await captureElementAsImage(exportRef.current, filename)
+    } finally {
+      setExporting(null)
+    }
+  }
 
   const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
     { key: 'ranking', label: '综合排名', icon: <Trophy className="h-4 w-4" /> },
@@ -92,14 +122,35 @@ export function EvaluateResultPage() {
               </span>
             )}
           </div>
-          <button
-            onClick={() => { clearEvaluateState(); navigate('/') }}
-            className="lab-button lab-button-outline"
-          >
-            新评审
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportPDF}
+              disabled={!!exporting}
+              className="lab-button lab-button-outline flex items-center gap-2 text-sm"
+            >
+              {exporting === 'pdf' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              导出 PDF
+            </button>
+            <button
+              onClick={handleExportImage}
+              disabled={!!exporting}
+              className="lab-button lab-button-outline flex items-center gap-2 text-sm"
+            >
+              {exporting === 'image' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              导出图片
+            </button>
+            <button
+              onClick={() => { clearEvaluateState(); navigate('/') }}
+              className="lab-button lab-button-outline"
+            >
+              新评审
+            </button>
+          </div>
         </div>
       </section>
+
+      {/* Export capture area */}
+      <div ref={exportRef}>
 
       {/* Tab Navigation */}
       <div className="flex gap-2 border-b border-border pb-0">
@@ -163,6 +214,8 @@ export function EvaluateResultPage() {
           </div>
         )}
       </section>
+
+      </div>{/* end exportRef */}
     </div>
   )
 }
