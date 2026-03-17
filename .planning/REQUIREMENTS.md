@@ -31,8 +31,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Unified Entry
 
-- [ ] **UNIF-01**: 统一推演入口 — 在 HomePage 添加模式选择器（Race / Evaluate / Both）
-- [ ] **UNIF-02**: 统一方案录入表单 — 一套表单支持两种推演路径，用户无需知道后端 API 差异
+- [x] **UNIF-01**: 统一推演入口 — 在 HomePage 添加模式选择器（Race / Evaluate / Both）
+- [x] **UNIF-02**: 统一方案录入表单 — 一套表单支持两种推演路径，用户无需知道后端 API 差异
 - [x] **UNIF-03**: 品类选择驱动人格 — 用户选品类后，系统自动加载对应品类的评审人格预设
 
 ### Results
@@ -109,8 +109,8 @@ Deferred to future release. Tracked but not in current roadmap.
 | EVAL-01 | Phase 6: Evaluate Frontend | Complete |
 | EVAL-02 | Phase 6: Evaluate Frontend | Complete |
 | EVAL-03 | Phase 6: Evaluate Frontend | Complete |
-| UNIF-01 | Phase 7: Unified Entry | Pending |
-| UNIF-02 | Phase 7: Unified Entry | Pending |
+| UNIF-01 | Phase 7: Unified Entry | Complete |
+| UNIF-02 | Phase 7: Unified Entry | Complete |
 | RES-01 | Phase 8: Results Enhancement | Pending |
 | RES-02 | Phase 8: Results Enhancement | Pending |
 | RES-03 | Phase 8: Results Enhancement | Pending |
