@@ -43,8 +43,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Quality
 
-- [ ] **QUAL-01**: PairwiseJudge 位置互换去偏 — 每对 campaign 正反各评一次，标记不一致判断
-- [ ] **QUAL-02**: 视觉诊断建议结构化 — ImageAnalyzer 输出从自由文本改为结构化"问题 → 建议"格式
+- [x] **QUAL-01**: PairwiseJudge 位置互换去偏 — 每对 campaign 正反各评一次，标记不一致判断
+- [x] **QUAL-02**: 视觉诊断建议结构化 — ImageAnalyzer 输出从自由文本改为结构化"问题 → 建议"格式
 - [ ] **QUAL-03**: 视觉诊断建议在结果页展示 — 每个 campaign 方案展示具体的视觉改进建议
 
 ## v2 Requirements
@@ -104,8 +104,8 @@ Deferred to future release. Tracked but not in current roadmap.
 | UNIF-03 | Phase 3: Category Persona Config | Complete |
 | PERF-01 | Phase 4: Concurrent Image Analysis | Complete |
 | PERF-02 | Phase 4: Concurrent Image Analysis | Complete |
-| QUAL-01 | Phase 5: Evaluate Quality | Pending |
-| QUAL-02 | Phase 5: Evaluate Quality | Pending |
+| QUAL-01 | Phase 5: Evaluate Quality | Complete |
+| QUAL-02 | Phase 5: Evaluate Quality | Complete |
 | EVAL-01 | Phase 6: Evaluate Frontend | Pending |
 | EVAL-02 | Phase 6: Evaluate Frontend | Pending |
 | EVAL-03 | Phase 6: Evaluate Frontend | Pending |
