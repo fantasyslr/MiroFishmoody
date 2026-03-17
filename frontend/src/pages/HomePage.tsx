@@ -1,77 +1,236 @@
-import { useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Trash2, Zap, AlertCircle, ImagePlus, X } from 'lucide-react'
-import { type RacePayload, type CampaignPlan, saveRaceState } from '../lib/api'
+import { Plus, Trash2, Zap, Search, Layers, AlertCircle, ImagePlus, X, Loader2 } from 'lucide-react'
+import { type RacePayload, type CampaignPlan, saveRaceState, uploadCampaignImage } from '../lib/api'
+import { uuid } from '../utils'
 
-type PlanImages = { files: File[]; previews: string[] }
+type SimulationMode = 'race' | 'evaluate' | 'both'
 
-const DEFAULT_PLAN: CampaignPlan = {
+const MODE_OPTIONS: Array<{ value: SimulationMode; label: string; desc: string; time: string; icon: typeof Zap }> = [
+  { value: 'race', label: '快速推演', desc: '基于历史基线数据快速排序', time: '~15 秒', icon: Zap },
+  { value: 'evaluate', label: '深度评审', desc: '多人格评审团 + 两两对比', time: '~3 分钟', icon: Search },
+  { value: 'both', label: '联合推演', desc: '同时运行快速推演和深度评审', time: '~3 分钟', icon: Layers },
+]
+
+type UploadedPlanImage = {
+  id: string
+  name: string
+  previewUrl: string
+  uploadedUrl?: string
+  status: 'uploading' | 'ready' | 'error'
+  error?: string
+}
+
+const DEFAULT_PLAN: Omit<CampaignPlan, 'id'> = {
   name: '',
   theme: 'science_credibility',
   platform: 'facebook',
   channel_family: 'social_seed',
   budget: 50000,
+  image_paths: [],
+}
+
+function makePlan(overrides: Partial<CampaignPlan> = {}): CampaignPlan {
+  return {
+    id: uuid(),
+    ...DEFAULT_PLAN,
+    ...overrides,
+  }
+}
+
+function makeImageDraft(file: File): UploadedPlanImage {
+  return {
+    id: uuid(),
+    name: file.name,
+    previewUrl: URL.createObjectURL(file),
+    status: 'uploading',
+  }
 }
 
 export function HomePage() {
   const navigate = useNavigate()
-  
+
+  const [mode, setMode] = useState<SimulationMode>('race')
+
   const [market, setMarket] = useState('cn')
   const [productLine, setProductLine] = useState('moodyplus')
   const [audience] = useState('general')
   const [sortBy, setSortBy] = useState<RacePayload['sort_by']>('roas_mean')
   const [seasonTag, setSeasonTag] = useState('')
-  
+  const [draftSetId] = useState(() => `race_${uuid()}`)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
   const [plans, setPlans] = useState<CampaignPlan[]>([
-    { ...DEFAULT_PLAN, name: 'Plan A', theme: 'science_credibility' },
-    { ...DEFAULT_PLAN, name: 'Plan B', theme: 'comfort_beauty', platform: 'instagram' },
+    makePlan({ name: 'Plan A', theme: 'science_credibility' }),
+    makePlan({ name: 'Plan B', theme: 'comfort_beauty', platform: 'instagram' }),
   ])
-  const [planImages, setPlanImages] = useState<PlanImages[]>([
-    { files: [], previews: [] },
-    { files: [], previews: [] },
-  ])
-  const fileInputRefs = useRef<(HTMLInputElement | null)[]>([])
+  const [planImages, setPlanImages] = useState<Record<string, UploadedPlanImage[]>>(() =>
+    Object.fromEntries(
+      plans.map((plan) => [plan.id ?? uuid(), []]),
+    ),
+  )
+
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const imageMapRef = useRef(planImages)
+
+  useEffect(() => {
+    imageMapRef.current = planImages
+  }, [planImages])
+
+  useEffect(() => {
+    return () => {
+      Object.values(imageMapRef.current)
+        .flat()
+        .forEach((image) => URL.revokeObjectURL(image.previewUrl))
+    }
+  }, [])
 
   const addPlan = () => {
     if (plans.length >= 5) return
-    setPlans([...plans, { ...DEFAULT_PLAN, name: `Plan ${String.fromCharCode(65 + plans.length)}` }])
-    setPlanImages([...planImages, { files: [], previews: [] }])
+    const nextPlan = makePlan({ name: `Plan ${String.fromCharCode(65 + plans.length)}` })
+    setPlans((current) => [...current, nextPlan])
+    setPlanImages((current) => ({
+      ...current,
+      [nextPlan.id as string]: [],
+    }))
   }
 
   const removePlan = (index: number) => {
     if (plans.length <= 1) return
-    planImages[index].previews.forEach(url => URL.revokeObjectURL(url))
-    setPlans(plans.filter((_, i) => i !== index))
-    setPlanImages(planImages.filter((_, i) => i !== index))
-  }
+    const removedPlan = plans[index]
+    const removedPlanId = removedPlan.id
+    if (!removedPlanId) return
 
-  const handleAddImages = (index: number, newFiles: FileList | null) => {
-    if (!newFiles) return
-    const imgs = [...planImages]
-    const current = imgs[index]
-    const allowed = Array.from(newFiles).slice(0, 5 - current.files.length)
-    imgs[index] = {
-      files: [...current.files, ...allowed],
-      previews: [...current.previews, ...allowed.map(f => URL.createObjectURL(f))],
-    }
-    setPlanImages(imgs)
-  }
+    imageMapRef.current[removedPlanId]?.forEach((image) => URL.revokeObjectURL(image.previewUrl))
 
-  const handleRemoveImage = (planIndex: number, imgIndex: number) => {
-    const imgs = [...planImages]
-    URL.revokeObjectURL(imgs[planIndex].previews[imgIndex])
-    imgs[planIndex] = {
-      files: imgs[planIndex].files.filter((_, i) => i !== imgIndex),
-      previews: imgs[planIndex].previews.filter((_, i) => i !== imgIndex),
-    }
-    setPlanImages(imgs)
+    setPlans((current) => current.filter((_, currentIndex) => currentIndex !== index))
+    setPlanImages((current) => {
+      const next = { ...current }
+      delete next[removedPlanId]
+      delete fileInputRefs.current[removedPlanId]
+      return next
+    })
   }
 
   const updatePlan = (index: number, updates: Partial<CampaignPlan>) => {
-    const newPlans = [...plans]
-    newPlans[index] = { ...newPlans[index], ...updates }
-    setPlans(newPlans)
+    setPlans((current) =>
+      current.map((plan, currentIndex) =>
+        currentIndex === index ? { ...plan, ...updates } : plan,
+      ),
+    )
   }
+
+  const handleAddImages = async (plan: CampaignPlan, newFiles: FileList | null) => {
+    const planId = plan.id
+    if (!planId || !newFiles) return
+
+    const existingImages = imageMapRef.current[planId] ?? []
+    const allowedFiles = Array.from(newFiles).slice(0, Math.max(0, 5 - existingImages.length))
+    if (allowedFiles.length === 0) return
+
+    setUploadError(null)
+
+    const drafts = allowedFiles.map((file) => ({
+      file,
+      image: makeImageDraft(file),
+    }))
+
+    setPlanImages((current) => ({
+      ...current,
+      [planId]: [...(current[planId] ?? []), ...drafts.map((draft) => draft.image)],
+    }))
+
+    for (const draft of drafts) {
+      try {
+        const uploaded = await uploadCampaignImage(draft.file, draftSetId, planId)
+        const imageStillTracked = (imageMapRef.current[planId] ?? []).some(
+          (image) => image.id === draft.image.id,
+        )
+        if (!imageStillTracked) continue
+
+        setPlanImages((current) => ({
+          ...current,
+          [planId]: (current[planId] ?? []).map((image) =>
+            image.id === draft.image.id
+              ? {
+                  ...image,
+                  status: 'ready',
+                  uploadedUrl: uploaded.url,
+                }
+              : image,
+          ),
+        }))
+
+        setPlans((current) =>
+          current.map((currentPlan) =>
+            currentPlan.id === planId
+              ? {
+                  ...currentPlan,
+                  image_paths: [...(currentPlan.image_paths ?? []), uploaded.url],
+                }
+              : currentPlan,
+          ),
+        )
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '图片上传失败'
+        const imageStillTracked = (imageMapRef.current[planId] ?? []).some(
+          (image) => image.id === draft.image.id,
+        )
+        if (!imageStillTracked) continue
+        setUploadError(message)
+        setPlanImages((current) => ({
+          ...current,
+          [planId]: (current[planId] ?? []).map((image) =>
+            image.id === draft.image.id
+              ? {
+                  ...image,
+                  status: 'error',
+                  error: message,
+                }
+              : image,
+          ),
+        }))
+      }
+    }
+  }
+
+  const handleRemoveImage = (plan: CampaignPlan, imageId: string) => {
+    const planId = plan.id
+    if (!planId) return
+
+    const imageToRemove = (imageMapRef.current[planId] ?? []).find((image) => image.id === imageId)
+    if (!imageToRemove) return
+
+    URL.revokeObjectURL(imageToRemove.previewUrl)
+
+    setPlanImages((current) => ({
+      ...current,
+      [planId]: (current[planId] ?? []).filter((image) => image.id !== imageId),
+    }))
+
+    if (imageToRemove.uploadedUrl) {
+      setPlans((current) =>
+        current.map((currentPlan) =>
+          currentPlan.id === planId
+            ? {
+                ...currentPlan,
+                image_paths: (currentPlan.image_paths ?? []).filter(
+                  (imagePath) => imagePath !== imageToRemove.uploadedUrl,
+                ),
+              }
+            : currentPlan,
+        ),
+      )
+    }
+  }
+
+  const hasPendingUploads = Object.values(planImages).some((images) =>
+    images.some((image) => image.status === 'uploading'),
+  )
+  const uploadedAssetCount = Object.values(planImages).reduce(
+    (count, images) => count + images.filter((image) => image.status === 'ready').length,
+    0,
+  )
 
   const handleRace = () => {
     const payload: RacePayload = {
@@ -80,10 +239,15 @@ export function HomePage() {
       audience_segment: audience,
       sort_by: sortBy,
       include_hypothesis: true,
-      plans: plans.filter(p => p.name.trim() && p.theme),
+      plans: plans
+        .filter((plan) => plan.name.trim() && plan.theme)
+        .map((plan) => ({
+          ...plan,
+          image_paths: plan.image_paths ?? [],
+        })),
       ...(seasonTag ? { season_tag: seasonTag } : {}),
     }
-    
+
     saveRaceState({ payload })
     navigate('/running')
   }
@@ -91,8 +255,6 @@ export function HomePage() {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-10 items-start">
       <div className="space-y-10">
-        
-        {/* Header / Positioning */}
         <section className="space-y-4">
           <h1 className="font-display text-4xl text-primary font-semibold">营销实验室</h1>
           <p className="text-muted-foreground text-lg leading-relaxed max-w-2xl text-balance">
@@ -102,12 +264,38 @@ export function HomePage() {
           </p>
         </section>
 
-        {/* Global Context */}
+        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {MODE_OPTIONS.map((opt) => {
+            const Icon = opt.icon
+            const selected = mode === opt.value
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setMode(opt.value)}
+                className={`lab-card p-4 cursor-pointer border-2 transition-all text-left ${
+                  selected
+                    ? 'border-primary bg-primary/5'
+                    : 'border-transparent hover:border-border'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Icon className="h-4 w-4 text-primary" />
+                  <span className="text-base font-semibold">{opt.label}</span>
+                </div>
+                <p className="text-sm text-muted-foreground">{opt.desc}</p>
+                <span className="inline-block mt-2 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{opt.time}</span>
+              </button>
+            )
+          })}
+        </section>
+
         <section className="lab-card p-6 flex flex-wrap gap-8 items-end">
           <div className="space-y-1.5 flex-1 min-w-[120px]">
             <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">市场</label>
             <select
-              value={market} onChange={e => setMarket(e.target.value)}
+              value={market}
+              onChange={(event) => setMarket(event.target.value)}
               className="lab-input font-medium pb-2 cursor-pointer"
             >
               <option value="cn">中国大陆</option>
@@ -118,7 +306,8 @@ export function HomePage() {
           <div className="space-y-1.5 flex-1 min-w-[120px]">
             <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">品类</label>
             <select
-              value={productLine} onChange={e => setProductLine(e.target.value)}
+              value={productLine}
+              onChange={(event) => setProductLine(event.target.value)}
               className="lab-input font-medium pb-2 cursor-pointer"
             >
               <option value="moodyplus">透明片（moodyPlus）</option>
@@ -128,7 +317,10 @@ export function HomePage() {
           <div className="space-y-1.5 flex-1 min-w-[120px]">
             <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">优化目标</label>
             <select
-              value={sortBy} onChange={e => setSortBy(e.target.value as 'roas_mean' | 'purchase_rate' | 'revenue_mean' | 'cvr_mean')}
+              value={sortBy}
+              onChange={(event) =>
+                setSortBy(event.target.value as 'roas_mean' | 'purchase_rate' | 'revenue_mean' | 'cvr_mean')
+              }
               className="lab-input font-medium pb-2 cursor-pointer"
             >
               <option value="roas_mean">ROAS（均值）</option>
@@ -139,7 +331,8 @@ export function HomePage() {
           <div className="space-y-1.5 flex-1 min-w-[120px]">
             <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">季节场景</label>
             <select
-              value={seasonTag} onChange={e => setSeasonTag(e.target.value)}
+              value={seasonTag}
+              onChange={(event) => setSeasonTag(event.target.value)}
               className="lab-input font-medium pb-2 cursor-pointer"
             >
               <option value="">常规（无季节）</option>
@@ -152,7 +345,6 @@ export function HomePage() {
           </div>
         </section>
 
-        {/* Plans Builder */}
         <section className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-2xl text-primary">策略方向</h2>
@@ -160,125 +352,176 @@ export function HomePage() {
           </div>
 
           <div className="space-y-4">
-            {plans.map((plan, i) => (
-              <div key={i} className="lab-card p-6 relative group border-l-4 border-l-border focus-within:border-l-primary transition-all">
-                <button 
-                  onClick={() => removePlan(i)}
-                  disabled={plans.length <= 1}
-                  className="absolute right-4 top-4 text-muted-foreground hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0"
+            {plans.map((plan, index) => {
+              const planId = plan.id as string
+              const images = planImages[planId] ?? []
+
+              return (
+                <div
+                  key={planId}
+                  className="lab-card p-6 relative group border-l-4 border-l-border focus-within:border-l-primary transition-all"
                 >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                  <button
+                    onClick={() => removePlan(index)}
+                    disabled={plans.length <= 1}
+                    className="absolute right-4 top-4 text-muted-foreground hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                  <div className="space-y-1.5 col-span-1 md:col-span-2">
-                    <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">方案名称</label>
-                    <input
-                      type="text"
-                      value={plan.name}
-                      onChange={e => updatePlan(i, { name: e.target.value })}
-                      placeholder="例：春季科学种草"
-                      className="lab-input text-lg font-display"
-                    />
-                  </div>
-                  
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">认知主题</label>
-                    <select
-                      value={plan.theme} onChange={e => updatePlan(i, { theme: e.target.value })}
-                      className="lab-input text-sm"
-                    >
-                      <option value="science_credibility">科学与可信度</option>
-                      <option value="comfort_beauty">舒适与美感</option>
-                      <option value="aesthetic">审美与视觉</option>
-                      <option value="price">价格与性价比</option>
-                      <option value="social">社交背书 / KOL</option>
-                    </select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                    <div className="space-y-1.5 col-span-1 md:col-span-2">
+                      <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">方案名称</label>
+                      <input
+                        type="text"
+                        value={plan.name}
+                        onChange={(event) => updatePlan(index, { name: event.target.value })}
+                        placeholder="例：春季科学种草"
+                        className="lab-input text-lg font-display"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">认知主题</label>
+                      <select
+                        value={plan.theme}
+                        onChange={(event) => updatePlan(index, { theme: event.target.value })}
+                        className="lab-input text-sm"
+                      >
+                        <option value="science_credibility">科学与可信度</option>
+                        <option value="comfort_beauty">舒适与美感</option>
+                        <option value="aesthetic">审美与视觉</option>
+                        <option value="price">价格与性价比</option>
+                        <option value="social">社交背书 / KOL</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">主要平台</label>
+                      <select
+                        value={plan.platform}
+                        onChange={(event) => updatePlan(index, { platform: event.target.value })}
+                        className="lab-input text-sm"
+                      >
+                        <option value="facebook">Facebook</option>
+                        <option value="instagram">Instagram</option>
+                        <option value="google">Google</option>
+                        <option value="youtube">YouTube</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">预算分配（CNY）</label>
+                      <input
+                        type="number"
+                        value={plan.budget}
+                        onChange={(event) => updatePlan(index, { budget: Number(event.target.value) })}
+                        className="lab-input text-sm font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">渠道类型</label>
+                      <select
+                        value={plan.channel_family}
+                        onChange={(event) => updatePlan(index, { channel_family: event.target.value })}
+                        className="lab-input text-sm"
+                      >
+                        <option value="social_seed">社交种草 / KOC</option>
+                        <option value="short_video">短视频</option>
+                        <option value="longform_content">长内容</option>
+                        <option value="marketplace">电商平台</option>
+                        <option value="influencer">达人 / KOL</option>
+                        <option value="search">搜索广告</option>
+                      </select>
+                    </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">主要平台</label>
-                    <select
-                      value={plan.platform} onChange={e => updatePlan(i, { platform: e.target.value })}
-                      className="lab-input text-sm"
-                    >
-                      <option value="facebook">Facebook</option>
-                      <option value="instagram">Instagram</option>
-                      <option value="google">Google</option>
-                      <option value="youtube">YouTube</option>
-                    </select>
-                  </div>
+                  <div className="mt-6 space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                          视觉参考素材（最多 5 张）
+                        </label>
+                        <p className="text-xs text-muted-foreground">
+                          上传后会用多模态模型分析视觉内容。当基线分数接近时，图片内容可差异化影响排序。
+                        </p>
+                      </div>
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        {images.filter((image) => image.status === 'ready').length} / 5 Ready
+                      </span>
+                    </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">预算分配（CNY）</label>
-                    <input 
-                      type="number" 
-                      value={plan.budget} 
-                      onChange={e => updatePlan(i, { budget: Number(e.target.value) })}
-                      className="lab-input text-sm font-mono"
-                    />
-                  </div>
+                    <div className="flex flex-wrap gap-3">
+                      {images.map((image) => (
+                        <div
+                          key={image.id}
+                          className={`relative w-24 h-24 rounded-sm overflow-hidden border transition-colors group/img ${
+                            image.status === 'error'
+                              ? 'border-red-300 bg-red-50'
+                              : image.status === 'uploading'
+                                ? 'border-primary/40 bg-primary/5'
+                                : 'border-border'
+                          }`}
+                        >
+                          <img
+                            src={image.previewUrl}
+                            alt={image.name}
+                            className={`w-full h-full object-cover ${image.status === 'uploading' ? 'opacity-80' : ''}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(plan, image.id)}
+                            className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                          <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white px-2 py-1 text-[10px] leading-tight">
+                            {image.status === 'uploading' && (
+                              <span className="inline-flex items-center gap-1">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                上传中
+                              </span>
+                            )}
+                            {image.status === 'ready' && <span>已接入方案</span>}
+                            {image.status === 'error' && <span>{image.error ?? '上传失败'}</span>}
+                          </div>
+                        </div>
+                      ))}
 
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">渠道类型</label>
-                    <select
-                      value={plan.channel_family} onChange={e => updatePlan(i, { channel_family: e.target.value })}
-                      className="lab-input text-sm"
-                    >
-                      <option value="social_seed">社交种草 / KOC</option>
-                      <option value="short_video">短视频</option>
-                      <option value="longform_content">长内容</option>
-                      <option value="marketplace">电商平台</option>
-                      <option value="influencer">达人 / KOL</option>
-                      <option value="search">搜索广告</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Image Upload */}
-                <div className="mt-6 space-y-2">
-                  <label className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
-                    素材图片（最多 5 张）
-                  </label>
-                  <div className="flex flex-wrap gap-3">
-                    {planImages[i]?.previews.map((src, imgIdx) => (
-                      <div key={imgIdx} className="relative w-20 h-20 rounded-sm overflow-hidden border border-border group/img">
-                        <img src={src} alt={`素材 ${imgIdx + 1}`} className="w-full h-full object-cover" />
+                      {images.length < 5 && (
                         <button
                           type="button"
-                          onClick={() => handleRemoveImage(i, imgIdx)}
-                          className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                          onClick={() => fileInputRefs.current[planId]?.click()}
+                          className="w-24 h-24 rounded-sm border border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors"
                         >
-                          <X className="h-3 w-3" />
+                          <ImagePlus className="h-5 w-5" />
+                          <span className="text-[11px] font-medium">添加素材</span>
                         </button>
-                      </div>
-                    ))}
-                    {(planImages[i]?.files.length ?? 0) < 5 && (
-                      <button
-                        type="button"
-                        onClick={() => fileInputRefs.current[i]?.click()}
-                        className="w-20 h-20 rounded-sm border border-dashed border-border flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary hover:border-primary transition-colors"
-                      >
-                        <ImagePlus className="h-5 w-5" />
-                        <span className="text-[10px]">上传</span>
-                      </button>
-                    )}
+                      )}
+                    </div>
+
                     <input
-                      ref={el => { fileInputRefs.current[i] = el }}
+                      ref={(element) => {
+                        fileInputRefs.current[planId] = element
+                      }}
                       type="file"
                       accept="image/*"
                       multiple
                       className="hidden"
-                      onChange={e => { handleAddImages(i, e.target.files); e.target.value = '' }}
+                      onChange={(event) => {
+                        void handleAddImages(plan, event.target.files)
+                        event.target.value = ''
+                      }}
                     />
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {plans.length < 5 && (
-            <button 
+            <button
               onClick={addPlan}
               className="w-full py-4 border border-dashed border-border rounded-sm text-muted-foreground hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
             >
@@ -286,10 +529,8 @@ export function HomePage() {
             </button>
           )}
         </section>
-
       </div>
 
-      {/* Right Sidebar: Execution Summary & CTA */}
       <div className="sticky top-24 space-y-6">
         <div className="lab-card p-5 space-y-5 bg-card/50">
           <div>
@@ -305,22 +546,47 @@ export function HomePage() {
               </li>
               <li className="flex gap-2 text-xs">
                 <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-accent" />
-                <span>模型假设不会覆盖经验排序，仅提供认知层面的参考。</span>
+                <span>图片素材会参与视觉分析。当多方案基线分数接近时，素材内容可透明地影响排序差异。</span>
               </li>
             </ul>
           </div>
 
+          <div className="rounded-sm border border-border/60 bg-background/70 px-4 py-3 space-y-2">
+            <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
+              <span>Reference Assets</span>
+              <span>{uploadedAssetCount}</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {hasPendingUploads
+                ? '有素材正在上传，建议等待上传完成后再开始评估。'
+                : uploadedAssetCount > 0
+                  ? '素材已接入到方案，评估时会分析视觉内容并参与判别。'
+                  : '你可以为每个方案附加素材图，图片内容会参与评估判别。'}
+            </p>
+            {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
+          </div>
+
           <div className="pt-4 border-t border-border">
-            <button 
+            <button
               onClick={handleRace}
-              disabled={plans.length === 0}
-              className="lab-button lab-button-primary w-full h-12 text-base gap-2 group"
+              disabled={plans.length === 0 || hasPendingUploads}
+              className="lab-button lab-button-primary w-full h-12 text-base gap-2 group disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <Zap className="h-4 w-4 text-accent-foreground group-hover:animate-pulse" />
-              开始评估
+              {hasPendingUploads ? (
+                <Loader2 className="h-4 w-4 text-accent-foreground animate-spin" />
+              ) : (
+                <Zap className="h-4 w-4 text-accent-foreground group-hover:animate-pulse" />
+              )}
+              {hasPendingUploads
+                ? '等待素材上传完成'
+                : mode === 'evaluate'
+                  ? '开始深度评审'
+                  : mode === 'both'
+                    ? '开始联合推演'
+                    : '开始评估'}
             </button>
             <p className="text-[10px] text-center text-muted-foreground mt-3 uppercase tracking-wider">
-              预计需要约 15 秒计算时间
+              预计需要约 {mode === 'race' ? '15 秒' : '3 分钟'}计算时间
             </p>
           </div>
         </div>
