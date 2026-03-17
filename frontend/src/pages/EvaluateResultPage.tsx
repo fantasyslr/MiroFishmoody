@@ -10,6 +10,9 @@ import {
   type EvalScoreboard,
 } from '../lib/api'
 import { User, Trophy, AlertTriangle, ChevronDown, ChevronUp, BarChart3, Users, GitCompare } from 'lucide-react'
+import { RadarScoreChart } from '../components/RadarScoreChart'
+import { DiagnosticsPanel } from '../components/DiagnosticsPanel'
+import type { VisualDiagnostics } from '../lib/api'
 
 type TabKey = 'ranking' | 'persona' | 'pairwise'
 
@@ -59,6 +62,10 @@ export function EvaluateResultPage() {
   for (const r of rankings) {
     campaignNameMap[r.campaign_id] = r.campaign_name
   }
+
+  // Build diagnostics map — populated when backend includes visual_diagnostics
+  const diagnosticsMap: Record<string, VisualDiagnostics> = {}
+  // Future: populate from result.visual_diagnostics if available
 
   const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
     { key: 'ranking', label: '综合排名', icon: <Trophy className="h-4 w-4" /> },
@@ -115,7 +122,7 @@ export function EvaluateResultPage() {
 
       {/* Tab Content */}
       {activeTab === 'ranking' && (
-        <RankingTab rankings={rankings} scoreboard={scoreboard} />
+        <RankingTab rankings={rankings} scoreboard={scoreboard} diagnosticsMap={diagnosticsMap} />
       )}
       {activeTab === 'persona' && (
         <PersonaTab panelScores={result.panel_scores} />
@@ -163,7 +170,7 @@ export function EvaluateResultPage() {
 
 /* ========== Tab 1: Overall Ranking ========== */
 
-function RankingTab({ rankings, scoreboard }: { rankings: EvalRanking[]; scoreboard?: EvalScoreboard }) {
+function RankingTab({ rankings, scoreboard, diagnosticsMap }: { rankings: EvalRanking[]; scoreboard?: EvalScoreboard; diagnosticsMap?: Record<string, VisualDiagnostics> }) {
   return (
     <section className="space-y-8">
 
@@ -230,6 +237,45 @@ function RankingTab({ rankings, scoreboard }: { rankings: EvalRanking[]; scorebo
 
       {/* BT Score Bar Chart */}
       {scoreboard && <BTBarChart scoreboard={scoreboard} />}
+
+      {/* Radar Chart - Dimension Comparison */}
+      {scoreboard && (() => {
+        const dimKeys = new Set<string>()
+        for (const c of scoreboard.campaigns) {
+          for (const k of Object.keys(c.dimension_scores)) dimKeys.add(k)
+        }
+        if (dimKeys.size === 0) return null
+
+        const radarCampaigns = scoreboard.campaigns.map(c => ({
+          name: c.campaign_name,
+          dimensions: c.dimension_scores,
+        }))
+
+        return (
+          <RadarScoreChart
+            campaigns={radarCampaigns}
+            dimensionLabels={{
+              thumb_stop: '停留吸引力',
+              clarity: '信息清晰度',
+              trust: '信任感',
+              conversion_readiness: '转化就绪度',
+              claim_risk: '声称风险',
+            }}
+          />
+        )
+      })()}
+
+      {/* Visual Diagnostics */}
+      {diagnosticsMap && rankings.map(entry => {
+        const diag = diagnosticsMap[entry.campaign_id]
+        if (!diag) return null
+        return (
+          <div key={`diag-${entry.campaign_id}`} className="lab-card p-6 space-y-3">
+            <h4 className="font-semibold text-sm">{entry.campaign_name}</h4>
+            <DiagnosticsPanel diagnostics={diag} />
+          </div>
+        )
+      })}
     </section>
   )
 }
