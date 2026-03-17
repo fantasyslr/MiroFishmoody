@@ -353,6 +353,7 @@ export type EvaluateResult = {
   scoreboard?: EvalScoreboard
   resolution_ready_fields?: Record<string, string>
   campaign_image_map?: Record<string, string[]>
+  visual_diagnostics?: Record<string, VisualDiagnostics>  // campaign_id -> diagnostics
 }
 
 // --- Evaluate APIs ---

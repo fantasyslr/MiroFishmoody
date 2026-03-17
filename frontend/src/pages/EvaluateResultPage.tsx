@@ -63,9 +63,8 @@ export function EvaluateResultPage() {
     campaignNameMap[r.campaign_id] = r.campaign_name
   }
 
-  // Build diagnostics map — populated when backend includes visual_diagnostics
-  const diagnosticsMap: Record<string, VisualDiagnostics> = {}
-  // Future: populate from result.visual_diagnostics if available
+  // Build diagnostics map from backend visual_diagnostics
+  const diagnosticsMap: Record<string, VisualDiagnostics> = result.visual_diagnostics ?? {}
 
   const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
     { key: 'ranking', label: '综合排名', icon: <Trophy className="h-4 w-4" /> },
