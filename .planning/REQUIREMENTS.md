@@ -14,8 +14,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Performance
 
-- [ ] **PERF-01**: 多张图片并行分析 — ImageAnalyzer 使用 ThreadPoolExecutor 并发处理，单次推演 ≤ 5 分钟
-- [ ] **PERF-02**: LLM 并发调用有速率控制 — 使用 semaphore 限制并发 LLM 请求数（默认 max_workers=3），避免百炼 API 限流
+- [x] **PERF-01**: 多张图片并行分析 — ImageAnalyzer 使用 ThreadPoolExecutor 并发处理，单次推演 ≤ 5 分钟
+- [x] **PERF-02**: LLM 并发调用有速率控制 — 使用 semaphore 限制并发 LLM 请求数（默认 max_workers=3），避免百炼 API 限流
 
 ### Persona
 
@@ -102,8 +102,8 @@ Deferred to future release. Tracked but not in current roadmap.
 | PERS-03 | Phase 2: PersonaRegistry Service | Complete |
 | PERS-02 | Phase 3: Category Persona Config | Complete |
 | UNIF-03 | Phase 3: Category Persona Config | Complete |
-| PERF-01 | Phase 4: Concurrent Image Analysis | Pending |
-| PERF-02 | Phase 4: Concurrent Image Analysis | Pending |
+| PERF-01 | Phase 4: Concurrent Image Analysis | Complete |
+| PERF-02 | Phase 4: Concurrent Image Analysis | Complete |
 | QUAL-01 | Phase 5: Evaluate Quality | Pending |
 | QUAL-02 | Phase 5: Evaluate Quality | Pending |
 | EVAL-01 | Phase 6: Evaluate Frontend | Pending |
