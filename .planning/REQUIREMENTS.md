@@ -37,7 +37,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Results
 
-- [ ] **RES-01**: 多方案并排对比视图 — 推演结果页支持并排展示多个 campaign 方案的分数和视觉素材
+- [x] **RES-01**: 多方案并排对比视图 — 推演结果页支持并排展示多个 campaign 方案的分数和视觉素材
 - [x] **RES-02**: 多维度评分可视化 — 用雷达图或柱状图展示各维度（视觉吸引力、品牌契合度、受众共鸣等）分数对比
 - [x] **RES-03**: 历史基线分位展示 — 每个 campaign 方案展示其在历史数据中的 percentile 位置
 
@@ -111,7 +111,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | EVAL-03 | Phase 6: Evaluate Frontend | Complete |
 | UNIF-01 | Phase 7: Unified Entry | Complete |
 | UNIF-02 | Phase 7: Unified Entry | Complete |
-| RES-01 | Phase 8: Results Enhancement | Pending |
+| RES-01 | Phase 8: Results Enhancement | Complete |
 | RES-02 | Phase 8: Results Enhancement | Complete |
 | RES-03 | Phase 8: Results Enhancement | Complete |
 | QUAL-03 | Phase 8: Results Enhancement | Complete |
