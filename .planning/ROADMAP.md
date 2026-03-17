@@ -131,11 +131,11 @@ Plans:
   1. 用户完成 Both 模式推演后，ResultPage 显示可点击的链接跳转到 EvaluateResultPage 查看深度评审结果
   2. Evaluate 结果页的诊断面板（DiagnosticsPanel）展示每个 campaign 方案的视觉诊断数据（issues + recommendations），不再为空
   3. Evaluate 管线在推演过程中产出图片诊断数据，并正确传递到前端 diagnosticsMap
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 09-01: Both 模式 getBothModeState 消费 + 跨页导航链接
-- [ ] 09-02: Evaluate 管线接入图片诊断产出 + diagnosticsMap 数据传递
+- [ ] 09-01-PLAN.md — Both 模式 getBothModeState 消费 + 跨页导航链接
+- [ ] 09-02-PLAN.md — Evaluate 管线接入图片诊断产出 + diagnosticsMap 数据传递
 
 ### Phase 10: Stability & Security
 **Goal**: 并发访问安全，数据库不因并发锁阻塞，密码不以明文存储
