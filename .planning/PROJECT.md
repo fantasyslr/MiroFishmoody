@@ -63,6 +63,18 @@
 - 眼动追踪/注意力热力图 — 需专用模型，非通用 LLM 能力
 - BrandStateEngine 重构 — 当前能用，等 characterization tests 建好后再拆
 
+## Current Milestone: v1.1 加固与增强
+
+**Goal:** 修复 v1.0 遗留技术债，补全 Both 模式和 Evaluate 诊断，新增结果导出、迭代推演和趋势 Dashboard
+
+**Target features:**
+- Both 模式跨页导航
+- Evaluate 诊断面板数据接入
+- 线程安全 + SQLite WAL + 密码哈希
+- 结果导出 PDF/图片
+- 方案迭代推演（版本对比）
+- 推演趋势 Dashboard
+
 ## Context
 
 **产品背景：**
@@ -108,4 +120,4 @@
 | recharts 用于雷达图可视化 | 轻量 SVG，React-native，适合多维度对比 | ✓ Good |
 
 ---
-*Last updated: 2026-03-17 after v1.0 milestone*
+*Last updated: 2026-03-17 after v1.1 milestone started*
