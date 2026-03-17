@@ -366,6 +366,21 @@ export function clearEvaluateState() {
   localStorage.removeItem(EVALUATE_STATE_KEY)
 }
 
+// --- Both Mode State Helpers ---
+
+const BOTH_MODE_KEY = 'mirofishmoody.both_mode'
+export function saveBothModeState(state: { evaluateTaskId: string; evaluateSetId: string }) {
+  localStorage.setItem(BOTH_MODE_KEY, JSON.stringify(state))
+}
+export function getBothModeState() {
+  const raw = localStorage.getItem(BOTH_MODE_KEY)
+  if (!raw) return null
+  try { return JSON.parse(raw) as { evaluateTaskId: string; evaluateSetId: string } } catch { return null }
+}
+export function clearBothModeState() {
+  localStorage.removeItem(BOTH_MODE_KEY)
+}
+
 // --- Admin APIs ---
 export function getBrandictionStats() {
   return request<Record<string, unknown>>('/api/brandiction/stats')

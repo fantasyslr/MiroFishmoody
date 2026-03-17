@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2, Zap, Search, Layers, AlertCircle, ImagePlus, X, Loader2 } from 'lucide-react'
-import { type RacePayload, type CampaignPlan, saveRaceState, uploadCampaignImage } from '../lib/api'
+import { type RacePayload, type EvaluatePayload, type CampaignPlan, saveRaceState, saveEvaluateState, evaluateCampaigns, saveBothModeState, uploadCampaignImage } from '../lib/api'
 import { uuid } from '../utils'
 
 type SimulationMode = 'race' | 'evaluate' | 'both'
@@ -59,6 +59,7 @@ export function HomePage() {
   const [seasonTag, setSeasonTag] = useState('')
   const [draftSetId] = useState(() => `race_${uuid()}`)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   const [plans, setPlans] = useState<CampaignPlan[]>([
     makePlan({ name: 'Plan A', theme: 'science_credibility' }),
@@ -232,23 +233,76 @@ export function HomePage() {
     0,
   )
 
-  const handleRace = () => {
-    const payload: RacePayload = {
-      market,
-      product_line: productLine,
-      audience_segment: audience,
-      sort_by: sortBy,
-      include_hypothesis: true,
-      plans: plans
-        .filter((plan) => plan.name.trim() && plan.theme)
-        .map((plan) => ({
-          ...plan,
-          image_paths: plan.image_paths ?? [],
+  const buildRacePayload = (): RacePayload => ({
+    market,
+    product_line: productLine,
+    audience_segment: audience,
+    sort_by: sortBy,
+    include_hypothesis: true,
+    plans: plans
+      .filter((plan) => plan.name.trim() && plan.theme)
+      .map((plan) => ({
+        ...plan,
+        image_paths: plan.image_paths ?? [],
+      })),
+    ...(seasonTag ? { season_tag: seasonTag } : {}),
+  })
+
+  const buildEvaluatePayload = (): { payload: EvaluatePayload; setId: string } => {
+    const setId = `eval_${uuid()}`
+    const payload: EvaluatePayload = {
+      set_id: setId,
+      campaigns: plans
+        .filter((p) => p.name.trim() && p.theme)
+        .map((p) => ({
+          campaign_id: p.id ?? uuid(),
+          name: p.name,
+          description: `${p.theme} / ${p.platform}`,
+          image_paths: p.image_paths ?? [],
         })),
-      ...(seasonTag ? { season_tag: seasonTag } : {}),
+      category: productLine,
+    }
+    return { payload, setId }
+  }
+
+  const handleSubmit = async () => {
+    if (mode === 'race') {
+      const payload = buildRacePayload()
+      saveRaceState({ payload })
+      navigate('/running')
+      return
     }
 
-    saveRaceState({ payload })
+    if (mode === 'evaluate') {
+      setSubmitting(true)
+      try {
+        const { payload, setId } = buildEvaluatePayload()
+        const res = await evaluateCampaigns(payload)
+        saveEvaluateState({ taskId: res.task_id, setId, payload })
+        navigate('/evaluate')
+      } catch {
+        setSubmitting(false)
+      }
+      return
+    }
+
+    // Both mode: fire race immediately, evaluate in background
+    const racePayload = buildRacePayload()
+    saveRaceState({ payload: racePayload })
+
+    const { payload: evalPayload, setId: evalSetId } = buildEvaluatePayload()
+    setSubmitting(true)
+
+    // Fire evaluate in background — don't block navigation
+    evaluateCampaigns(evalPayload)
+      .then((res) => {
+        saveEvaluateState({ taskId: res.task_id, setId: evalSetId, payload: evalPayload })
+        saveBothModeState({ evaluateTaskId: res.task_id, evaluateSetId: evalSetId })
+      })
+      .catch(() => {
+        // Evaluate failed silently — Race result still available
+      })
+
     navigate('/running')
   }
 
@@ -568,11 +622,11 @@ export function HomePage() {
 
           <div className="pt-4 border-t border-border">
             <button
-              onClick={handleRace}
-              disabled={plans.length === 0 || hasPendingUploads}
+              onClick={() => void handleSubmit()}
+              disabled={plans.length === 0 || hasPendingUploads || submitting}
               className="lab-button lab-button-primary w-full h-12 text-base gap-2 group disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {hasPendingUploads ? (
+              {hasPendingUploads || submitting ? (
                 <Loader2 className="h-4 w-4 text-accent-foreground animate-spin" />
               ) : (
                 <Zap className="h-4 w-4 text-accent-foreground group-hover:animate-pulse" />
