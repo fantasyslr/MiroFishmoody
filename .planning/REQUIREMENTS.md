@@ -63,7 +63,7 @@ Requirements for v1.1 加固与增强. Each maps to roadmap phases.
 
 ### Security
 
-- [ ] **SEC-01**: 密码哈希存储 — 从明文改为 bcrypt
+- [x] **SEC-01**: 密码哈希存储 — 从明文改为 bcrypt
 
 ### Export
 
@@ -140,7 +140,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | BUG-04 | Phase 9: Bug Fixes | Complete |
 | STAB-01 | Phase 10: Stability & Security | Pending |
 | STAB-02 | Phase 10: Stability & Security | Pending |
-| SEC-01 | Phase 10: Stability & Security | Pending |
+| SEC-01 | Phase 10: Stability & Security | Complete |
 | EXP-01 | Phase 11: Export | Pending |
 | EXP-02 | Phase 11: Export | Pending |
 | ITER-01 | Phase 12: Iteration & Analytics | Pending |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: 加固与增强
 status: completed
-stopped_at: Completed 09-02-PLAN.md
-last_updated: "2026-03-17T08:07:16.670Z"
-last_activity: 2026-03-17 — Completed 09-02-PLAN.md
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-03-17T08:18:51.254Z"
+last_activity: 2026-03-17 — Completed 10-02-PLAN.md
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 100
+  total_plans: 4
+  completed_plans: 3
+  percent: 75
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** 让每一次 campaign 在上线前都能得到数据化的推演对比，用 AI 推演替代"拍脑袋"决策
-**Current focus:** Phase 9 — Bug Fixes (Both 模式导航 + Evaluate 诊断数据)
+**Current focus:** Phase 10 — Stability & Security (bcrypt password hashing)
 
 ## Current Position
 
-Phase: 9 of 12 (Bug Fixes)
+Phase: 10 of 12 (Stability & Security)
 Plan: 2 of 2 in current phase (COMPLETE)
-Status: Phase 9 complete
-Last activity: 2026-03-17 — Completed 09-02-PLAN.md
+Status: Phase 10 plan 02 complete
+Last activity: 2026-03-17 — Completed 10-02-PLAN.md
 
-Progress: [██████████] 100%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [██████████] 100%
 *Updated after each plan completion*
 | Phase 09 P01 | 1min | 1 tasks | 1 files |
 | Phase 09 P02 | 1min | 2 tasks | 4 files |
+| Phase 10 P02 | 2min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,7 @@ Recent decisions affecting current work:
 - [Phase 07]: Both mode navigates to /running immediately, fires evaluate in background
 - [Phase 09]: Both-mode polling 3s interval matches EvaluatePage pattern
 - [Phase 09]: Fail-safe ImageAnalyzer in evaluate pipeline; errors don't break pipeline
+- [Phase 10]: Hash plaintext passwords at load time in _load_users, not lazily at first login
 
 ### Pending Todos
 
@@ -84,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-17T08:03:06Z
-Stopped at: Completed 09-02-PLAN.md
+Last session: 2026-03-17T08:18:51.252Z
+Stopped at: Completed 10-02-PLAN.md
 Resume file: None
