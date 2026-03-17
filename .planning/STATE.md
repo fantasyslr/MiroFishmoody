@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: 加固与增强
 status: completed
-stopped_at: Completed 12-01-PLAN.md
-last_updated: "2026-03-17T09:17:44.883Z"
+stopped_at: Completed 12-02-PLAN.md
+last_updated: "2026-03-17T09:21:25.498Z"
 last_activity: 2026-03-17 — Completed 12-01-PLAN.md
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
   percent: 88
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-17)
 ## Current Position
 
 Phase: 12 of 12 (Iteration Analytics)
-Plan: 1 of 2 in current phase
-Status: Plan 12-01 complete
-Last activity: 2026-03-17 — Completed 12-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase 12 complete — all plans done
+Last activity: 2026-03-17 — Completed 12-02-PLAN.md
 
-Progress: [█████████░] 88%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Progress: [█████████░] 88%
 | Phase 11 P01 | 3min | 2 tasks | 3 files |
 | Phase 11 P02 | 3min | 2 tasks | 1 files |
 | Phase 12 P01 | 5min | 2 tasks | 8 files |
+| Phase 12 P02 | 2min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,7 @@ Recent decisions affecting current work:
 - [Phase 11]: Same export toolbar pattern on EvaluateResultPage as ResultPage for consistency
 - [Phase 12]: Version computed by walking parent chain at evaluate time, stored in result JSON
 - [Phase 12]: Closure-wrapped save_result_fn to inject parent_set_id/version without modifying orchestrator
+- [Phase 12]: Trends endpoint scans all result JSON files on each request (no caching, acceptable for MVP scale)
 
 ### Pending Todos
 
@@ -96,6 +98,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-17T09:17:44.882Z
-Stopped at: Completed 12-01-PLAN.md
+Last session: 2026-03-17T09:21:25.496Z
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None

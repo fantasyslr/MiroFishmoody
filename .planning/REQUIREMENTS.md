@@ -76,7 +76,7 @@ Requirements for v1.1 加固与增强. Each maps to roadmap phases.
 
 ### Analytics
 
-- [ ] **ANAL-01**: 推演趋势 Dashboard — 跨 campaign 追踪推演分数变化趋势
+- [x] **ANAL-01**: 推演趋势 Dashboard — 跨 campaign 追踪推演分数变化趋势
 
 ## v2 Requirements
 
@@ -144,7 +144,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | EXP-01 | Phase 11: Export | Complete |
 | EXP-02 | Phase 11: Export | Complete |
 | ITER-01 | Phase 12: Iteration & Analytics | Complete |
-| ANAL-01 | Phase 12: Iteration & Analytics | Pending |
+| ANAL-01 | Phase 12: Iteration & Analytics | Complete |
 
 **Coverage:**
 - v1 requirements: 18 total, 18 mapped, 0 unmapped
