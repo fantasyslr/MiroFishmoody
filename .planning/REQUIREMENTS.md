@@ -72,7 +72,7 @@ Requirements for v1.1 加固与增强. Each maps to roadmap phases.
 
 ### Iteration
 
-- [ ] **ITER-01**: 方案迭代推演（版本对比） — 同一 campaign 修改后重新推演，自动对比版本间改善
+- [x] **ITER-01**: 方案迭代推演（版本对比） — 同一 campaign 修改后重新推演，自动对比版本间改善
 
 ### Analytics
 
@@ -143,7 +143,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | SEC-01 | Phase 10: Stability & Security | Complete |
 | EXP-01 | Phase 11: Export | Complete |
 | EXP-02 | Phase 11: Export | Complete |
-| ITER-01 | Phase 12: Iteration & Analytics | Pending |
+| ITER-01 | Phase 12: Iteration & Analytics | Complete |
 | ANAL-01 | Phase 12: Iteration & Analytics | Pending |
 
 **Coverage:**

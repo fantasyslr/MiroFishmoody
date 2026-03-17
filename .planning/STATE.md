@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: 加固与增强
 status: completed
-stopped_at: Completed 11-02-PLAN.md
-last_updated: "2026-03-17T08:54:50.530Z"
-last_activity: 2026-03-17 — Completed 11-02-PLAN.md
+stopped_at: Completed 12-01-PLAN.md
+last_updated: "2026-03-17T09:17:44.883Z"
+last_activity: 2026-03-17 — Completed 12-01-PLAN.md
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
-  percent: 100
+  total_plans: 8
+  completed_plans: 7
+  percent: 88
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** 让每一次 campaign 在上线前都能得到数据化的推演对比，用 AI 推演替代"拍脑袋"决策
-**Current focus:** Phase 11 — Export (PDF/image export for results)
+**Current focus:** Phase 12 — Iteration Analytics (campaign versioning and comparison)
 
 ## Current Position
 
-Phase: 11 of 12 (Export)
-Plan: 2 of 2 in current phase
-Status: Phase 11 complete
-Last activity: 2026-03-17 — Completed 11-02-PLAN.md
+Phase: 12 of 12 (Iteration Analytics)
+Plan: 1 of 2 in current phase
+Status: Plan 12-01 complete
+Last activity: 2026-03-17 — Completed 12-01-PLAN.md
 
-Progress: [██████████] 100%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [██████████] 100%
 | Phase 10 P02 | 2min | 2 tasks | 3 files |
 | Phase 11 P01 | 3min | 2 tasks | 3 files |
 | Phase 11 P02 | 3min | 2 tasks | 1 files |
+| Phase 12 P01 | 5min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,8 @@ Recent decisions affecting current work:
 - [Phase 10]: SQLite WAL + busy_timeout=5000ms for concurrent access
 - [Phase 11]: Client-side PDF/PNG export via html2canvas + jsPDF, 2x retina scale, exportRef excludes header
 - [Phase 11]: Same export toolbar pattern on EvaluateResultPage as ResultPage for consistency
+- [Phase 12]: Version computed by walking parent chain at evaluate time, stored in result JSON
+- [Phase 12]: Closure-wrapped save_result_fn to inject parent_set_id/version without modifying orchestrator
 
 ### Pending Todos
 
@@ -93,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-17T08:41:35.028Z
-Stopped at: Completed 11-02-PLAN.md
+Last session: 2026-03-17T09:17:44.882Z
+Stopped at: Completed 12-01-PLAN.md
 Resume file: None
