@@ -196,28 +196,78 @@ class PairwiseJudge:
             "reasoning": result.get("reasoning", ""),
         }
 
+    @staticmethod
+    def _flip_vote(vote: Dict[str, Any]) -> Dict[str, Any]:
+        """Flip a swapped-order vote back to original A/B labels.
+
+        When judge evaluates (B, A) instead of (A, B), the labels are reversed:
+        judge's "A" = original B, judge's "B" = original A.
+        """
+        flip_map = {"A": "B", "B": "A", "tie": "tie"}
+        flipped_dims = {}
+        for dim, val in vote.get("dimensions", {}).items():
+            flipped_dims[dim] = flip_map.get(val, val)
+        return {
+            **vote,
+            "winner": flip_map.get(vote.get("winner", "tie"), vote.get("winner", "tie")),
+            "dimensions": flipped_dims,
+        }
+
     def evaluate_pair(self, a: Campaign, b: Campaign) -> PairwiseResult:
-        """3 个 judge 对一对方案投票，多数票表决"""
+        """3 个 judge 对一对方案投票，正反序各一轮，多数票表决。
+
+        Position-swap debiasing: each judge evaluates (A,B) then (B,A).
+        The swapped results are flipped back to original labels and used to
+        detect position bias (position_swap_consistent flag).
+        Final winner is determined from the normal-order round only.
+        """
         votes = []
+        swap_votes = []
+
         for judge in JUDGE_PERSPECTIVES:
+            # Normal order: A vs B
             try:
                 vote = self._safe_judge(a, b, judge)
                 votes.append(vote)
             except Exception as e:
                 logger.error(f"Judge {judge['id']} 评审 {a.id} vs {b.id} 失败: {e}")
 
-        # 多数票
-        a_wins = sum(1 for v in votes if v["winner"] == "A")
-        b_wins = sum(1 for v in votes if v["winner"] == "B")
+            # Swapped order: B vs A
+            try:
+                swap_vote_raw = self._safe_judge(b, a, judge)
+                swap_vote = self._flip_vote(swap_vote_raw)
+                swap_votes.append(swap_vote)
+            except Exception as e:
+                logger.error(f"Judge {judge['id']} 反序评审 {b.id} vs {a.id} 失败: {e}")
 
-        if a_wins > b_wins:
+        # Normal-order majority
+        a_wins_normal = sum(1 for v in votes if v["winner"] == "A")
+        b_wins_normal = sum(1 for v in votes if v["winner"] == "B")
+
+        if a_wins_normal > b_wins_normal:
             winner_id = a.id
-        elif b_wins > a_wins:
+            normal_majority = "A"
+        elif b_wins_normal > a_wins_normal:
             winner_id = b.id
+            normal_majority = "B"
         else:
             winner_id = None
+            normal_majority = "tie"
 
-        # 合并各维度结果
+        # Swap-order majority (after flipping back to original labels)
+        a_wins_swap = sum(1 for v in swap_votes if v["winner"] == "A")
+        b_wins_swap = sum(1 for v in swap_votes if v["winner"] == "B")
+
+        if a_wins_swap > b_wins_swap:
+            swap_majority = "A"
+        elif b_wins_swap > a_wins_swap:
+            swap_majority = "B"
+        else:
+            swap_majority = "tie"
+
+        position_swap_consistent = (normal_majority == swap_majority)
+
+        # 合并各维度结果 (from normal-order votes only)
         merged_dims = {}
         for dim in DIMENSIONS:
             dim_votes = [v["dimensions"].get(dim, "tie") for v in votes]
@@ -236,6 +286,8 @@ class PairwiseJudge:
             winner_id=winner_id,
             votes=votes,
             dimensions=merged_dims,
+            position_swap_consistent=position_swap_consistent,
+            swap_votes=swap_votes,
         )
 
     def evaluate_all(self, campaigns: List[Campaign], max_workers: int = 4) -> Tuple[List[PairwiseResult], Dict[str, float]]:

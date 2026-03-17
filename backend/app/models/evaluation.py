@@ -35,6 +35,8 @@ class PairwiseResult:
     winner_id: Optional[str]  # None = tie
     votes: List[Dict[str, Any]]  # 每个 judge 的投票详情
     dimensions: Dict[str, str]   # 各维度胜负
+    position_swap_consistent: bool = True  # 正反序结果是否一致
+    swap_votes: List[Dict[str, Any]] = field(default_factory=list)  # 反序投票详情
 
 
 @dataclass
@@ -103,6 +105,8 @@ class EvaluationResult:
                     "winner_id": pr.winner_id,
                     "votes": pr.votes,
                     "dimensions": pr.dimensions,
+                    "position_swap_consistent": pr.position_swap_consistent,
+                    "swap_votes": pr.swap_votes,
                 }
                 for pr in self.pairwise_results
             ],
