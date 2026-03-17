@@ -9,8 +9,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Bug Fix
 
-- [ ] **BUG-01**: Evaluate 路径的图片路径解析正确工作 — `AudiencePanel` 和 `PairwiseJudge` 使用统一的 `resolve_image_path()` 而非 `os.path.exists()` 检查 URL 字符串
-- [ ] **BUG-02**: 上传图片在 base64 编码前自动缩放至 max 1024px — 防止高分辨率图片超出 LLM token 限制
+- [x] **BUG-01**: Evaluate 路径的图片路径解析正确工作 — `AudiencePanel` 和 `PairwiseJudge` 使用统一的 `resolve_image_path()` 而非 `os.path.exists()` 检查 URL 字符串
+- [x] **BUG-02**: 上传图片在 base64 编码前自动缩放至 max 1024px — 防止高分辨率图片超出 LLM token 限制
 
 ### Performance
 
@@ -96,8 +96,8 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-01 | Phase 1: Image Pipeline Fix | Pending |
-| BUG-02 | Phase 1: Image Pipeline Fix | Pending |
+| BUG-01 | Phase 1: Image Pipeline Fix | Complete |
+| BUG-02 | Phase 1: Image Pipeline Fix | Complete |
 | PERS-01 | Phase 2: PersonaRegistry Service | Pending |
 | PERS-03 | Phase 2: PersonaRegistry Service | Pending |
 | PERS-02 | Phase 3: Category Persona Config | Pending |
