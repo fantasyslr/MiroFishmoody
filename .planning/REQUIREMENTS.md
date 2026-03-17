@@ -47,35 +47,56 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **QUAL-02**: 视觉诊断建议结构化 — ImageAnalyzer 输出从自由文本改为结构化"问题 → 建议"格式
 - [x] **QUAL-03**: 视觉诊断建议在结果页展示 — 每个 campaign 方案展示具体的视觉改进建议
 
+## v1.1 Requirements
+
+Requirements for v1.1 加固与增强. Each maps to roadmap phases.
+
+### Bug Fix
+
+- [ ] **BUG-03**: Both 模式 ResultPage 显示跳转到 EvaluateResultPage 的导航链接 — getBothModeState 已存储但未消费
+- [ ] **BUG-04**: Evaluate 结果页诊断面板数据接入 — 当前 diagnosticsMap 为空，Evaluate 管线需产出图片诊断数据
+
+### Stability
+
+- [ ] **STAB-01**: _evaluation_store 线程安全 — 加 threading.Lock 保护并发读写
+- [ ] **STAB-02**: SQLite WAL 模式 — 启用 WAL journal_mode + busy_timeout 减少并发锁
+
+### Security
+
+- [ ] **SEC-01**: 密码哈希存储 — 从明文改为 bcrypt
+
+### Export
+
+- [ ] **EXP-01**: 推演结果导出 PDF — 可截图式结果卡片或 PDF 报告
+- [ ] **EXP-02**: 推演结果导出图片 — 适合社交媒体/即时通讯分享
+
+### Iteration
+
+- [ ] **ITER-01**: 方案迭代推演（版本对比） — 同一 campaign 修改后重新推演，自动对比版本间改善
+
+### Analytics
+
+- [ ] **ANAL-01**: 推演趋势 Dashboard — 跨 campaign 追踪推演分数变化趋势
+
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
 
 ### Stability
 
-- **STAB-01**: _evaluation_store 线程安全 — 加 threading.Lock 保护并发读写
-- **STAB-02**: SQLite WAL 模式 — 启用 WAL journal_mode + busy_timeout 减少并发锁
 - **STAB-03**: _evaluation_store LRU 淘汰 — 限制内存中最大条目数（如 100），防止内存泄漏
 
 ### Security
 
-- **SEC-01**: 密码哈希存储 — 从明文改为 bcrypt
 - **SEC-02**: SECRET_KEY 强制配置 — 移除硬编码 fallback，未设置时启动报错
 - **SEC-03**: FLASK_DEBUG 默认关闭 — 生产环境默认 False
 
-### Export
-
-- **EXP-01**: 推演结果导出 PDF — 可截图式结果卡片或 PDF 报告
-- **EXP-02**: 推演结果导出图片 — 适合社交媒体/即时通讯分享
-
 ### Iteration
 
-- **ITER-01**: 方案迭代推演（版本对比） — 同一 campaign 修改后重新推演，自动对比版本间改善
 - **ITER-02**: 受众人格自定义 — 超越预设模板，支持自定义人格描述
 
 ### Analytics
 
-- **ANAL-01**: 推演趋势 Dashboard — 跨 campaign 追踪推演分数变化趋势
 - **ANAL-02**: Race + Evaluate 交叉对比视图 — 两条路径排名一致性分析
 
 ## Out of Scope
@@ -123,4 +144,4 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ---
 *Requirements defined: 2026-03-17*
-*Last updated: 2026-03-17 after roadmap creation*
+*Last updated: 2026-03-17 after v1.1 requirements definition*
