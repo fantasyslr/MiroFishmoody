@@ -447,6 +447,26 @@ export function clearIterateState() {
   localStorage.removeItem(ITERATE_STATE_KEY)
 }
 
+// --- Trends Types ---
+
+export type TrendDataPoint = {
+  set_id: string
+  timestamp: string
+  campaigns: Record<string, number>
+}
+
+export type TrendsResponse = {
+  data_points: TrendDataPoint[]
+  campaign_names: string[]
+  category_filter: string
+}
+
+// --- Trends APIs ---
+
+export function getTrends(category: string = 'all') {
+  return request<TrendsResponse>(`/api/campaign/trends?category=${category}`)
+}
+
 // --- Admin APIs ---
 export function getBrandictionStats() {
   return request<Record<string, unknown>>('/api/brandiction/stats')

@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { LogOut, Activity, Database, History, FlaskConical } from 'lucide-react'
+import { LogOut, Activity, Database, History, FlaskConical, TrendingUp } from 'lucide-react'
 import { logout as logoutApi, type AuthUser } from '../../lib/api'
 
 export function Layout({
@@ -51,6 +51,20 @@ export function Layout({
               >
                 <FlaskConical className="h-4 w-4" />
                 营销实验室
+              </NavLink>
+
+              <NavLink
+                to="/trends"
+                className={({ isActive }) =>
+                  `flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-sm transition-colors ${
+                    isActive
+                      ? 'bg-primary/5 font-medium text-primary'
+                      : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
+                  }`
+                }
+              >
+                <TrendingUp className="h-4 w-4" />
+                趋势
               </NavLink>
 
               {isAdmin && (

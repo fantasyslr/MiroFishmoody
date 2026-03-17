@@ -12,6 +12,7 @@ import { EvaluateResultPage } from './pages/EvaluateResultPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { CompareVersionPage } from './pages/CompareVersionPage'
+import { TrendDashboardPage } from './pages/TrendDashboardPage'
 
 export default function App() {
   const [user, setUser] = useState<AuthUser | null>(null)
@@ -42,6 +43,7 @@ export default function App() {
         { path: '/evaluate', element: <EvaluatePage /> },
         { path: '/evaluate-result', element: <EvaluateResultPage /> },
         { path: '/compare', element: <CompareVersionPage /> },
+        { path: '/trends', element: <TrendDashboardPage /> },
         // Admin routes integrated into the same layout
         ...(isAdmin
           ? [
