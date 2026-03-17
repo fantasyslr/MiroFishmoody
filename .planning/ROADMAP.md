@@ -160,11 +160,11 @@ Plans:
   1. 用户在结果页点击"导出 PDF"按钮，下载包含方案对比、评分雷达图、诊断建议的 PDF 报告
   2. 用户在结果页点击"导出图片"按钮，下载结果卡片的 PNG/JPG 截图，适合发送到微信/钉钉
   3. 导出内容包含所有可视化组件（雷达图、百分位条、诊断面板），不出现空白或缺失
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 11-01: 导出基础设施（PDF 生成 + 图片截图方案选型与实现）
-- [ ] 11-02: 结果页导出按钮接入 + 导出内容排版
+- [ ] 11-01-PLAN.md — html2canvas + jsPDF 安装 + exportUtils 工具 + ResultPage 导出按钮
+- [ ] 11-02-PLAN.md — EvaluateResultPage 导出按钮 + 导出质量人工验证
 
 ### Phase 12: Iteration & Analytics
 **Goal**: 用户可对同一 campaign 迭代推演并对比版本改善，跨 campaign 追踪推演趋势
@@ -175,7 +175,7 @@ Plans:
   2. 版本对比视图并排展示两个版本的评分变化，标注改善和退步的维度
   3. Dashboard 页面展示跨 campaign 的推演分数趋势图（时间轴 x 分数 y）
   4. Dashboard 支持按品类筛选，分别查看透明片和彩片的推演趋势
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [ ] 12-01: Campaign 版本关联模型 + 迭代推演 API + 版本对比视图
