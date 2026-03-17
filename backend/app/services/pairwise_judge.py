@@ -6,8 +6,6 @@ Pairwise Judge Engine — 方案两两对决
 """
 
 import math
-import os
-import base64
 from itertools import combinations
 from typing import List, Dict, Any, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -16,6 +14,7 @@ from ..config import Config
 from ..utils.llm_client import LLMClient
 from ..utils.retry import retry_with_backoff
 from ..utils.logger import get_logger
+from ..utils.image_helpers import resolve_image_path, image_to_base64_part
 from ..models.campaign import Campaign, ProductLine
 from ..models.evaluation import PairwiseResult
 
@@ -125,17 +124,13 @@ def _build_image_parts(campaign: Campaign, label: str) -> list:
     """为一个 campaign 的图片构建 OpenAI Vision content parts"""
     parts = []
     image_paths = getattr(campaign, 'image_paths', None) or []
-    for img_path in image_paths[:5]:
-        if not os.path.exists(img_path):
+    for img_url in image_paths[:5]:
+        resolved = resolve_image_path(img_url)
+        if not resolved:
             continue
-        with open(img_path, 'rb') as f:
-            img_data = base64.b64encode(f.read()).decode()
-        ext = img_path.rsplit('.', 1)[-1].lower()
-        mime = 'image/jpeg' if ext in ('jpg', 'jpeg') else f'image/{ext}'
-        parts.append({
-            "type": "image_url",
-            "image_url": {"url": f"data:{mime};base64,{img_data}"},
-        })
+        img_part = image_to_base64_part(resolved)
+        if img_part:
+            parts.append(img_part)
     return parts
 
 

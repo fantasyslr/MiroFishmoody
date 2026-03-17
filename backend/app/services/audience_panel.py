@@ -6,8 +6,6 @@ persona 基于 Moody Lenses 用户画像定制。
 """
 
 import json
-import base64
-import os
 from typing import List, Dict, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -15,6 +13,7 @@ from ..config import Config
 from ..utils.llm_client import LLMClient
 from ..utils.retry import retry_with_backoff
 from ..utils.logger import get_logger
+from ..utils.image_helpers import resolve_image_path, image_to_base64_part
 from ..models.campaign import Campaign, ProductLine
 from ..models.evaluation import PanelScore
 
@@ -177,16 +176,12 @@ class AudiencePanel:
         # Build message with optional images
         if hasattr(campaign, 'image_paths') and campaign.image_paths:
             content_parts = [{"type": "text", "text": user_text + "\n\n请同时参考提供的素材图片进行评审。如果有图片，请基于你看到的视觉效果评判视觉吸引力、信息传达、品牌调性等维度。"}]
-            for img_path in campaign.image_paths[:5]:  # Max 5 images
-                if os.path.exists(img_path):
-                    with open(img_path, 'rb') as f:
-                        img_data = base64.b64encode(f.read()).decode()
-                    ext = img_path.rsplit('.', 1)[-1].lower()
-                    mime = 'image/jpeg' if ext in ('jpg', 'jpeg') else f'image/{ext}'
-                    content_parts.append({
-                        "type": "image_url",
-                        "image_url": {"url": f"data:{mime};base64,{img_data}"}
-                    })
+            for img_url in campaign.image_paths[:5]:  # Max 5 images
+                resolved = resolve_image_path(img_url)
+                if resolved:
+                    img_part = image_to_base64_part(resolved)
+                    if img_part:
+                        content_parts.append(img_part)
             user_message = {"role": "user", "content": content_parts}
             result = self.llm.chat_multimodal_json(
                 messages=[system_message, user_message],
