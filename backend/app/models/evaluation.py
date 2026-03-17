@@ -66,6 +66,7 @@ class EvaluationResult:
     confidence_notes: List[str]
     scoreboard: Optional[Dict[str, Any]] = None
     resolution_ready_fields: Optional[Dict[str, str]] = None
+    visual_diagnostics: Optional[Dict[str, Any]] = None  # campaign_id -> {issues, recommendations}
 
     def to_dict(self) -> Dict[str, Any]:
         result = {
@@ -118,4 +119,6 @@ class EvaluationResult:
             result["scoreboard"] = self.scoreboard
         if self.resolution_ready_fields is not None:
             result["resolution_ready_fields"] = self.resolution_ready_fields
+        if self.visual_diagnostics is not None:
+            result["visual_diagnostics"] = self.visual_diagnostics
         return result

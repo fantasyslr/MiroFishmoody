@@ -14,6 +14,8 @@ from ..services.summary_generator import SummaryGenerator
 from ..services.judge_calibration import JudgeCalibration
 from ..services.resolution_tracker import ResolutionTracker
 from ..models.evaluation import EvaluationResult
+from ..services.image_analyzer import ImageAnalyzer
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = get_logger('ranker.services.orchestrator')
 
@@ -51,6 +53,35 @@ class EvaluationOrchestrator:
                     "请检查 LLM API 配置和网络连接"
                 )
             self.task_manager.update_task(task_id, progress=40, message="Panel 评审完成")
+
+            # Phase 1.5: Image Analysis (parallel with panel scoring output)
+            visual_diagnostics = {}
+            campaigns_with_images = [c for c in campaigns if c.image_paths]
+            if campaigns_with_images:
+                self.task_manager.update_task(task_id, progress=42, message="素材图片诊断中...")
+                try:
+                    analyzer = ImageAnalyzer(llm_client=llm)
+
+                    def _analyze_campaign(campaign):
+                        profile = analyzer.analyze_plan_images(campaign.image_paths)
+                        if profile and profile.get("diagnostics"):
+                            return campaign.id, profile["diagnostics"]
+                        return campaign.id, None
+
+                    with ThreadPoolExecutor(max_workers=len(campaigns_with_images)) as executor:
+                        futures = {
+                            executor.submit(_analyze_campaign, c): c
+                            for c in campaigns_with_images
+                        }
+                        for future in as_completed(futures):
+                            try:
+                                cid, diag = future.result()
+                                if diag:
+                                    visual_diagnostics[cid] = diag
+                            except Exception as e:
+                                logger.error(f"Campaign 图片诊断失败: {e}")
+                except Exception as e:
+                    logger.error(f"图片诊断服务异常，跳过: {e}")
 
             # Phase 2: Pairwise Judge
             self.task_manager.update_task(task_id, progress=45, message="Pairwise 对决中...")
@@ -108,6 +139,7 @@ class EvaluationOrchestrator:
                 confidence_notes=summary_data["confidence_notes"],
                 scoreboard=scoreboard.to_dict(),
                 resolution_ready_fields=resolver.get_resolution_ready_fields(),
+                visual_diagnostics=visual_diagnostics if visual_diagnostics else None,
             )
 
             result_dict = result.to_dict()
