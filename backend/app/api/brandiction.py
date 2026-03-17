@@ -20,6 +20,7 @@ POST /api/brandiction/simulate           — 多步情景模拟
 POST /api/brandiction/compare-scenarios  — 多情景对比
 """
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 from flask import Blueprint, request, jsonify
@@ -624,23 +625,38 @@ def race_campaigns():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
-    # Image analysis: analyze visual content for plans with images
+    # Image analysis: analyze visual content for plans with images (concurrent)
     visual_profiles = {}  # plan_id -> visual_profile (keyed by id, not name)
     plans_with_images = [p for p in plans if p.get("image_paths")]
     if plans_with_images:
         try:
             analyzer = ImageAnalyzer()
-            for plan in plans_with_images:
+
+            def _analyze_plan(plan):
                 plan_id = plan.get("id") or plan.get("name", "")
                 image_paths = plan.get("image_paths", [])
                 if not image_paths:
-                    continue
+                    return None, None
                 profile = analyzer.analyze_plan_images(image_paths)
-                if profile:
-                    visual_profiles[plan_id] = profile
-                    _logger.info(
-                        f"图片分析完成: {plan.get('name', plan_id)} ({len(image_paths)} 张图片)"
-                    )
+                return plan_id, profile
+
+            with ThreadPoolExecutor(max_workers=len(plans_with_images)) as executor:
+                futures = {
+                    executor.submit(_analyze_plan, plan): plan
+                    for plan in plans_with_images
+                }
+                for future in as_completed(futures):
+                    plan = futures[future]
+                    try:
+                        plan_id, profile = future.result()
+                        if profile and plan_id:
+                            visual_profiles[plan_id] = profile
+                            _logger.info(
+                                f"图片分析完成: {plan.get('name', plan_id)} "
+                                f"({len(plan.get('image_paths', []))} 张图片)"
+                            )
+                    except Exception as e:
+                        _logger.error(f"Plan 图片分析失败: {plan.get('name', 'unknown')}: {e}")
         except Exception as e:
             _logger.error(f"图片分析服务异常，跳过: {e}")
 
