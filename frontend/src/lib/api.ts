@@ -17,12 +17,15 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const usesFormData = init?.body instanceof FormData
   const response = await fetch(`${API_BASE}${path}`, {
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
+    headers: usesFormData
+      ? init?.headers
+      : {
+          'Content-Type': 'application/json',
+          ...(init?.headers ?? {}),
+        },
     ...init,
   })
 
@@ -68,6 +71,7 @@ export type CampaignPlan = {
   objective?: string
   message_arc?: string
   market?: string
+  image_paths?: string[]
 }
 
 export type RacePayload = {
@@ -116,6 +120,35 @@ export type ObservedBaseline = {
   match_quality: 'exact' | 'partial' | 'fallback' | 'cross_category' | 'cold_start' | 'no_data'
 }
 
+// Visual adjustment metadata (when image analysis influenced ranking)
+export type VisualAdjustment = {
+  applied: boolean
+  reason: string
+  visual_score: number | null
+  visual_score_mean?: number
+  score_delta?: number
+  original_score?: number
+}
+
+// Structured visual profile from image analysis
+export type VisualProfile = {
+  creative_style?: string
+  product_visibility?: number
+  human_presence?: string
+  text_density?: number
+  visual_claim_focus?: string
+  aesthetic_tone?: string
+  trust_signal_strength?: number
+  promo_intensity?: number
+  premium_vs_mass?: string
+  visual_hooks?: string[]
+  visual_risks?: string[]
+  summary?: string
+  consistency_score?: number
+  dominant_creative_strategy?: string
+  image_count?: number
+}
+
 // Single entry in the ranking array from rank_campaigns()
 export type RankingEntry = {
   rank: number
@@ -123,6 +156,7 @@ export type RankingEntry = {
   observed_baseline: ObservedBaseline
   score: number
   data_sufficient: boolean
+  visual_adjustment?: VisualAdjustment
 }
 
 // Hypothesis from predict_impact() — per-plan
@@ -134,6 +168,7 @@ export type HypothesisPlan = {
   similar_interventions?: number
   note?: string
   error?: string
+  visual_profile?: VisualProfile
 }
 
 // Full /race response shape — matches brandiction.py race_campaigns()
@@ -147,6 +182,10 @@ export type RaceResult = {
     note: string
     plans: HypothesisPlan[]
   } | null
+  visual_analysis: {
+    note: string
+    profiles: Record<string, VisualProfile>
+  } | null
 }
 
 // --- V3 Brandiction APIs ---
@@ -155,6 +194,24 @@ export async function raceCampaigns(payload: RacePayload): Promise<RaceResult> {
   return request<RaceResult>('/api/brandiction/race', {
     method: 'POST',
     body: JSON.stringify(payload),
+  })
+}
+
+export type UploadImageResponse = {
+  image_id: string
+  url: string
+  size: number
+}
+
+export async function uploadCampaignImage(file: File, setId: string, campaignId: string) {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('set_id', setId)
+  formData.append('campaign_id', campaignId)
+
+  return request<UploadImageResponse>('/api/campaign/upload-image', {
+    method: 'POST',
+    body: formData,
   })
 }
 
@@ -170,6 +227,143 @@ export function getRaceState() {
 }
 export function clearRaceState() {
   localStorage.removeItem(RACE_STATE_KEY)
+}
+
+// --- Evaluate Types ---
+
+export type EvaluatePayload = {
+  set_id: string
+  campaigns: Array<{
+    campaign_id: string
+    name: string
+    description?: string
+    image_paths?: string[]
+  }>
+  category?: string
+}
+
+export type TaskStatusResponse = {
+  task_id: string
+  task_type: string
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  progress: number
+  message: string
+  progress_detail: Record<string, unknown>
+  result: {
+    set_id: string
+    campaign_count: number
+    top_campaign: string | null
+    top_verdict: string | null
+    top_overall_score: number | null
+    too_close_to_call: boolean
+    lead_margin: number
+  } | null
+  error: string | null
+  metadata: Record<string, unknown>
+}
+
+export type EvalPanelScore = {
+  persona_id: string
+  persona_name: string
+  campaign_id: string
+  score: number
+  objections: string[]
+  strengths: string[]
+  reasoning: string
+  dimension_scores: Record<string, unknown>
+}
+
+export type EvalPairwiseResult = {
+  campaign_a_id: string
+  campaign_b_id: string
+  winner_id: string | null
+  votes: Array<Record<string, unknown>>
+  dimensions: Record<string, string>
+  position_swap_consistent: boolean
+  swap_votes: Array<Record<string, unknown>>
+}
+
+export type EvalRanking = {
+  campaign_id: string
+  campaign_name: string
+  rank: number
+  composite_score: number
+  panel_avg: number
+  pairwise_wins: number
+  pairwise_losses: number
+  verdict: 'ship' | 'revise' | 'kill'
+  top_objections: string[]
+  top_strengths: string[]
+}
+
+export type EvalScoreboardCampaign = {
+  campaign_id: string
+  campaign_name: string
+  overall_score: number
+  dimension_scores: Record<string, number>
+  rank: number
+  verdict: string
+  lead_margin_to_next: number | null
+  verdict_rationale: string
+}
+
+export type EvalScoreboard = {
+  campaigns: EvalScoreboardCampaign[]
+  lead_margin: number
+  too_close_to_call: boolean
+  confidence_threshold: number
+  rationale_for_uncertainty: string
+  dimension_details: Array<{
+    dimension_key: string
+    dimension_label: string
+    campaign_id: string
+    score: number
+    raw_score: number
+  }>
+}
+
+export type EvaluateResult = {
+  set_id: string
+  rankings: EvalRanking[]
+  panel_scores: EvalPanelScore[]
+  pairwise_results: EvalPairwiseResult[]
+  summary: string
+  assumptions: string[]
+  confidence_notes: string[]
+  scoreboard?: EvalScoreboard
+  resolution_ready_fields?: Record<string, string>
+  campaign_image_map?: Record<string, string[]>
+}
+
+// --- Evaluate APIs ---
+
+export async function evaluateCampaigns(payload: EvaluatePayload) {
+  return request<{ task_id: string; set_id: string; campaign_count: number; message: string }>(
+    '/api/campaign/evaluate', { method: 'POST', body: JSON.stringify(payload) }
+  )
+}
+
+export async function getEvaluateStatus(taskId: string) {
+  return request<TaskStatusResponse>(`/api/campaign/evaluate/status/${taskId}`)
+}
+
+export async function getEvaluateResult(setId: string) {
+  return request<EvaluateResult>(`/api/campaign/result/${setId}`)
+}
+
+// --- Evaluate State Helpers ---
+
+const EVALUATE_STATE_KEY = 'mirofishmoody.evaluate_state'
+export function saveEvaluateState(state: { taskId: string; setId: string; payload: EvaluatePayload; result?: EvaluateResult }) {
+  localStorage.setItem(EVALUATE_STATE_KEY, JSON.stringify(state))
+}
+export function getEvaluateState() {
+  const raw = localStorage.getItem(EVALUATE_STATE_KEY)
+  if (!raw) return null
+  try { return JSON.parse(raw) as { taskId: string; setId: string; payload: EvaluatePayload; result?: EvaluateResult } } catch { return null }
+}
+export function clearEvaluateState() {
+  localStorage.removeItem(EVALUATE_STATE_KEY)
 }
 
 // --- Admin APIs ---
