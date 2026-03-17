@@ -7,6 +7,8 @@ import { LoginPage } from './pages/LoginPage'
 import { HomePage } from './pages/HomePage'
 import { RunningPage } from './pages/RunningPage'
 import { ResultPage } from './pages/ResultPage'
+import { EvaluatePage } from './pages/EvaluatePage'
+import { EvaluateResultPage } from './pages/EvaluateResultPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { HistoryPage } from './pages/HistoryPage'
 
@@ -36,6 +38,8 @@ export default function App() {
         { path: '/', element: <HomePage /> },
         { path: '/running', element: <RunningPage /> },
         { path: '/result', element: <ResultPage /> },
+        { path: '/evaluate', element: <EvaluatePage /> },
+        { path: '/evaluate-result', element: <EvaluateResultPage /> },
         // Admin routes integrated into the same layout
         ...(isAdmin
           ? [
