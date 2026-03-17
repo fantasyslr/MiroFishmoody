@@ -58,10 +58,11 @@ Plans:
   1. moodyPlus（透明片）和 colored_lenses（彩片）各有独立的评审人格预设集
   2. 用户选择品类后，系统自动从 PersonaRegistry 加载对应品类的人格集，无需手动选择人格
   3. API 层支持按品类参数返回对应人格配置
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: TBD
+- [ ] 03-01-PLAN.md — 创建品类人格预设 JSON + PersonaRegistry 品类加载支持
+- [ ] 03-02-PLAN.md — Evaluate/Race API 接入 category 参数，自动加载品类人格
 
 ### Phase 4: Concurrent Image Analysis
 **Goal**: 多张图片并行分析，单次推演时间显著缩短
@@ -139,7 +140,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 |-------|----------------|--------|-----------|
 | 1. Image Pipeline Fix | 0/2 | Planned | - |
 | 2. PersonaRegistry Service | 0/1 | Not started | - |
-| 3. Category Persona Config | 0/1 | Not started | - |
+| 3. Category Persona Config | 0/2 | Planned | - |
 | 4. Concurrent Image Analysis | 0/1 | Not started | - |
 | 5. Evaluate Quality | 0/1 | Not started | - |
 | 6. Evaluate Frontend | 0/2 | Not started | - |
