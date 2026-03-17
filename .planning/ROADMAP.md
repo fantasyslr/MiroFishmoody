@@ -84,10 +84,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. PairwiseJudge 对每对 campaign 进行正反两次评审（A vs B 和 B vs A），标记不一致判断
   2. ImageAnalyzer 输出结构化诊断（JSON 格式的"问题 -> 建议"列表），而非自由文本段落
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 05-01: TBD
+- [ ] 05-01-PLAN.md — PairwiseJudge 位置互换去偏 + ImageAnalyzer 结构化诊断输出
 
 ### Phase 6: Evaluate Frontend
 **Goal**: 用户可在前端完整使用 Evaluate 推演路径（发起、跟踪进度、查看结果）
@@ -142,7 +142,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 2. PersonaRegistry Service | 0/1 | Not started | - |
 | 3. Category Persona Config | 0/2 | Planned | - |
 | 4. Concurrent Image Analysis | 0/1 | Planned | - |
-| 5. Evaluate Quality | 0/1 | Not started | - |
+| 5. Evaluate Quality | 0/1 | Planned | - |
 | 6. Evaluate Frontend | 0/2 | Not started | - |
 | 7. Unified Entry | 0/1 | Not started | - |
 | 8. Results Enhancement | 0/2 | Not started | - |
