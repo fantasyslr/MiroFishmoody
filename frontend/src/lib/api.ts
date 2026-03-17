@@ -118,6 +118,7 @@ export type ObservedBaseline = {
   }
   match_dimensions: string[]
   match_quality: 'exact' | 'partial' | 'fallback' | 'cross_category' | 'cold_start' | 'no_data'
+  percentile?: number
 }
 
 // Visual adjustment metadata (when image analysis influenced ranking)
@@ -128,6 +129,24 @@ export type VisualAdjustment = {
   visual_score_mean?: number
   score_delta?: number
   original_score?: number
+}
+
+// Diagnostics types from image analysis
+export type VisualDiagnosticIssue = {
+  category: 'brand_alignment' | 'visual_quality' | 'messaging' | 'audience_fit' | 'compliance'
+  severity: 'high' | 'medium' | 'low'
+  description: string
+}
+
+export type VisualDiagnosticRecommendation = {
+  category: 'brand_alignment' | 'visual_quality' | 'messaging' | 'audience_fit' | 'compliance'
+  action: string
+  priority: 'high' | 'medium' | 'low'
+}
+
+export type VisualDiagnostics = {
+  issues: VisualDiagnosticIssue[]
+  recommendations: VisualDiagnosticRecommendation[]
 }
 
 // Structured visual profile from image analysis
@@ -147,6 +166,7 @@ export type VisualProfile = {
   consistency_score?: number
   dominant_creative_strategy?: string
   image_count?: number
+  diagnostics?: VisualDiagnostics
 }
 
 // Single entry in the ranking array from rank_campaigns()
