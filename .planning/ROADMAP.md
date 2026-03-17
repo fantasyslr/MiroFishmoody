@@ -97,11 +97,11 @@ Plans:
   1. 用户可在前端页面发起 Evaluate 深度评审推演，无需使用 API 工具
   2. 推演进行中，页面展示实时进度（当前阶段名称、已完成百分比）
   3. 推演完成后，结果页展示每个评审人格的打分、两两对比胜负、Bradley-Terry 综合排名
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 06-01: TBD
-- [ ] 06-02: TBD
+- [ ] 06-01-PLAN.md — API 类型定义 + evaluate 客户端函数 + EvaluatePage 进度轮询页面 + 路由接入
+- [ ] 06-02-PLAN.md — EvaluateResultPage 三栏选项卡结果展示（综合排名、评审团详情、两两对比）
 
 ### Phase 7: Unified Entry
 **Goal**: 用户从统一入口选择推演模式并提交方案，无需理解后端 API 差异
