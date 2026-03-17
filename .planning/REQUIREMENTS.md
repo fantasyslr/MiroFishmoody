@@ -58,8 +58,8 @@ Requirements for v1.1 加固与增强. Each maps to roadmap phases.
 
 ### Stability
 
-- [ ] **STAB-01**: _evaluation_store 线程安全 — 加 threading.Lock 保护并发读写
-- [ ] **STAB-02**: SQLite WAL 模式 — 启用 WAL journal_mode + busy_timeout 减少并发锁
+- [x] **STAB-01**: _evaluation_store 线程安全 — 加 threading.Lock 保护并发读写
+- [x] **STAB-02**: SQLite WAL 模式 — 启用 WAL journal_mode + busy_timeout 减少并发锁
 
 ### Security
 
@@ -138,8 +138,8 @@ Deferred to future release. Tracked but not in current roadmap.
 | QUAL-03 | Phase 8: Results Enhancement | Complete |
 | BUG-03 | Phase 9: Bug Fixes | Complete |
 | BUG-04 | Phase 9: Bug Fixes | Complete |
-| STAB-01 | Phase 10: Stability & Security | Pending |
-| STAB-02 | Phase 10: Stability & Security | Pending |
+| STAB-01 | Phase 10: Stability & Security | Complete |
+| STAB-02 | Phase 10: Stability & Security | Complete |
 | SEC-01 | Phase 10: Stability & Security | Complete |
 | EXP-01 | Phase 11: Export | Pending |
 | EXP-02 | Phase 11: Export | Pending |

@@ -4,13 +4,13 @@ milestone: v1.1
 milestone_name: 加固与增强
 status: completed
 stopped_at: Completed 10-02-PLAN.md
-last_updated: "2026-03-17T08:18:51.254Z"
+last_updated: "2026-03-17T08:20:18.931Z"
 last_activity: 2026-03-17 — Completed 10-02-PLAN.md
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
   percent: 75
 ---
 
@@ -59,6 +59,7 @@ Progress: [████████░░] 75%
 *Updated after each plan completion*
 | Phase 09 P01 | 1min | 1 tasks | 1 files |
 | Phase 09 P02 | 1min | 2 tasks | 4 files |
+| Phase 10 P01 | 4min | 2 tasks | 5 files |
 | Phase 10 P02 | 2min | 2 tasks | 3 files |
 
 ## Accumulated Context
@@ -74,6 +75,8 @@ Recent decisions affecting current work:
 - [Phase 09]: Both-mode polling 3s interval matches EvaluatePage pattern
 - [Phase 09]: Fail-safe ImageAnalyzer in evaluate pipeline; errors don't break pipeline
 - [Phase 10]: Hash plaintext passwords at load time in _load_users, not lazily at first login
+- [Phase 10]: Lock scopes minimal — only dict ops under lock, no I/O or LLM calls
+- [Phase 10]: SQLite WAL + busy_timeout=5000ms for concurrent access
 
 ### Pending Todos
 
@@ -86,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-17T08:18:51.252Z
-Stopped at: Completed 10-02-PLAN.md
+Last session: 2026-03-17T08:19:28Z
+Stopped at: Completed 10-01-PLAN.md (Phase 10 fully complete)
 Resume file: None
