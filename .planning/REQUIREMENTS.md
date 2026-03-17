@@ -38,14 +38,14 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Results
 
 - [ ] **RES-01**: 多方案并排对比视图 — 推演结果页支持并排展示多个 campaign 方案的分数和视觉素材
-- [ ] **RES-02**: 多维度评分可视化 — 用雷达图或柱状图展示各维度（视觉吸引力、品牌契合度、受众共鸣等）分数对比
-- [ ] **RES-03**: 历史基线分位展示 — 每个 campaign 方案展示其在历史数据中的 percentile 位置
+- [x] **RES-02**: 多维度评分可视化 — 用雷达图或柱状图展示各维度（视觉吸引力、品牌契合度、受众共鸣等）分数对比
+- [x] **RES-03**: 历史基线分位展示 — 每个 campaign 方案展示其在历史数据中的 percentile 位置
 
 ### Quality
 
 - [x] **QUAL-01**: PairwiseJudge 位置互换去偏 — 每对 campaign 正反各评一次，标记不一致判断
 - [x] **QUAL-02**: 视觉诊断建议结构化 — ImageAnalyzer 输出从自由文本改为结构化"问题 → 建议"格式
-- [ ] **QUAL-03**: 视觉诊断建议在结果页展示 — 每个 campaign 方案展示具体的视觉改进建议
+- [x] **QUAL-03**: 视觉诊断建议在结果页展示 — 每个 campaign 方案展示具体的视觉改进建议
 
 ## v2 Requirements
 
@@ -112,9 +112,9 @@ Deferred to future release. Tracked but not in current roadmap.
 | UNIF-01 | Phase 7: Unified Entry | Complete |
 | UNIF-02 | Phase 7: Unified Entry | Complete |
 | RES-01 | Phase 8: Results Enhancement | Pending |
-| RES-02 | Phase 8: Results Enhancement | Pending |
-| RES-03 | Phase 8: Results Enhancement | Pending |
-| QUAL-03 | Phase 8: Results Enhancement | Pending |
+| RES-02 | Phase 8: Results Enhancement | Complete |
+| RES-03 | Phase 8: Results Enhancement | Complete |
+| QUAL-03 | Phase 8: Results Enhancement | Complete |
 
 **Coverage:**
 - v1 requirements: 18 total
