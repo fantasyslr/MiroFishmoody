@@ -28,9 +28,40 @@ from ..auth import login_required, admin_required
 from ..services.brandiction_store import BrandictionStore
 from ..services.historical_importer import HistoricalImporter
 from ..services.brand_state_engine import BrandStateEngine
-from ..services.baseline_ranker import HistoricalBaselineRanker
+from ..services.baseline_ranker import HistoricalBaselineRanker, apply_visual_adjustment
+from ..services.image_analyzer import ImageAnalyzer
+from ..utils.logger import get_logger
+
+_logger = get_logger("ranker.api.brandiction")
 
 brandiction_bp = Blueprint("brandiction", __name__)
+
+
+def _build_visual_reasoning(profile: dict) -> str:
+    """从 visual profile 构建可读的视觉分析推理文本"""
+    parts = ["【视觉素材分析】"]
+    style = profile.get("creative_style", "unknown")
+    tone = profile.get("aesthetic_tone", "unknown")
+    claim = profile.get("visual_claim_focus", "unknown")
+    parts.append(f"素材风格: {style}，审美调性: {tone}，卖点方向: {claim}")
+
+    trust = profile.get("trust_signal_strength")
+    promo = profile.get("promo_intensity")
+    if trust is not None:
+        parts.append(f"信任信号: {trust}/10")
+    if promo is not None:
+        parts.append(f"促销感: {promo}/10")
+
+    hooks = profile.get("visual_hooks", [])
+    if hooks:
+        parts.append(f"视觉钩子: {', '.join(str(h) for h in hooks)}")
+    risks = profile.get("visual_risks", [])
+    if risks:
+        parts.append(f"视觉风险: {', '.join(str(r) for r in risks)}")
+    summary = profile.get("summary", "")
+    if summary:
+        parts.append(f"总结: {summary}")
+    return "。".join(parts)
 
 
 def _store() -> BrandictionStore:
@@ -570,9 +601,12 @@ def race_campaigns():
     sort_by = data.get("sort_by", "roas_mean")
     include_hypothesis = data.get("include_hypothesis", True)
     product_line = data.get("product_line", "moodyplus")
+    category = data.get("category", product_line)  # explicit category or fall back to product_line
     audience_segment = data.get("audience_segment", "general")
     market = data.get("market", "cn")
     season_tag = data.get("season_tag")  # 618 / double11 / cny / regular
+
+    _logger.info(f"Race category: {category}, product_line: {product_line}")
 
     # Inject top-level market into plans that don't specify their own
     for plan in plans:
@@ -590,7 +624,38 @@ def race_campaigns():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
-    # Track 2: perception model hypothesis (explanation only)
+    # Image analysis: analyze visual content for plans with images
+    visual_profiles = {}  # plan_id -> visual_profile (keyed by id, not name)
+    plans_with_images = [p for p in plans if p.get("image_paths")]
+    if plans_with_images:
+        try:
+            analyzer = ImageAnalyzer()
+            for plan in plans_with_images:
+                plan_id = plan.get("id") or plan.get("name", "")
+                image_paths = plan.get("image_paths", [])
+                if not image_paths:
+                    continue
+                profile = analyzer.analyze_plan_images(image_paths)
+                if profile:
+                    visual_profiles[plan_id] = profile
+                    _logger.info(
+                        f"图片分析完成: {plan.get('name', plan_id)} ({len(image_paths)} 张图片)"
+                    )
+        except Exception as e:
+            _logger.error(f"图片分析服务异常，跳过: {e}")
+
+    # Visual adjustment: apply image-aware differentiation to ranking
+    if visual_profiles and baseline_result.get("ranking"):
+        baseline_result["ranking"] = apply_visual_adjustment(
+            baseline_result["ranking"],
+            visual_profiles,
+        )
+        # Re-generate recommendation after adjustment
+        baseline_result["recommendation"] = ranker._generate_recommendation(
+            baseline_result["ranking"], sort_by
+        )
+
+    # Track 2: perception model hypothesis (explanation only, now image-aware)
     hypothesis = None
     if include_hypothesis:
         engine = _engine()
@@ -610,18 +675,39 @@ def race_campaigns():
                     audience_segment=audience_segment,
                     market=hyp_plan.get("market", market),
                 )
-                hypothesis_plans.append({
+                plan_id = plan.get("id") or plan.get("name", "")
+                visual_profile = visual_profiles.get(plan_id)
+
+                hyp_entry = {
                     "plan": plan,
                     "predicted_delta": pred["delta"],
                     "confidence": pred["confidence"],
                     "reasoning": pred["reasoning"],
                     "similar_interventions": pred.get("similar_interventions", 0),
-                })
+                }
+
+                # Inject visual analysis into hypothesis reasoning
+                if visual_profile:
+                    visual_reasoning = _build_visual_reasoning(visual_profile)
+                    hyp_entry["reasoning"] = (
+                        pred["reasoning"] + "\n\n" + visual_reasoning
+                    )
+                    hyp_entry["visual_profile"] = visual_profile
+
+                hypothesis_plans.append(hyp_entry)
             except Exception as e:
                 hypothesis_plans.append({"plan": plan, "error": str(e)})
         hypothesis = {
-            "note": "模型假设仅供解释和风险提示，不参与排名",
+            "note": "模型假设仅供解释和风险提示，不参与排名。图片分析结果已纳入推理",
             "plans": hypothesis_plans,
+        }
+
+    # Attach visual_profiles to response for frontend rendering
+    visual_analysis_output = None
+    if visual_profiles:
+        visual_analysis_output = {
+            "note": "图片内容分析已参与排序判别",
+            "profiles": visual_profiles,
         }
 
     # Auto-persist race run
@@ -633,8 +719,10 @@ def race_campaigns():
         top_rec = top_plan.get("name", "") or f"Plan #{top_entry.get('rank', 1)}"
 
     result_payload = {
+        "category": category,
         "observed_baseline": baseline_result,
         "model_hypothesis": hypothesis,
+        "visual_analysis": visual_analysis_output,
     }
     store = _store()
     store.save_race_run(
