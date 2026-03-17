@@ -54,7 +54,7 @@ Requirements for v1.1 加固与增强. Each maps to roadmap phases.
 ### Bug Fix
 
 - [x] **BUG-03**: Both 模式 ResultPage 显示跳转到 EvaluateResultPage 的导航链接 — getBothModeState 已存储但未消费
-- [ ] **BUG-04**: Evaluate 结果页诊断面板数据接入 — 当前 diagnosticsMap 为空，Evaluate 管线需产出图片诊断数据
+- [x] **BUG-04**: Evaluate 结果页诊断面板数据接入 — 当前 diagnosticsMap 为空，Evaluate 管线需产出图片诊断数据
 
 ### Stability
 
@@ -137,7 +137,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | RES-03 | Phase 8: Results Enhancement | Complete |
 | QUAL-03 | Phase 8: Results Enhancement | Complete |
 | BUG-03 | Phase 9: Bug Fixes | Complete |
-| BUG-04 | Phase 9: Bug Fixes | Pending |
+| BUG-04 | Phase 9: Bug Fixes | Complete |
 | STAB-01 | Phase 10: Stability & Security | Pending |
 | STAB-02 | Phase 10: Stability & Security | Pending |
 | SEC-01 | Phase 10: Stability & Security | Pending |
