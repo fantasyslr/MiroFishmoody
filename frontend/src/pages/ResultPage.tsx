@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getRaceState, type RaceResult, type RankingEntry, type VisualProfile, clearRaceState, getBothModeState, clearBothModeState, getEvaluateStatus, getEvaluateResult, saveEvaluateState, getEvaluateState } from '../lib/api'
-import { ChevronDown, ChevronUp, AlertTriangle, Activity, Beaker, Snowflake, Lightbulb, Eye, ImageIcon, Loader2, ArrowRight } from 'lucide-react'
+import { ChevronDown, ChevronUp, AlertTriangle, Activity, Beaker, Snowflake, Lightbulb, Eye, ImageIcon, Loader2, ArrowRight, Download } from 'lucide-react'
+import { captureElementAsImage, captureElementAsPDF } from '../lib/exportUtils'
 import { RadarScoreChart } from '../components/RadarScoreChart'
 import { PercentileBar } from '../components/PercentileBar'
 import { DiagnosticsPanel } from '../components/DiagnosticsPanel'
@@ -15,6 +16,8 @@ export function ResultPage() {
   const [expandedPlan, setExpandedPlan] = useState<number | null>(null)
   const [bothMode] = useState(() => getBothModeState())
   const [evalStatus, setEvalStatus] = useState<'polling' | 'completed' | 'failed' | null>(null)
+  const [exporting, setExporting] = useState<'pdf' | 'image' | null>(null)
+  const exportRef = useRef<HTMLDivElement>(null)
 
   // Poll evaluate task status when in Both mode
   useEffect(() => {
@@ -69,6 +72,33 @@ export function ResultPage() {
   const topEntry = ranking[0]
   const visualProfiles = visual_analysis?.profiles ?? {}
 
+  const handleExportPDF = async () => {
+    if (!exportRef.current || exporting) return
+    setExporting('pdf')
+    try {
+      const topName = topEntry?.plan.name || '推演'
+      const date = new Date().toLocaleDateString('zh-CN')
+      const title = `MiroFishmoody 推演报告 — ${topName} — ${date}`
+      const filename = `${topName}_推演报告_${date}`
+      await captureElementAsPDF(exportRef.current, filename, title)
+    } finally {
+      setExporting(null)
+    }
+  }
+
+  const handleExportImage = async () => {
+    if (!exportRef.current || exporting) return
+    setExporting('image')
+    try {
+      const topName = topEntry?.plan.name || '推演'
+      const date = new Date().toLocaleDateString('zh-CN')
+      const filename = `${topName}_对比_${date}`
+      await captureElementAsImage(exportRef.current, filename)
+    } finally {
+      setExporting(null)
+    }
+  }
+
   return (
     <div className="space-y-12 pb-20 animate-in fade-in duration-700">
 
@@ -87,12 +117,30 @@ export function ResultPage() {
               )}
             </p>
           </div>
-          <button
-            onClick={() => { clearRaceState(); navigate('/') }}
-            className="lab-button lab-button-outline"
-          >
-            新评估
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportPDF}
+              disabled={!!exporting}
+              className="lab-button lab-button-outline flex items-center gap-2 text-sm"
+            >
+              {exporting === 'pdf' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              导出 PDF
+            </button>
+            <button
+              onClick={handleExportImage}
+              disabled={!!exporting}
+              className="lab-button lab-button-outline flex items-center gap-2 text-sm"
+            >
+              {exporting === 'image' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              导出图片
+            </button>
+            <button
+              onClick={() => { clearRaceState(); navigate('/') }}
+              className="lab-button lab-button-outline"
+            >
+              新评估
+            </button>
+          </div>
         </div>
 
         {/* Recommendation */}
@@ -146,6 +194,9 @@ export function ResultPage() {
           </div>
         </section>
       )}
+
+      {/* Export capture area — wraps comparison, radar, and ranking sections */}
+      <div ref={exportRef} className="space-y-12">
 
       {/* Side-by-Side Comparison */}
       <section className="space-y-6">
@@ -702,6 +753,8 @@ export function ResultPage() {
           })}
         </div>
       </section>
+
+      </div>{/* end exportRef wrapper */}
 
     </div>
   )
