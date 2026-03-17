@@ -125,11 +125,11 @@ Plans:
   2. 各维度分数（视觉吸引力、品牌契合度、受众共鸣等）以雷达图或柱状图形式对比展示
   3. 每个方案展示其在历史 campaign 数据中的 percentile 位置（如"超过 75% 的历史 campaign"）
   4. 每个方案展示结构化的视觉改进建议（来自 Phase 5 的结构化诊断输出）
-**Plans**: 1 plan
+**Plans**: 2 plans
 
 Plans:
-- [ ] 08-01: TBD
-- [ ] 08-02: TBD
+- [ ] 08-01-PLAN.md — 安装 recharts + 扩展 API 类型 + 创建 RadarScoreChart/PercentileBar/DiagnosticsPanel 组件
+- [ ] 08-02-PLAN.md — 将可视化组件接入 ResultPage 和 EvaluateResultPage + 并排对比网格
 
 ## Progress
 
