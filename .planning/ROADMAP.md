@@ -31,11 +31,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. Evaluate 推演使用上传的图片 URL 时，图片被正确解析并送入 LLM 视觉分析，不再静默跳过
   2. 高分辨率图片（>1024px）在 base64 编码前被自动缩放，不触发 LLM token 限制错误
   3. 使用 `resolve_image_path()` 的统一路径解析逻辑，AudiencePanel 和 PairwiseJudge 不再直接调用 `os.path.exists()`
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md — 创建共享 image_helpers 工具模块（URL 解析 + 自动缩放 + base64 编码）
+- [ ] 01-02-PLAN.md — 将三个服务的图片处理逻辑迁移到共享工具 + 集成测试
 
 ### Phase 2: PersonaRegistry Service
 **Goal**: 人格配置从硬编码提取为独立服务，支持 schema 校验的预设模板
@@ -137,7 +137,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Image Pipeline Fix | 0/2 | Not started | - |
+| 1. Image Pipeline Fix | 0/2 | Planned | - |
 | 2. PersonaRegistry Service | 0/1 | Not started | - |
 | 3. Category Persona Config | 0/1 | Not started | - |
 | 4. Concurrent Image Analysis | 0/1 | Not started | - |
