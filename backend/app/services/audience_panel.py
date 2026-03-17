@@ -16,66 +16,9 @@ from ..utils.logger import get_logger
 from ..utils.image_helpers import resolve_image_path, image_to_base64_part
 from ..models.campaign import Campaign, ProductLine
 from ..models.evaluation import PanelScore
+from .persona_registry import PersonaRegistry
 
 logger = get_logger('ranker.audience_panel')
-
-# Moody Lenses 定制 persona
-PERSONAS: List[Dict[str, Any]] = [
-    {
-        "id": "daily_wearer",
-        "name": "日抛隐形眼镜老用户",
-        "description": (
-            "28岁女性，每天佩戴隐形眼镜5年以上。"
-            "关注舒适度、含水量、透氧性。对品牌有一定忠诚度，"
-            "但愿意尝试更舒适的新产品。对健康声称敏感，讨厌夸张宣传。"
-            "主要在小红书和朋友推荐中了解新品。"
-        ),
-        "evaluation_focus": "产品舒适度声称是否可信、是否解决实际佩戴痛点",
-    },
-    {
-        "id": "acuvue_switcher",
-        "name": "Acuvue Define 现有用户",
-        "description": (
-            "25岁女性，使用 Acuvue Define 2年。喜欢自然放大效果，"
-            "但觉得 Acuvue 选择少、价格高。关注眼健康，"
-            "但也想要更多花色选择。会比较透氧率等参数。"
-            "是 moodyPlus 的核心目标用户。"
-        ),
-        "evaluation_focus": "能否说服她从 Acuvue 转换、功能性证据是否充分",
-    },
-    {
-        "id": "beauty_first",
-        "name": "美瞳新用户（颜值驱动）",
-        "description": (
-            "22岁女大学生，第一次考虑戴美瞳。被社交媒体上的妆容效果吸引，"
-            "最关心颜色好不好看、直径是否够大、能否出片。"
-            "对隐形眼镜技术参数不敏感，但怕不舒服。"
-            "主要在抖音和小红书种草。"
-        ),
-        "evaluation_focus": "视觉吸引力、种草力、是否降低尝试门槛",
-    },
-    {
-        "id": "price_conscious",
-        "name": "价格敏感用户",
-        "description": (
-            "24岁职场新人，月消耗1-2盒日抛。会比价，"
-            "关注性价比但不追求最低价。对促销机制敏感（满减、囤货优惠）。"
-            "品牌忠诚度低，哪家划算买哪家。"
-        ),
-        "evaluation_focus": "价格信号是否合理、促销机制吸引力、复购动力",
-    },
-    {
-        "id": "eye_health",
-        "name": "眼健康关注者",
-        "description": (
-            "30岁女性，有过角膜炎经历，现在非常注重眼健康。"
-            "选镜片首先看材质（硅水凝胶优先）、透氧率、含水量。"
-            "对'美'的需求排第二。信任专业渠道推荐（眼科医生、专业测评），"
-            "反感纯颜值营销。是 moodyPlus 硅水凝胶系列的高价值用户。"
-        ),
-        "evaluation_focus": "健康声称是否有临床依据、材质信息是否透明",
-    },
-]
 
 SYSTEM_PROMPT = """你是一个消费者调研模拟器。你需要完全进入以下角色，从该消费者的真实视角评审一个美瞳/隐形眼镜品牌的营销方案。
 
@@ -151,9 +94,10 @@ def _product_line_label(pl: ProductLine) -> str:
 class AudiencePanel:
     """虚拟消费者评审面板"""
 
-    def __init__(self, llm_client: LLMClient = None):
+    def __init__(self, llm_client: LLMClient = None, persona_registry: PersonaRegistry = None):
         self.llm = llm_client or LLMClient()
-        self.personas = PERSONAS
+        self._registry = persona_registry or PersonaRegistry()
+        self.personas = self._registry.get_personas()
 
     def evaluate_campaign(self, campaign: Campaign, persona: Dict[str, Any]) -> PanelScore:
         """单个 persona 评审单个 campaign"""
