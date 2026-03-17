@@ -33,7 +33,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [ ] **UNIF-01**: 统一推演入口 — 在 HomePage 添加模式选择器（Race / Evaluate / Both）
 - [ ] **UNIF-02**: 统一方案录入表单 — 一套表单支持两种推演路径，用户无需知道后端 API 差异
-- [ ] **UNIF-03**: 品类选择驱动人格 — 用户选品类后，系统自动加载对应品类的评审人格预设
+- [x] **UNIF-03**: 品类选择驱动人格 — 用户选品类后，系统自动加载对应品类的评审人格预设
 
 ### Results
 
@@ -101,7 +101,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | PERS-01 | Phase 2: PersonaRegistry Service | Complete |
 | PERS-03 | Phase 2: PersonaRegistry Service | Complete |
 | PERS-02 | Phase 3: Category Persona Config | Complete |
-| UNIF-03 | Phase 3: Category Persona Config | Pending |
+| UNIF-03 | Phase 3: Category Persona Config | Complete |
 | PERF-01 | Phase 4: Concurrent Image Analysis | Pending |
 | PERF-02 | Phase 4: Concurrent Image Analysis | Pending |
 | QUAL-01 | Phase 5: Evaluate Quality | Pending |
