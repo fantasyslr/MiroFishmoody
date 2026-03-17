@@ -34,6 +34,7 @@ _calibration = JudgeCalibration()
 
 # 内存存储（MVP 阶段）
 _evaluation_store: dict = {}
+_store_lock = threading.Lock()
 _RESULTS_DIR = os.path.join(Config.UPLOAD_FOLDER, 'results')
 os.makedirs(_RESULTS_DIR, exist_ok=True)
 
@@ -293,7 +294,9 @@ def evaluate():
         submitted_by = current_user["display_name"] if current_user else data.get("submitted_by", "")
 
         # 防重复 set_id：检查内存和磁盘是否已有该 set_id 的结果
-        if campaign_set.set_id in _evaluation_store or _load_result(campaign_set.set_id):
+        with _store_lock:
+            in_memory = campaign_set.set_id in _evaluation_store
+        if in_memory or _load_result(campaign_set.set_id):
             return jsonify({
                 "error": f"set_id '{campaign_set.set_id}' 已存在，不允许覆盖已有评审结果"
             }), 409
@@ -314,6 +317,7 @@ def evaluate():
             task_manager=task_manager,
             evaluation_store=_evaluation_store,
             save_result_fn=_save_result,
+            store_lock=_store_lock,
         )
         thread = threading.Thread(
             target=orchestrator.run,
@@ -350,11 +354,13 @@ def evaluate_status(task_id: str):
 @login_required
 def get_result(set_id: str):
     """获取评审结果，附带 campaign 图片 URL 映射"""
-    result = _evaluation_store.get(set_id)
+    with _store_lock:
+        result = _evaluation_store.get(set_id)
     if not result:
         result = _load_result(set_id)
         if result:
-            _evaluation_store[set_id] = result
+            with _store_lock:
+                _evaluation_store[set_id] = result
     if not result:
         return jsonify({"error": "评审结果不存在"}), 404
 
@@ -368,11 +374,13 @@ def get_result(set_id: str):
 @login_required
 def export_result(set_id: str):
     """导出评审结果为可下载的 JSON 文件"""
-    result = _evaluation_store.get(set_id)
+    with _store_lock:
+        result = _evaluation_store.get(set_id)
     if not result:
         result = _load_result(set_id)
         if result:
-            _evaluation_store[set_id] = result
+            with _store_lock:
+                _evaluation_store[set_id] = result
     if not result:
         return jsonify({"error": "评审结果不存在"}), 404
 
@@ -428,7 +436,8 @@ def resolve():
 
         # 尝试从内存获取 predicted scores
         predicted = None
-        stored = _evaluation_store.get(set_id)
+        with _store_lock:
+            stored = _evaluation_store.get(set_id)
         if stored:
             board = stored.get("scoreboard", {})
             predicted = {
@@ -608,7 +617,8 @@ def retry_task(task_id: str):
         return jsonify({"error": "任务缺少 set_id 元数据，无法重试"}), 400
 
     # 清除旧结果，允许重新提交
-    _evaluation_store.pop(set_id, None)
+    with _store_lock:
+        _evaluation_store.pop(set_id, None)
     result_path = os.path.join(_RESULTS_DIR, f"{set_id}.json")
     if os.path.exists(result_path):
         os.remove(result_path)

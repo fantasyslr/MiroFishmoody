@@ -23,10 +23,11 @@ logger = get_logger('ranker.services.orchestrator')
 class EvaluationOrchestrator:
     """评审流程编排器 - 协调 Panel、Pairwise、Scoring、Summary 各阶段"""
 
-    def __init__(self, task_manager: TaskManager, evaluation_store: dict, save_result_fn):
+    def __init__(self, task_manager: TaskManager, evaluation_store: dict, save_result_fn, store_lock=None):
         self.task_manager = task_manager
         self.evaluation_store = evaluation_store
         self.save_result_fn = save_result_fn
+        self.store_lock = store_lock
         self.calibration = JudgeCalibration()  # 只实例化一次
 
     def run(self, task_id: str, campaign_set, category: str = None) -> dict:
@@ -143,7 +144,11 @@ class EvaluationOrchestrator:
             )
 
             result_dict = result.to_dict()
-            self.evaluation_store[campaign_set.set_id] = result_dict
+            if self.store_lock:
+                with self.store_lock:
+                    self.evaluation_store[campaign_set.set_id] = result_dict
+            else:
+                self.evaluation_store[campaign_set.set_id] = result_dict
             self.save_result_fn(campaign_set.set_id, result_dict)
 
             top = scoreboard.campaigns[0] if scoreboard.campaigns else None
