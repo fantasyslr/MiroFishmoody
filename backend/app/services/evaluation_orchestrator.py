@@ -27,7 +27,7 @@ class EvaluationOrchestrator:
         self.save_result_fn = save_result_fn
         self.calibration = JudgeCalibration()  # 只实例化一次
 
-    def run(self, task_id: str, campaign_set) -> dict:
+    def run(self, task_id: str, campaign_set, category: str = None) -> dict:
         """Execute the full evaluation pipeline"""
         try:
             self.task_manager.update_task(
@@ -43,7 +43,7 @@ class EvaluationOrchestrator:
 
             # Phase 1: Audience Panel
             self.task_manager.update_task(task_id, progress=10, message="Audience Panel 评审中...")
-            panel = AudiencePanel(llm_client=llm)
+            panel = AudiencePanel(llm_client=llm, category=category)
             panel_scores = panel.evaluate_all(campaigns)
             if not panel_scores:
                 raise RuntimeError(

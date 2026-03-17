@@ -288,6 +288,7 @@ def evaluate():
             return jsonify({"error": "请求体不能为空"}), 400
 
         campaign_set = _parse_campaigns(data)
+        category = data.get("category")  # None -> default personas, "moodyplus"/"colored_lenses" -> category-specific
         current_user = get_current_user()
         submitted_by = current_user["display_name"] if current_user else data.get("submitted_by", "")
 
@@ -305,6 +306,7 @@ def evaluate():
                 "campaign_names": [c.name for c in campaign_set.campaigns],
                 "campaign_count": len(campaign_set.campaigns),
                 "submitted_at": datetime.now().strftime("%m/%d %H:%M"),
+                "category": category,
             }
         )
 
@@ -315,7 +317,7 @@ def evaluate():
         )
         thread = threading.Thread(
             target=orchestrator.run,
-            args=(task_id, campaign_set),
+            args=(task_id, campaign_set, category),
             daemon=True,
         )
         thread.start()

@@ -94,10 +94,10 @@ def _product_line_label(pl: ProductLine) -> str:
 class AudiencePanel:
     """虚拟消费者评审面板"""
 
-    def __init__(self, llm_client: LLMClient = None, persona_registry: PersonaRegistry = None):
+    def __init__(self, llm_client: LLMClient = None, persona_registry: PersonaRegistry = None, category: str = None):
         self.llm = llm_client or LLMClient()
         self._registry = persona_registry or PersonaRegistry()
-        self.personas = self._registry.get_personas()
+        self.personas = self._registry.get_personas(category=category)
 
     def evaluate_campaign(self, campaign: Campaign, persona: Dict[str, Any]) -> PanelScore:
         """单个 persona 评审单个 campaign"""
