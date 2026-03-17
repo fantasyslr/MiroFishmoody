@@ -3,7 +3,7 @@ Auth API — 登录 / 登出 / 当前用户
 """
 
 from flask import Blueprint, request, jsonify, session
-from ..auth import USERS, _password_version, _validate_session
+from ..auth import USERS, _password_version, _validate_session, verify_password
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -17,9 +17,9 @@ def login():
     username = data.get("username", "").strip().lower()
     password = data.get("password", "")
 
-    user = USERS.get(username)
-    if not user or user["password"] != password:
+    if not verify_password(username, password):
         return jsonify({"error": "用户名或密码错误"}), 401
+    user = USERS[username]  # Safe — verify_password already checked existence
 
     session['user'] = {
         "username": username,

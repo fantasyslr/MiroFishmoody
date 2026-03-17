@@ -15,6 +15,34 @@ import hashlib
 import warnings
 from functools import wraps
 from flask import session, jsonify, request
+import bcrypt
+
+
+def _is_bcrypt_hash(value: str) -> bool:
+    """Check if a string looks like a bcrypt hash ($2b$ or $2a$ prefix, 60 chars)."""
+    return bool(value) and value.startswith(('$2b$', '$2a$', '$2y$')) and len(value) == 60
+
+
+def _hash_password(password: str) -> str:
+    """Hash a plaintext password with bcrypt."""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+
+def verify_password(username: str, password: str) -> bool:
+    """Verify password against stored hash. Auto-migrates plaintext to bcrypt on success."""
+    user = USERS.get(username)
+    if not user:
+        return False
+    stored = user["password"]
+    if _is_bcrypt_hash(stored):
+        return bcrypt.checkpw(password.encode('utf-8'), stored.encode('utf-8'))
+    else:
+        # Plaintext comparison (backward compat safety net)
+        if stored == password:
+            # Auto-migrate: replace plaintext with bcrypt hash in memory
+            user["password"] = _hash_password(password)
+            return True
+        return False
 
 
 def _load_users():
@@ -41,6 +69,10 @@ def _load_users():
             "display_name": display_name,
             "role": role,
         }
+    # Hash plaintext passwords immediately — never store plaintext in memory
+    for uname, user_data in users.items():
+        if not _is_bcrypt_hash(user_data["password"]):
+            user_data["password"] = _hash_password(user_data["password"])
     return users
 
 
