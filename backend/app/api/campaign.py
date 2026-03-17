@@ -785,3 +785,93 @@ def compare_versions():
         "v2": {"set_id": v2_id, "version": r2.get("version", 1), "scoreboard": sb2},
         "deltas": deltas,
     })
+
+
+@campaign_bp.route('/trends', methods=['GET'])
+@login_required
+def trends():
+    """聚合所有历史评审结果，返回时间序列数据点，用于趋势图"""
+    category_filter = request.args.get('category', 'all')
+    if category_filter not in ('all', 'colored_lenses', 'moodyplus'):
+        return jsonify({"error": "category 必须是 'all'、'colored_lenses' 或 'moodyplus'"}), 400
+
+    if not os.path.isdir(_RESULTS_DIR):
+        return jsonify({"data_points": [], "campaign_names": [], "category_filter": category_filter})
+
+    data_points = []
+    all_campaign_names: set = set()
+
+    for fname in os.listdir(_RESULTS_DIR):
+        if not fname.endswith('.json'):
+            continue
+        sid = fname[:-5]
+        fpath = os.path.join(_RESULTS_DIR, fname)
+        try:
+            with open(fpath, 'r', encoding='utf-8') as f:
+                result = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            continue
+
+        # Determine category of this result
+        result_category = None
+        # Check top-level category key (set during evaluate submission via task metadata)
+        if result.get("category"):
+            result_category = result["category"]
+        # Check metadata.category
+        elif isinstance(result.get("metadata"), dict) and result["metadata"].get("category"):
+            result_category = result["metadata"]["category"]
+        else:
+            # Infer from campaigns' product_line
+            sb = result.get("scoreboard", {})
+            campaigns = sb.get("campaigns", [])
+            product_lines = set()
+            for c in campaigns:
+                pl = c.get("product_line")
+                if pl:
+                    product_lines.add(pl)
+            if len(product_lines) == 1:
+                result_category = product_lines.pop()
+
+        # Apply category filter
+        if category_filter != 'all':
+            if result_category and result_category != category_filter:
+                continue
+
+        # Extract timestamp
+        timestamp = result.get("created_at")
+        if not timestamp:
+            try:
+                mtime = os.path.getmtime(fpath)
+                timestamp = datetime.fromtimestamp(mtime).isoformat()
+            except OSError:
+                continue
+
+        # Extract campaign scores from scoreboard
+        sb = result.get("scoreboard", {})
+        campaigns_data = sb.get("campaigns", [])
+        if not campaigns_data:
+            continue
+
+        campaign_scores = {}
+        for c in campaigns_data:
+            name = c.get("campaign_name", "")
+            score = c.get("overall_score", 0)
+            if name:
+                campaign_scores[name] = score
+                all_campaign_names.add(name)
+
+        if campaign_scores:
+            data_points.append({
+                "set_id": sid,
+                "timestamp": timestamp,
+                "campaigns": campaign_scores,
+            })
+
+    # Sort by timestamp ascending
+    data_points.sort(key=lambda dp: dp["timestamp"])
+
+    return jsonify({
+        "data_points": data_points,
+        "campaign_names": sorted(all_campaign_names),
+        "category_filter": category_filter,
+    })
