@@ -20,7 +20,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Persona
 
 - [x] **PERS-01**: 创建 PersonaRegistry 服务 — 从硬编码人格数组提取为独立服务，支持配置化
-- [ ] **PERS-02**: 按品类配置评审人格 — moodyPlus（透明片）和 colored_lenses（彩片）各有独立的评审人格集
+- [x] **PERS-02**: 按品类配置评审人格 — moodyPlus（透明片）和 colored_lenses（彩片）各有独立的评审人格集
 - [x] **PERS-03**: 人格配置为预设集而非自由文本 — 使用策展好的人格模板，带 schema 校验
 
 ### Evaluate Frontend
@@ -100,7 +100,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | BUG-02 | Phase 1: Image Pipeline Fix | Complete |
 | PERS-01 | Phase 2: PersonaRegistry Service | Complete |
 | PERS-03 | Phase 2: PersonaRegistry Service | Complete |
-| PERS-02 | Phase 3: Category Persona Config | Pending |
+| PERS-02 | Phase 3: Category Persona Config | Complete |
 | UNIF-03 | Phase 3: Category Persona Config | Pending |
 | PERF-01 | Phase 4: Concurrent Image Analysis | Pending |
 | PERF-02 | Phase 4: Concurrent Image Analysis | Pending |
