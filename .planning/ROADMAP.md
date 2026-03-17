@@ -178,8 +178,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 12-01: Campaign 版本关联模型 + 迭代推演 API + 版本对比视图
-- [ ] 12-02: 推演趋势 Dashboard 页面（趋势图 + 品类筛选）
+- [ ] 12-01-PLAN.md — Campaign 版本关联模型 + 迭代推演 API + 版本对比视图
+- [ ] 12-02-PLAN.md — 推演趋势 Dashboard 页面（趋势图 + 品类筛选）
 
 ## Progress
 
