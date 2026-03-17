@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: 加固与增强
 status: completed
-stopped_at: Completed 10-01-PLAN.md (Phase 10 fully complete)
-last_updated: "2026-03-17T08:24:00.024Z"
-last_activity: 2026-03-17 — Completed 10-02-PLAN.md
+stopped_at: Completed 11-01-PLAN.md
+last_updated: "2026-03-17T08:38:01.009Z"
+last_activity: 2026-03-17 — Completed 11-01-PLAN.md
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
-  percent: 75
+  total_plans: 6
+  completed_plans: 5
+  percent: 83
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** 让每一次 campaign 在上线前都能得到数据化的推演对比，用 AI 推演替代"拍脑袋"决策
-**Current focus:** Phase 10 — Stability & Security (bcrypt password hashing)
+**Current focus:** Phase 11 — Export (PDF/image export for results)
 
 ## Current Position
 
-Phase: 10 of 12 (Stability & Security)
-Plan: 2 of 2 in current phase (COMPLETE)
-Status: Phase 10 plan 02 complete
-Last activity: 2026-03-17 — Completed 10-02-PLAN.md
+Phase: 11 of 12 (Export)
+Plan: 1 of 2 in current phase
+Status: Phase 11 plan 01 complete
+Last activity: 2026-03-17 — Completed 11-01-PLAN.md
 
-Progress: [████████░░] 75%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [████████░░] 75%
 | Phase 09 P02 | 1min | 2 tasks | 4 files |
 | Phase 10 P01 | 4min | 2 tasks | 5 files |
 | Phase 10 P02 | 2min | 2 tasks | 3 files |
+| Phase 11 P01 | 3min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,7 @@ Recent decisions affecting current work:
 - [Phase 10]: Hash plaintext passwords at load time in _load_users, not lazily at first login
 - [Phase 10]: Lock scopes minimal — only dict ops under lock, no I/O or LLM calls
 - [Phase 10]: SQLite WAL + busy_timeout=5000ms for concurrent access
+- [Phase 11]: Client-side PDF/PNG export via html2canvas + jsPDF, 2x retina scale, exportRef excludes header
 
 ### Pending Todos
 
@@ -85,10 +87,10 @@ None yet.
 ### Blockers/Concerns
 
 - ~~BUG-04 requires Evaluate pipeline to produce image diagnostics~~ RESOLVED in 09-02
-- EXP-01/EXP-02 PDF/image export may need headless browser or server-side rendering — technology choice TBD in Phase 11
+- ~~EXP-01/EXP-02 PDF/image export may need headless browser or server-side rendering~~ RESOLVED in 11-01: client-side html2canvas + jsPDF
 
 ## Session Continuity
 
-Last session: 2026-03-17T08:19:28Z
-Stopped at: Completed 10-01-PLAN.md (Phase 10 fully complete)
+Last session: 2026-03-17T08:38:01.007Z
+Stopped at: Completed 11-01-PLAN.md
 Resume file: None

@@ -67,8 +67,8 @@ Requirements for v1.1 加固与增强. Each maps to roadmap phases.
 
 ### Export
 
-- [ ] **EXP-01**: 推演结果导出 PDF — 可截图式结果卡片或 PDF 报告
-- [ ] **EXP-02**: 推演结果导出图片 — 适合社交媒体/即时通讯分享
+- [x] **EXP-01**: 推演结果导出 PDF — 可截图式结果卡片或 PDF 报告
+- [x] **EXP-02**: 推演结果导出图片 — 适合社交媒体/即时通讯分享
 
 ### Iteration
 
@@ -141,8 +141,8 @@ Deferred to future release. Tracked but not in current roadmap.
 | STAB-01 | Phase 10: Stability & Security | Complete |
 | STAB-02 | Phase 10: Stability & Security | Complete |
 | SEC-01 | Phase 10: Stability & Security | Complete |
-| EXP-01 | Phase 11: Export | Pending |
-| EXP-02 | Phase 11: Export | Pending |
+| EXP-01 | Phase 11: Export | Complete |
+| EXP-02 | Phase 11: Export | Complete |
 | ITER-01 | Phase 12: Iteration & Analytics | Pending |
 | ANAL-01 | Phase 12: Iteration & Analytics | Pending |
 
