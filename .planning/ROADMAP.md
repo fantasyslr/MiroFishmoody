@@ -72,10 +72,10 @@ Plans:
   1. ImageAnalyzer 使用 ThreadPoolExecutor 并发处理多张图片，而非串行逐张分析
   2. LLM 并发请求通过 semaphore 限制（默认 max_workers=3），避免百炼 API 限流
   3. 5 张图片的推演总时间 <= 5 分钟（相比串行的 15-25 分钟）
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 04-01: TBD
+- [ ] 04-01-PLAN.md — ImageAnalyzer 并发化 + Semaphore 限流 + race_campaigns 并行分析
 
 ### Phase 5: Evaluate Quality
 **Goal**: Evaluate 推演结果更可靠——去除位置偏差，诊断建议结构化
@@ -141,7 +141,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 1. Image Pipeline Fix | 0/2 | Planned | - |
 | 2. PersonaRegistry Service | 0/1 | Not started | - |
 | 3. Category Persona Config | 0/2 | Planned | - |
-| 4. Concurrent Image Analysis | 0/1 | Not started | - |
+| 4. Concurrent Image Analysis | 0/1 | Planned | - |
 | 5. Evaluate Quality | 0/1 | Not started | - |
 | 6. Evaluate Frontend | 0/2 | Not started | - |
 | 7. Unified Entry | 0/1 | Not started | - |
