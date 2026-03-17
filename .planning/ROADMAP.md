@@ -111,10 +111,10 @@ Plans:
   1. HomePage 提供模式选择器，用户可选择 Race（快速）、Evaluate（深度）、或 Both（联合）模式
   2. 一套统一表单支持所有推演模式，用户填写一次方案信息即可发起所选模式的推演
   3. 选择 Both 模式时，Race 和 Evaluate 推演同时启动，各自独立展示进度和结果
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 07-01: TBD
+- [ ] 07-01-PLAN.md — 模式选择器 + 统一提交逻辑（Race/Evaluate/Both）
 
 ### Phase 8: Results Enhancement
 **Goal**: 推演结果页提供多方案并排对比、多维可视化和历史基线定位
@@ -125,7 +125,7 @@ Plans:
   2. 各维度分数（视觉吸引力、品牌契合度、受众共鸣等）以雷达图或柱状图形式对比展示
   3. 每个方案展示其在历史 campaign 数据中的 percentile 位置（如"超过 75% 的历史 campaign"）
   4. 每个方案展示结构化的视觉改进建议（来自 Phase 5 的结构化诊断输出）
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
 - [ ] 08-01: TBD
