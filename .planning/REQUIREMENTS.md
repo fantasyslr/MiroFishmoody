@@ -136,12 +136,20 @@ Deferred to future release. Tracked but not in current roadmap.
 | RES-02 | Phase 8: Results Enhancement | Complete |
 | RES-03 | Phase 8: Results Enhancement | Complete |
 | QUAL-03 | Phase 8: Results Enhancement | Complete |
+| BUG-03 | Phase 9: Bug Fixes | Pending |
+| BUG-04 | Phase 9: Bug Fixes | Pending |
+| STAB-01 | Phase 10: Stability & Security | Pending |
+| STAB-02 | Phase 10: Stability & Security | Pending |
+| SEC-01 | Phase 10: Stability & Security | Pending |
+| EXP-01 | Phase 11: Export | Pending |
+| EXP-02 | Phase 11: Export | Pending |
+| ITER-01 | Phase 12: Iteration & Analytics | Pending |
+| ANAL-01 | Phase 12: Iteration & Analytics | Pending |
 
 **Coverage:**
-- v1 requirements: 18 total
-- Mapped to phases: 18
-- Unmapped: 0
+- v1 requirements: 18 total, 18 mapped, 0 unmapped
+- v1.1 requirements: 9 total, 9 mapped, 0 unmapped
 
 ---
 *Requirements defined: 2026-03-17*
-*Last updated: 2026-03-17 after v1.1 requirements definition*
+*Last updated: 2026-03-17 after v1.1 roadmap creation*
