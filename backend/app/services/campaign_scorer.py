@@ -11,7 +11,7 @@ from typing import List, Dict, Tuple, Optional
 from collections import defaultdict
 
 from ..utils.logger import get_logger
-from ..models.campaign import Campaign
+from ..models.campaign import Campaign, BriefType
 from ..models.evaluation import (
     PanelScore, PairwiseResult, CampaignRanking, Verdict,
 )
@@ -45,12 +45,14 @@ class CampaignScorer:
         self,
         judge_weights: Dict[str, float] = None,
         persona_weights: Dict[str, float] = None,
+        brief_type: Optional[BriefType] = None,
     ):
         self.prob_aggregator = ProbabilityAggregator(
             judge_weights=judge_weights,
             persona_weights=persona_weights,
         )
         self.dimension_eval = DimensionEvaluator()
+        self.brief_type = brief_type
 
     def score(
         self,
@@ -113,7 +115,9 @@ class CampaignScorer:
                 )
 
         # --- Dimension scores ---
-        dimension_results = self.dimension_eval.evaluate(campaigns, panel_scores)
+        dimension_results = self.dimension_eval.evaluate(
+            campaigns, panel_scores, brief_type=self.brief_type
+        )
 
         # 按 campaign 分组维度得分
         dim_by_campaign: Dict[str, Dict[str, float]] = defaultdict(dict)
