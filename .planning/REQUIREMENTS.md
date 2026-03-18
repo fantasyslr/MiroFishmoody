@@ -9,7 +9,7 @@
 
 - [x] **DEPLOY-01**: 生产入口 / 返回正常页面而非 404 — `__init__.py` 静态路由静默失败时返回 503 + 日志告警
 - [x] **DEPLOY-02**: Dockerfile 构建断言 — build 阶段验证 `frontend/dist/index.html` 存在，不存在则构建失败
-- [ ] **DEPLOY-03**: Railway 部署配置 — Dockerfile 原生部署，volume 挂载 `/app/backend/uploads`，env var 迁移
+- [x] **DEPLOY-03**: Railway 部署配置 — Dockerfile 原生部署，volume 挂载 `/app/backend/uploads`，env var 迁移
 - [x] **DEPLOY-04**: Railway 健康检查 — `/api/health` 200 + 前端 / 200 双重验证
 
 ### Brief-Type Evaluation
@@ -46,7 +46,7 @@
 |-------------|-------|--------|
 | DEPLOY-01 | Phase 18 | Complete |
 | DEPLOY-02 | Phase 18 | Complete |
-| DEPLOY-03 | Phase 18 | Pending |
+| DEPLOY-03 | Phase 18 | Complete |
 | DEPLOY-04 | Phase 18 | Complete |
 | EVAL-01 | Phase 19 | Pending |
 | EVAL-02 | Phase 19 | Pending |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: 部署修复 + 评审偏差修正
 status: planning
-stopped_at: Completed 18-01-PLAN.md (Flask 503 fallback + Dockerfile build assertion)
-last_updated: "2026-03-18T06:26:14.293Z"
+stopped_at: "Checkpoint 18-02 Task 3: Railway Dashboard 手动配置（checkpoint:human-action）"
+last_updated: "2026-03-18T06:28:30.661Z"
 last_activity: 2026-03-18 — v2.1 roadmap created (Phases 18-20), 12/12 requirements mapped
 progress:
   total_phases: 8
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 15
-  completed_plans: 14
+  completed_plans: 15
   percent: 0
 ---
 
@@ -59,6 +59,8 @@ Recent decisions affecting current work:
 - [Phase 17]: BacktestEngine receives engine instance via __init__ to reuse compute_intervention_impact; lazy import inside method body prevents circular import
 - [Phase 18-01]: /api/health route instead of /health — Railway health check convention + CORS /api/* wildcard alignment
 - [Phase 18-01]: Dockerfile RUN test -f assertion placed immediately after COPY dist — fail fast at build time not runtime
+- [Phase 18-02]: Dockerfile CMD shell form: exec form 不展开 shell 变量，必须用 shell form 才能读取 Railway ${PORT}
+- [Phase 18-02]: railway.json 不支持 volumes 字段，volume mount 只能在 Railway Dashboard 手动配置
 
 ### Pending Todos
 
@@ -71,6 +73,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T06:26:14.291Z
-Stopped at: Completed 18-01-PLAN.md (Flask 503 fallback + Dockerfile build assertion)
+Last session: 2026-03-18T06:28:30.659Z
+Stopped at: Checkpoint 18-02 Task 3: Railway Dashboard 手动配置（checkpoint:human-action）
 Resume file: None
