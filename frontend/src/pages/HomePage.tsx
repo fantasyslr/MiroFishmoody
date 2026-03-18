@@ -291,24 +291,24 @@ export function HomePage() {
       return
     }
 
-    // Both mode: fire race immediately, evaluate in background
+    // Both mode: await evaluate before navigate so evaluateTaskId is in localStorage
     const racePayload = buildRacePayload()
     saveRaceState({ payload: racePayload })
 
     const { payload: evalPayload, setId: evalSetId } = buildEvaluatePayload()
     setSubmitting(true)
 
-    // Fire evaluate in background — don't block navigation
-    evaluateCampaigns(evalPayload)
-      .then((res) => {
-        saveEvaluateState({ taskId: res.task_id, setId: evalSetId, payload: evalPayload })
-        saveBothModeState({ evaluateTaskId: res.task_id, evaluateSetId: evalSetId })
-      })
-      .catch(() => {
-        // Evaluate failed silently — Race result still available
-      })
-
-    navigate('/running')
+    try {
+      const res = await evaluateCampaigns(evalPayload)
+      saveEvaluateState({ taskId: res.task_id, setId: evalSetId, payload: evalPayload })
+      saveBothModeState({ evaluateTaskId: res.task_id, evaluateSetId: evalSetId })
+    } catch {
+      // Evaluate POST failed silently — Race path still available
+    } finally {
+      setSubmitting(false)
+      navigate('/running')
+    }
+    return
   }
 
   return (
