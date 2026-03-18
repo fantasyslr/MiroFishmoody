@@ -163,11 +163,11 @@ Plans:
   1. `backend/tests/fixtures/benchmark/` 目录中存在至少 10 组已标注 campaign JSON，每组包含 brief_type 标签、预期冠军和标注理由
   2. 运行 `python benchmark/run.py` 输出 `brand_accuracy`、`seeding_accuracy`、`conversion_accuracy` 三个独立命中率，不只报告单一聚合数字
   3. benchmark runner 使用 mock LLMClient（不调用真实 Bailian API），可在 CI 环境中确定性回放
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 20-01-PLAN.md — BENCH-01 + BENCH-02: Benchmark schema 设计 + 10 组种子数据标注
-- [ ] 20-02-PLAN.md — BENCH-03: 回归测试 runner（mock LLMClient + 命中率报告）
+- [ ] 20-01-PLAN.md — BENCH-01 + BENCH-02: Benchmark schema 设计 + 11 组种子数据（brand×4, seeding×4, conversion×3）
+- [ ] 20-02-PLAN.md — BENCH-03: 回归测试 runner（mock LLMClient + 命中率报告 + pytest）
 
 ---
 
