@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: 大改造
 status: planning
-stopped_at: Completed 14-01-PLAN.md
-last_updated: "2026-03-18T04:21:14.096Z"
+stopped_at: Completed 14-03-PLAN.md
+last_updated: "2026-03-18T04:21:18.589Z"
 last_activity: 2026-03-18 — Roadmap created, v2.0 phases 13-17 defined
 progress:
   total_phases: 5
@@ -84,6 +84,8 @@ Recent decisions affecting current work:
 - [Phase 14-frontend-rewrite-core-pages]: 0.5mm trailing-page tolerance prevents float arithmetic adding a near-empty last PDF page
 - [Phase 14]: loadHomeForm() called synchronously in component body (not useEffect) — useState initializer gets restored value without a flash of default state
 - [Phase 14]: persistForm() spread-override pattern: each onChange passes only changed field, rest read from closure state
+- [Phase 14-03]: LogBuffer is display-only — parent owns log state and appending logic
+- [Phase 14-03]: Race path uses fixed RACE_CURRENT_STEP=1 (synchronous, no polling)
 
 ### Pending Todos
 
@@ -97,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T04:21:01.145Z
-Stopped at: Completed 14-01-PLAN.md
+Last session: 2026-03-18T04:21:18.587Z
+Stopped at: Completed 14-03-PLAN.md
 Resume file: None
