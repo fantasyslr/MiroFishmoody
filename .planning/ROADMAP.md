@@ -148,12 +148,12 @@ Plans:
   3. 选择"转化拉新"发起推演，`conversion_readiness` 维度权重显著高于"品牌传播"推演的同维度权重（权重差异可测量）
   4. 每条 EvaluationResult 记录包含 `weight_profile_version` 字段，历史结果重新打开后可看到当时使用的权重版本
   5. 传入未知 brief_type 字符串时，API 返回 HTTP 400 而非 500 内部错误
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 19-01-PLAN.md — EVAL-01 + EVAL-03: BriefType enum + brief_weights.py 权重配置文件
-- [ ] 19-02-PLAN.md — EVAL-04 + EVAL-05: CampaignScorer 按 brief_type 加载权重 + EvaluationResult 记录 weight_profile_version
-- [ ] 19-03-PLAN.md — EVAL-02: 前端表单 brief_type 选择器 + API 边界 400 校验
+- [ ] 19-01-PLAN.md — EVAL-01+EVAL-03: BriefType enum + brief_weights.py 3 套维度权重配置
+- [ ] 19-02-PLAN.md — EVAL-04+EVAL-05: CampaignScorer/DimensionEvaluator 权重注入 + EvaluationResult.weight_profile_version
+- [ ] 19-03-PLAN.md — EVAL-01+EVAL-02: EvaluationOrchestrator 传导 + API 400 校验 + 前端 brief_type 选择器
 
 ### Phase 20: Benchmark Dataset + Regression Runner
 **Goal**: 品牌团队有一套已标注 benchmark 数据集，可用 CLI 命令按 brief 类型分别测量评审引擎命中率，future 权重调整可快速回归验证
