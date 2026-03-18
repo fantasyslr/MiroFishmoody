@@ -128,7 +128,7 @@ Plans:
 | 1-8. MVP | v1.0 | 12/12 | Complete | 2026-03-17 |
 | 9-12. 加固 | v1.1 | 8/8 | Complete | 2026-03-17 |
 | 13. Bug Fixes + Contract Lock | 2/2 | Complete    | 2026-03-18 | - |
-| 14. Frontend Rewrite | 4/4 | Complete   | 2026-03-18 | - |
+| 14. Frontend Rewrite | 4/4 | Complete    | 2026-03-18 | - |
 | 15. Multi-Agent Foundation | v2.0 | 0/2 | Not started | - |
 | 16. Multi-Agent Enhancement | v2.0 | 0/3 | Not started | - |
 | 17. Tech Debt | v2.0 | 0/2 | Not started | - |
