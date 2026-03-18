@@ -13,9 +13,9 @@
 
 ### Frontend Rewrite
 
-- [ ] **FE-01**: 表单状态持久化 — sessionStorage save/restore，导航不丢数据
+- [x] **FE-01**: 表单状态持久化 — sessionStorage save/restore，导航不丢数据
 - [x] **FE-02**: Winner-first 结果页布局 — EvaluateResultPage 顶部直接展示冠军方案，无需切换 tab
-- [ ] **FE-03**: 品类选择器显示人格预览 — 选择品类后侧边显示人格名称和数量
+- [x] **FE-03**: 品类选择器显示人格预览 — 选择品类后侧边显示人格名称和数量
 - [x] **FE-04**: 导出可靠性修复 — 测试并修复 html2canvas PDF 在 5 方案满载下的导出
 - [ ] **FE-05**: SplitPanel + LogBuffer 新 UI 组件 — 参考 MiroFish 双面板分割和日志缓冲模式
 - [x] **FE-06**: 跨路径一致性 badge — Race winner vs Evaluate winner 矛盾时显示警示标记
@@ -62,9 +62,9 @@
 | BUG-06 | Phase 13 | Complete |
 | BUG-07 | Phase 13 | Complete |
 | FE-08 | Phase 13 | Complete |
-| FE-01 | Phase 14 | Pending |
+| FE-01 | Phase 14 | Complete |
 | FE-02 | Phase 14 | Complete |
-| FE-03 | Phase 14 | Pending |
+| FE-03 | Phase 14 | Complete |
 | FE-04 | Phase 14 | Complete |
 | FE-05 | Phase 14 | Pending |
 | FE-06 | Phase 14 | Complete |

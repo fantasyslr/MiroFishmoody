@@ -31,7 +31,7 @@ Phases 9-12 delivered: Both-mode cross-path navigation, Evaluate diagnostics pan
 ## Phases (v2.0)
 
 - [x] **Phase 13: Critical Bug Fixes + API Contract Lock** - 修复三个阻断性 bug，锁定 contracts.ts 防止重写期间 API drift (completed 2026-03-18)
-- [ ] **Phase 14: Frontend Rewrite — Core Pages** - 用 MiroFish 模式重写全部核心页面交互（7 个 FE 需求）
+- [x] **Phase 14: Frontend Rewrite — Core Pages** - 用 MiroFish 模式重写全部核心页面交互（7 个 FE 需求） (completed 2026-03-18)
 - [ ] **Phase 15: Multi-Agent Foundation** - 全局 LLM Semaphore + AgentScore schema 统一，为新 agent 类型建立并发和数据基础
 - [ ] **Phase 16: Multi-Agent Evaluation Enhancement** - 扩展人格池、MultiJudge ensemble、devil's advocate、争议 badge
 - [ ] **Phase 17: Tech Debt Paydown** - 收窄 threading.Lock 范围，BrandStateEngine 渐进分解
@@ -128,7 +128,7 @@ Plans:
 | 1-8. MVP | v1.0 | 12/12 | Complete | 2026-03-17 |
 | 9-12. 加固 | v1.1 | 8/8 | Complete | 2026-03-17 |
 | 13. Bug Fixes + Contract Lock | 2/2 | Complete    | 2026-03-18 | - |
-| 14. Frontend Rewrite | 3/4 | In Progress|  | - |
+| 14. Frontend Rewrite | 4/4 | Complete   | 2026-03-18 | - |
 | 15. Multi-Agent Foundation | v2.0 | 0/2 | Not started | - |
 | 16. Multi-Agent Enhancement | v2.0 | 0/3 | Not started | - |
 | 17. Tech Debt | v2.0 | 0/2 | Not started | - |
