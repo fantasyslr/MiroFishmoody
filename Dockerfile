@@ -23,6 +23,7 @@ COPY backend/ /app/backend/
 
 # Frontend build output
 COPY --from=frontend-build /app/frontend/dist /app/frontend/dist
+RUN test -f /app/frontend/dist/index.html || (echo "ERROR: frontend/dist/index.html missing — Vite build failed" && exit 1)
 
 # Uploads directory
 RUN mkdir -p /app/backend/uploads/results \
