@@ -136,15 +136,19 @@ class TestDissentFlag:
 
 
 class TestMultiJudgeEnsembleIncludesDevil:
+    def _make_ensemble(self):
+        mock_llm = MagicMock()
+        return MultiJudgeEnsemble(llm_client=mock_llm)
+
     def test_ensemble_includes_devil_advocate_perspective(self):
         """MultiJudgeEnsemble must include DEVIL_ADVOCATE_PERSPECTIVE in perspectives."""
-        ensemble = MultiJudgeEnsemble()
+        ensemble = self._make_ensemble()
         perspective_ids = [p["id"] for p in ensemble._perspectives]
         assert "devil_advocate" in perspective_ids
 
     def test_ensemble_perspectives_has_all_judges(self):
         """MultiJudgeEnsemble._perspectives must include all JUDGE_PERSPECTIVES plus devil."""
-        ensemble = MultiJudgeEnsemble()
+        ensemble = self._make_ensemble()
         perspective_ids = set(p["id"] for p in ensemble._perspectives)
         for jp in JUDGE_PERSPECTIVES:
             assert jp["id"] in perspective_ids

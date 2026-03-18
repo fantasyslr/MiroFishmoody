@@ -64,6 +64,18 @@ JUDGE_PERSPECTIVES = [
     },
 ]
 
+DEVIL_ADVOCATE_PERSPECTIVE = {
+    "id": "devil_advocate",
+    "name": "品牌怀疑者",
+    "system_prompt": (
+        "你是一个对所有营销方案持怀疑态度的品牌批评者。"
+        "你的职责是挑战每一个看似正面的结论，找出方案中的潜在风险、过度承诺和未经验证的假设。"
+        "你不相信任何'创新'声称，不相信'精准触达'，不相信'品牌溢价'。"
+        "你评判的标准是：哪个方案更可能失败、浪费预算、或者损害品牌。"
+        "投票给你认为'更不糟糕'的那个，但始终保持怀疑。"
+    ),
+}
+
 JUDGE_USER_PROMPT = """请比较以下两个营销方案，判断哪个更优。
 
 ## 方案 A: {name_a}
@@ -194,6 +206,7 @@ class PairwiseJudge:
             "winner": result.get("winner", "tie"),
             "dimensions": result.get("dimensions", {}),
             "reasoning": result.get("reasoning", ""),
+            "dissent": judge["id"] == "devil_advocate",
         }
 
     @staticmethod
@@ -375,12 +388,14 @@ class MultiJudgeEnsemble(PairwiseJudge):
 
     def __init__(self, llm_client: LLMClient = None, num_judges: int = None):
         super().__init__(llm_client=llm_client)
-        # Default: repeat JUDGE_PERSPECTIVES twice (6 judges) for 3-normal + 3-swapped
-        self._num_judges = num_judges or (len(JUDGE_PERSPECTIVES) * 2)
+        # Include devil's advocate as 4th perspective alongside JUDGE_PERSPECTIVES
+        self._perspectives = JUDGE_PERSPECTIVES + [DEVIL_ADVOCATE_PERSPECTIVE]
+        # Default: repeat all perspectives twice (8 judges) for balanced normal + swapped
+        self._num_judges = num_judges or (len(self._perspectives) * 2 - 1)  # 7 default
 
     def evaluate_pair(self, a: Campaign, b: Campaign) -> PairwiseResult:
         """Alternate (A,B) and (B,A) across judge slots. All votes normalized to A/B labels."""
-        perspectives = (JUDGE_PERSPECTIVES * ((self._num_judges // len(JUDGE_PERSPECTIVES)) + 1))
+        perspectives = (self._perspectives * ((self._num_judges // len(self._perspectives)) + 1))
         perspectives = perspectives[:self._num_judges]
 
         all_votes = []
