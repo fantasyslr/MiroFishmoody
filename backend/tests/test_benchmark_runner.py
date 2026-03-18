@@ -140,7 +140,7 @@ def test_fixture_loading():
         "tests", "fixtures", "benchmark", "*.json",
     )
     files = glob.glob(fixture_dir)
-    assert len(files) >= 10, f"Expected >=10 fixtures, got {len(files)}"
+    assert len(files) >= 11, f"Expected >=11 fixtures, got {len(files)}"
 
     for f in files:
         data = json.load(open(f, encoding="utf-8"))
@@ -165,4 +165,4 @@ def test_fixture_count():
         "tests", "fixtures", "benchmark", "*.json",
     )
     files = glob.glob(fixture_dir)
-    assert len(files) == 11, f"Expected 11 fixtures, got {len(files)}: {files}"
+    assert len(files) == 12, f"Expected 12 fixtures, got {len(files)}: {files}"

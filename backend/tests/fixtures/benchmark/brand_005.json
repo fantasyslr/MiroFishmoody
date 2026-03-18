@@ -1,0 +1,30 @@
+{
+  "id": "brand_005",
+  "brief_type": "brand",
+  "expected_winner_id": "b005_b",
+  "label_confidence": "high",
+  "rationale": "高定情绪大片通过视觉诗意和品牌美学传递情感共鸣，契合 brand brief 中 emotional_resonance 权重 0.30 的优先级。明星同款快转化以 KOL 带货逻辑驱动，转化信号强但品牌调性弱，在 brand brief 下不应胜出。这是品牌评审中'明星快转化 vs 高定情绪大片'的典型失手场景，需作为回归 benchmark 固化。",
+  "campaigns": [
+    {
+      "id": "b005_a",
+      "name": "明星同款速抢 — KOL 快转化投流",
+      "product_line": "colored_lenses",
+      "target_audience": "18-28岁追星粉丝，决策快，价格敏感",
+      "core_message": "和XX同款彩片，限时折扣，扫码直接买",
+      "channels": ["抖音信息流", "小红书KOL合作"],
+      "creative_direction": "明星同款对比图，右上角挂购物车链接，配文「她同款，速抢」",
+      "kv_description": "明星近照 + 产品图拼接，强调价格标签和购物入口",
+      "promo_mechanic": "限时7折，首购减30元"
+    },
+    {
+      "id": "b005_b",
+      "name": "高定情绪大片 — 品牌美学宣言",
+      "product_line": "colored_lenses",
+      "target_audience": "22-35岁有审美追求的都市女性，注重品牌调性",
+      "core_message": "色彩是态度，不是装扮。moody 彩片，为有主见的眼神而生。",
+      "channels": ["小红书品牌号", "微博开屏", "抖音品牌专区"],
+      "creative_direction": "高端时装大片风格：模特凝视镜头，环境光戏剧性打光，无文字遮挡，画面留白70%，配乐沉浸感强",
+      "kv_description": "胶片质感特写，眼神直视观众，彩片颜色在光线下呈现层次感，背景极简"
+    }
+  ]
+}
