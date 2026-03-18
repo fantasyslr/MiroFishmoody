@@ -2,9 +2,28 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2, Zap, Search, Layers, AlertCircle, ImagePlus, X, Loader2, RefreshCcw } from 'lucide-react'
 import { type RacePayload, type EvaluatePayload, type CampaignPlan, saveRaceState, saveEvaluateState, evaluateCampaigns, saveBothModeState, uploadCampaignImage, getIterateState, clearIterateState } from '../lib/api'
+import { saveHomeForm, loadHomeForm, clearHomeForm } from '../lib/homeFormStorage'
 import { uuid } from '../utils'
 
 type SimulationMode = 'race' | 'evaluate' | 'both'
+
+const PERSONA_PREVIEW: Record<string, string[]> = {
+  moodyplus: [
+    '日抛隐形眼镜老用户',
+    'Acuvue Define 现有用户',
+    '眼健康关注者',
+    '办公室长时间佩戴用户',
+    '运动爱好者',
+    '敏感眼用户',
+  ],
+  colored_lenses: [
+    '美瞳新用户（颜值驱动）',
+    '价格敏感用户',
+    '美妆博主',
+    'Coser/特殊场合用户',
+    '自然放大需求用户',
+  ],
+}
 
 const MODE_OPTIONS: Array<{ value: SimulationMode; label: string; desc: string; time: string; icon: typeof Zap }> = [
   { value: 'race', label: '快速推演', desc: '基于历史基线数据快速排序', time: '~15 秒', icon: Zap },
@@ -50,22 +69,27 @@ function makeImageDraft(file: File): UploadedPlanImage {
 export function HomePage() {
   const navigate = useNavigate()
 
-  const [mode, setMode] = useState<SimulationMode>('race')
+  const savedForm = loadHomeForm()
 
-  const [market, setMarket] = useState('cn')
-  const [productLine, setProductLine] = useState('moodyplus')
+  const [mode, setMode] = useState<SimulationMode>(savedForm?.mode ?? 'race')
+
+  const [market, setMarket] = useState(savedForm?.market ?? 'cn')
+  const [productLine, setProductLine] = useState(savedForm?.productLine ?? 'moodyplus')
   const [audience] = useState('general')
-  const [sortBy, setSortBy] = useState<RacePayload['sort_by']>('roas_mean')
-  const [seasonTag, setSeasonTag] = useState('')
+  const [sortBy, setSortBy] = useState<RacePayload['sort_by']>(savedForm?.sortBy ?? 'roas_mean')
+  const [seasonTag, setSeasonTag] = useState(savedForm?.seasonTag ?? '')
   const [draftSetId] = useState(() => `race_${uuid()}`)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [iterateState] = useState(() => getIterateState())
 
-  const [plans, setPlans] = useState<CampaignPlan[]>([
-    makePlan({ name: 'Plan A', theme: 'science_credibility' }),
-    makePlan({ name: 'Plan B', theme: 'comfort_beauty', platform: 'instagram' }),
-  ])
+  const [plans, setPlans] = useState<CampaignPlan[]>(() => {
+    if (savedForm?.plans && savedForm.plans.length > 0) return savedForm.plans
+    return [
+      makePlan({ name: 'Plan A', theme: 'science_credibility' }),
+      makePlan({ name: 'Plan B', theme: 'comfort_beauty', platform: 'instagram' }),
+    ]
+  })
   const [planImages, setPlanImages] = useState<Record<string, UploadedPlanImage[]>>(() =>
     Object.fromEntries(
       plans.map((plan) => [plan.id ?? uuid(), []]),
@@ -115,11 +139,11 @@ export function HomePage() {
   }
 
   const updatePlan = (index: number, updates: Partial<CampaignPlan>) => {
-    setPlans((current) =>
-      current.map((plan, currentIndex) =>
-        currentIndex === index ? { ...plan, ...updates } : plan,
-      ),
+    const nextPlans = plans.map((plan, currentIndex) =>
+      currentIndex === index ? { ...plan, ...updates } : plan,
     )
+    setPlans(nextPlans)
+    persistForm({ plans: nextPlans })
   }
 
   const handleAddImages = async (plan: CampaignPlan, newFiles: FileList | null) => {
@@ -234,6 +258,18 @@ export function HomePage() {
     0,
   )
 
+  const persistForm = (overrides: Partial<Parameters<typeof saveHomeForm>[0]> = {}) => {
+    saveHomeForm({
+      mode,
+      market,
+      productLine,
+      sortBy,
+      seasonTag,
+      plans,
+      ...overrides,
+    })
+  }
+
   const buildRacePayload = (): RacePayload => ({
     market,
     product_line: productLine,
@@ -274,6 +310,7 @@ export function HomePage() {
     if (mode === 'race') {
       const payload = buildRacePayload()
       saveRaceState({ payload })
+      clearHomeForm()
       navigate('/running')
       return
     }
@@ -284,6 +321,7 @@ export function HomePage() {
         const { payload, setId } = buildEvaluatePayload()
         const res = await evaluateCampaigns(payload)
         saveEvaluateState({ taskId: res.task_id, setId, payload })
+        clearHomeForm()
         navigate('/evaluate')
       } catch {
         setSubmitting(false)
@@ -306,6 +344,7 @@ export function HomePage() {
       // Evaluate POST failed silently — Race path still available
     } finally {
       setSubmitting(false)
+      clearHomeForm()
       navigate('/running')
     }
     return
@@ -347,7 +386,7 @@ export function HomePage() {
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => setMode(opt.value)}
+                onClick={() => { setMode(opt.value); persistForm({ mode: opt.value }) }}
                 className={`lab-card p-4 cursor-pointer border-2 transition-all text-left ${
                   selected
                     ? 'border-primary bg-primary/5'
@@ -370,7 +409,7 @@ export function HomePage() {
             <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">市场</label>
             <select
               value={market}
-              onChange={(event) => setMarket(event.target.value)}
+              onChange={(event) => { setMarket(event.target.value); persistForm({ market: event.target.value }) }}
               className="lab-input font-medium pb-2 cursor-pointer"
             >
               <option value="cn">中国大陆</option>
@@ -382,7 +421,7 @@ export function HomePage() {
             <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">品类</label>
             <select
               value={productLine}
-              onChange={(event) => setProductLine(event.target.value)}
+              onChange={(event) => { setProductLine(event.target.value); persistForm({ productLine: event.target.value }) }}
               className="lab-input font-medium pb-2 cursor-pointer"
             >
               <option value="moodyplus">透明片（moodyPlus）</option>
@@ -393,9 +432,11 @@ export function HomePage() {
             <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">优化目标</label>
             <select
               value={sortBy}
-              onChange={(event) =>
-                setSortBy(event.target.value as 'roas_mean' | 'purchase_rate' | 'revenue_mean' | 'cvr_mean')
-              }
+              onChange={(event) => {
+                const v = event.target.value as 'roas_mean' | 'purchase_rate' | 'revenue_mean' | 'cvr_mean'
+                setSortBy(v)
+                persistForm({ sortBy: v })
+              }}
               className="lab-input font-medium pb-2 cursor-pointer"
             >
               <option value="roas_mean">ROAS（均值）</option>
@@ -407,7 +448,7 @@ export function HomePage() {
             <label className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">季节场景</label>
             <select
               value={seasonTag}
-              onChange={(event) => setSeasonTag(event.target.value)}
+              onChange={(event) => { setSeasonTag(event.target.value); persistForm({ seasonTag: event.target.value }) }}
               className="lab-input font-medium pb-2 cursor-pointer"
             >
               <option value="">常规（无季节）</option>
@@ -607,6 +648,26 @@ export function HomePage() {
       </div>
 
       <div className="sticky top-24 space-y-6">
+        {/* 品类人格预览 */}
+        <div className="lab-card p-5 space-y-3">
+          <h3 className="text-xs uppercase tracking-wider font-bold text-primary">
+            评审团
+            <span className="ml-2 text-muted-foreground font-normal normal-case">
+              {productLine === 'moodyplus' ? '透明片' : '彩片'} · {PERSONA_PREVIEW[productLine].length} 位
+            </span>
+          </h3>
+          <ul className="space-y-1.5">
+            {PERSONA_PREVIEW[productLine].map((name, i) => (
+              <li key={i} className="text-sm text-muted-foreground flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] flex items-center justify-center shrink-0 font-mono">
+                  {i + 1}
+                </span>
+                {name}
+              </li>
+            ))}
+          </ul>
+        </div>
+
         <div className="lab-card p-5 space-y-5 bg-card/50">
           <div>
             <h3 className="text-xs uppercase tracking-wider font-bold text-primary mb-3">评估矩阵</h3>
