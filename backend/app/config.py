@@ -29,6 +29,7 @@ class Config:
     JUDGE_TEMPERATURE = float(os.environ.get('JUDGE_TEMPERATURE', '0.3'))
     PANEL_TEMPERATURE = float(os.environ.get('PANEL_TEMPERATURE', '0.4'))
     MAX_CAMPAIGNS = int(os.environ.get('MAX_CAMPAIGNS', '6'))
+    MAX_LLM_CONCURRENT = int(os.environ.get('MAX_LLM_CONCURRENT', '5'))
 
     # Market-Making Judge（实验性，默认关闭）
     USE_MARKET_JUDGE = os.environ.get('USE_MARKET_JUDGE', 'false').lower() == 'true'
