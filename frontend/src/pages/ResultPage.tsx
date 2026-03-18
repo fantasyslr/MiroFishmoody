@@ -166,6 +166,28 @@ export function ResultPage() {
             </div>
           </div>
         )}
+
+        {/* Cross-path conflict badge — show when Race and Evaluate winners differ */}
+        {(() => {
+          if (!bothMode) return null  // 只在 Both 模式下有意义
+          if (evalStatus !== 'completed') return null  // evaluate 未完成时不显示
+          try {
+            const evalState = getEvaluateState()
+            const evalWinner = evalState?.result?.rankings?.[0]?.campaign_name
+            const raceWinner = topEntry?.plan?.name
+            if (!evalWinner || !raceWinner || evalWinner === raceWinner) return null
+            return (
+              <div className="flex items-center gap-3 px-4 py-3 rounded-sm bg-amber-50 border border-amber-300 text-amber-800">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+                <span className="text-sm font-medium">
+                  ⚠ Race 与 Evaluate 冠军不一致 — Race: <strong>{raceWinner}</strong> vs Evaluate: <strong>{evalWinner}</strong>
+                </span>
+              </div>
+            )
+          } catch {
+            return null
+          }
+        })()}
       </section>
 
       {/* Both Mode: Evaluate Result Link */}
