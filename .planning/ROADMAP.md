@@ -49,11 +49,11 @@ Phases 9-12 delivered: Both-mode cross-path navigation, Evaluate diagnostics pan
   2. Both 模式下同时发起 Race + Evaluate，两个 taskId 均在导航前写入 store，刷新后仍可轮询两条结果
   3. RunningPage 显示的进度百分比与后端 TaskManager 实际返回的 progress 字段一致，不再出现假定时步骤动画
   4. `contracts.ts` 文件存在并覆盖全部 Flask API endpoint 的请求/响应类型，`npm run build` 通过
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 13-01: BUG-05 图片路径解析修复 — 提取 `resolve_image_path()` 工具函数，AudiencePanel + PairwiseJudge 统一调用
-- [ ] 13-02: BUG-06 + BUG-07 + FE-08 — Both 模式 Promise.all fix、RunningPage 真实轮询、contracts.ts 生成
+- [x] 13-01-PLAN.md — BUG-05 图片路径解析修复 — 提取 `resolve_image_path()` 工具函数，AudiencePanel + PairwiseJudge 统一调用
+- [x] 13-02-PLAN.md — BUG-06 + BUG-07 + FE-08 — Both 模式 Promise.all fix、RunningPage 真实轮询、contracts.ts 生成
 
 ### Phase 14: Frontend Rewrite — Core Pages
 **Goal**: 全部核心页面交互符合 MiroFish 参考模式：表单数据不丢失、进度展示真实、结果页冠军首屏可见、品类选择器显示人格预览、跨路径一致性可见
@@ -65,13 +65,13 @@ Plans:
   3. 选择品类后，侧边栏立即显示对应品类的人格名称列表和数量（moodyPlus 显示 6 个，colored_lenses 显示 5 个）
   4. Race winner 与 Evaluate winner 不一致时，结果页显示可见的警示 badge（不需要切 tab 才看到）
   5. 推演进行中，Step indicator 显示当前所处步骤（如"分析中"/"评审中"），与后端进度阶段对应
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 14-01: FE-08 contracts.ts 已就位；FE-01 sessionStorage 表单持久化 + FE-03 品类人格预览
-- [ ] 14-02: FE-02 Winner-first 结果布局 + FE-06 跨路径一致性 badge
-- [ ] 14-03: FE-05 SplitPanel + LogBuffer 新 UI 组件 + FE-07 Step indicator
-- [ ] 14-04: FE-04 导出可靠性修复（html2canvas 5 方案满载测试）
+- [ ] 14-01-PLAN.md — FE-01 sessionStorage 表单持久化 + FE-03 品类人格预览
+- [ ] 14-02-PLAN.md — FE-02 Winner-first 结果布局 + FE-06 跨路径一致性 badge
+- [ ] 14-03-PLAN.md — FE-05 SplitPanel + LogBuffer 新 UI 组件 + FE-07 Step indicator
+- [ ] 14-04-PLAN.md — FE-04 导出可靠性修复（html2canvas 多页 PDF）
 
 ### Phase 15: Multi-Agent Foundation
 **Goal**: 全局 LLM 并发上限已建立（防止 Bailian 429），所有 agent 输出共享统一 schema（防止新 agent 信号被 CampaignScorer 静默丢弃）
