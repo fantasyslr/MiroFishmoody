@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: 部署修复 + 评审偏差修正
 status: planning
-stopped_at: Completed 20-01-PLAN.md
-last_updated: "2026-03-18T07:46:22.040Z"
+stopped_at: Completed 20-02-PLAN.md
+last_updated: "2026-03-18T07:52:10.455Z"
 last_activity: 2026-03-18 — v2.1 roadmap created (Phases 18-20), 12/12 requirements mapped
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 20
-  completed_plans: 19
+  completed_plans: 20
   percent: 0
 ---
 
@@ -69,6 +69,8 @@ Recent decisions affecting current work:
 - [Phase 19-03]: API double validation: BRIEF_TYPE_VALUES frozenset check before BriefType() constructor, returns 400 with Chinese error message
 - [Phase 20-01]: Fixture glob pattern backend/tests/fixtures/benchmark/*.json; all fixtures have exactly 2 campaigns for clean binary comparison signal
 - [Phase 20-01]: label_confidence=medium reserved for 3 genuine edge cases (b003 UGC vs KOL, s003 date vs workplace, c003 group-buy vs repurchase); counted in benchmark denominator but flagged as uncertain
+- [Phase 20]: patch target is app.services.evaluation_orchestrator.LLMClient (import-site patching, not utils path)
+- [Phase 20]: EvaluationOrchestrator.run() has no return — benchmark runner reads results from evaluation_store[set_id] after each call
 
 ### Pending Todos
 
@@ -81,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T07:46:22.038Z
-Stopped at: Completed 20-01-PLAN.md
+Last session: 2026-03-18T07:52:10.453Z
+Stopped at: Completed 20-02-PLAN.md
 Resume file: None
