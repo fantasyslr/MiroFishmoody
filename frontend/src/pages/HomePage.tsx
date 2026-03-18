@@ -84,6 +84,9 @@ export function HomePage() {
   const [audience] = useState('general')
   const [sortBy, setSortBy] = useState<RacePayload['sort_by']>(savedForm?.sortBy ?? 'roas_mean')
   const [seasonTag, setSeasonTag] = useState(savedForm?.seasonTag ?? '')
+  const [briefType, setBriefType] = useState<'brand' | 'seeding' | 'conversion' | ''>(
+    savedForm?.briefType ?? ''
+  )
   const [draftSetId] = useState(() => `race_${uuid()}`)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -271,6 +274,7 @@ export function HomePage() {
       productLine,
       sortBy,
       seasonTag,
+      briefType,
       plans,
       ...overrides,
     })
@@ -305,6 +309,7 @@ export function HomePage() {
         })),
       category: productLine,
       ...(iterateState?.parentSetId ? { parent_set_id: iterateState.parentSetId } : {}),
+      ...(briefType ? { brief_type: briefType as 'brand' | 'seeding' | 'conversion' } : {}),
     }
     return { payload, setId }
   }
@@ -322,6 +327,10 @@ export function HomePage() {
     }
 
     if (mode === 'evaluate') {
+      if (!briefType) {
+        setUploadError('请选择 Brief 类型（品牌传播 / 达人种草 / 转化拉新）')
+        return
+      }
       setSubmitting(true)
       try {
         const { payload, setId } = buildEvaluatePayload()
@@ -336,6 +345,10 @@ export function HomePage() {
     }
 
     // Both mode: await evaluate before navigate so evaluateTaskId is in localStorage
+    if (!briefType) {
+      setUploadError('请选择 Brief 类型（品牌传播 / 达人种草 / 转化拉新）')
+      return
+    }
     const racePayload = buildRacePayload()
     saveRaceState({ payload: racePayload })
 
@@ -466,6 +479,43 @@ export function HomePage() {
             </select>
           </div>
         </section>
+
+        {(mode === 'evaluate' || mode === 'both') && (
+          <section className="lab-card p-6 space-y-3">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Brief 类型 <span className="text-red-500">*</span>
+              </label>
+              <div className="flex gap-3 flex-wrap">
+                {[
+                  { value: 'brand', label: '品牌传播' },
+                  { value: 'seeding', label: '达人种草' },
+                  { value: 'conversion', label: '转化拉新' },
+                ].map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      setBriefType(value as 'brand' | 'seeding' | 'conversion')
+                      persistForm({ briefType: value as 'brand' | 'seeding' | 'conversion' })
+                      setUploadError(null)
+                    }}
+                    className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                      briefType === value
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {!briefType && uploadError?.includes('Brief') && (
+                <p className="text-sm text-red-500">请选择 Brief 类型</p>
+              )}
+            </div>
+          </section>
+        )}
 
         <section className="space-y-6">
           <div className="flex items-center justify-between">

@@ -12,6 +12,7 @@ export type HomeFormSnapshot = {
   sortBy: RacePayload['sort_by']
   seasonTag: string
   plans: CampaignPlan[]
+  briefType?: 'brand' | 'seeding' | 'conversion' | ''
 }
 
 export function saveHomeForm(snapshot: HomeFormSnapshot): void {

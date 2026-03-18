@@ -261,6 +261,7 @@ export type EvaluatePayload = {
   }>
   category?: string
   parent_set_id?: string
+  brief_type?: 'brand' | 'seeding' | 'conversion'
 }
 
 export type TaskStatusResponse = {
