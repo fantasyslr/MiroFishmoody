@@ -67,6 +67,7 @@ class EvaluationResult:
     scoreboard: Optional[Dict[str, Any]] = None
     resolution_ready_fields: Optional[Dict[str, str]] = None
     visual_diagnostics: Optional[Dict[str, Any]] = None  # campaign_id -> {issues, recommendations}
+    weight_profile_version: Optional[str] = None  # e.g. "brand-v1", "seeding-v1", "conversion-v1"
 
     def to_dict(self) -> Dict[str, Any]:
         result = {
@@ -121,4 +122,6 @@ class EvaluationResult:
             result["resolution_ready_fields"] = self.resolution_ready_fields
         if self.visual_diagnostics is not None:
             result["visual_diagnostics"] = self.visual_diagnostics
+        if self.weight_profile_version is not None:
+            result["weight_profile_version"] = self.weight_profile_version
         return result
