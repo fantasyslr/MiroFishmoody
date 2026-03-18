@@ -8,8 +8,8 @@
 ### Critical Bug Fixes
 
 - [x] **BUG-05**: 图片路径解析修复 — AudiencePanel/PairwiseJudge 对 API URL 调用 `os.path.exists()` 恒返回 False，视觉评估实为盲评
-- [ ] **BUG-06**: Both 模式 race condition 修复 — `Promise.all` 确保 Race + Evaluate POST 均完成后再导航，evaluateTaskId 必须在导航前存储
-- [ ] **BUG-07**: RunningPage 假动画替换为真实后端轮询 — 当前用假定时步骤动画，无真实进度信号
+- [x] **BUG-06**: Both 模式 race condition 修复 — `Promise.all` 确保 Race + Evaluate POST 均完成后再导航，evaluateTaskId 必须在导航前存储
+- [x] **BUG-07**: RunningPage 假动画替换为真实后端轮询 — 当前用假定时步骤动画，无真实进度信号
 
 ### Frontend Rewrite
 
@@ -20,7 +20,7 @@
 - [ ] **FE-05**: SplitPanel + LogBuffer 新 UI 组件 — 参考 MiroFish 双面板分割和日志缓冲模式
 - [ ] **FE-06**: 跨路径一致性 badge — Race winner vs Evaluate winner 矛盾时显示警示标记
 - [ ] **FE-07**: Step indicator 进度指示器 — 参考 MiroFish 步骤指示器模式，展示推演流程进度
-- [ ] **FE-08**: API 契约锁定 — `contracts.ts` 冻结 API 类型定义，防止重写过程中 contract drift
+- [x] **FE-08**: API 契约锁定 — `contracts.ts` 冻结 API 类型定义，防止重写过程中 contract drift
 
 ### Multi-Agent Backend
 
@@ -59,9 +59,9 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | BUG-05 | Phase 13 | Complete |
-| BUG-06 | Phase 13 | Pending |
-| BUG-07 | Phase 13 | Pending |
-| FE-08 | Phase 13 | Pending |
+| BUG-06 | Phase 13 | Complete |
+| BUG-07 | Phase 13 | Complete |
+| FE-08 | Phase 13 | Complete |
 | FE-01 | Phase 14 | Pending |
 | FE-02 | Phase 14 | Pending |
 | FE-03 | Phase 14 | Pending |
