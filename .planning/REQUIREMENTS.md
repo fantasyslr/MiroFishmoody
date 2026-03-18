@@ -22,8 +22,8 @@
 
 ### Benchmark & Regression
 
-- [ ] **BENCH-01**: Benchmark 数据集 schema — 输入（campaign set JSON）+ 预期冠军 + 标注置信度 + 理由
-- [ ] **BENCH-02**: 种子数据集 — 至少 10 组已标注 campaign（品牌/种草/转化各 3-4 组）
+- [x] **BENCH-01**: Benchmark 数据集 schema — 输入（campaign set JSON）+ 预期冠军 + 标注置信度 + 理由
+- [x] **BENCH-02**: 种子数据集 — 至少 10 组已标注 campaign（品牌/种草/转化各 3-4 组）
 - [ ] **BENCH-03**: 回归测试 runner — mock LLMClient，确定性回放，输出命中率报告
 
 ## Future Requirements (v2.x)
@@ -53,8 +53,8 @@
 | EVAL-03 | Phase 19 | Complete |
 | EVAL-04 | Phase 19 | Complete |
 | EVAL-05 | Phase 19 | Complete |
-| BENCH-01 | Phase 20 | Pending |
-| BENCH-02 | Phase 20 | Pending |
+| BENCH-01 | Phase 20 | Complete |
+| BENCH-02 | Phase 20 | Complete |
 | BENCH-03 | Phase 20 | Pending |
 
 **Coverage:**

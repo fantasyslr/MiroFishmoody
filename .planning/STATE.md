@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: 部署修复 + 评审偏差修正
 status: planning
-stopped_at: Completed 19-03-PLAN.md
-last_updated: "2026-03-18T07:33:53.839Z"
+stopped_at: Completed 20-01-PLAN.md
+last_updated: "2026-03-18T07:46:22.040Z"
 last_activity: 2026-03-18 — v2.1 roadmap created (Phases 18-20), 12/12 requirements mapped
 progress:
   total_phases: 8
   completed_phases: 7
-  total_plans: 18
-  completed_plans: 18
+  total_plans: 20
+  completed_plans: 19
   percent: 0
 ---
 
@@ -67,6 +67,8 @@ Recent decisions affecting current work:
 - [Phase 19-02]: Softmax 后权重缩放（不归一化），各维度独立，weight 仅影响跨维度聚合时的贡献比例
 - [Phase 19-03]: Thread args tuple extended to (task_id, campaign_set, category, brief_type_enum) — None value ensures backward compatibility without branching
 - [Phase 19-03]: API double validation: BRIEF_TYPE_VALUES frozenset check before BriefType() constructor, returns 400 with Chinese error message
+- [Phase 20-01]: Fixture glob pattern backend/tests/fixtures/benchmark/*.json; all fixtures have exactly 2 campaigns for clean binary comparison signal
+- [Phase 20-01]: label_confidence=medium reserved for 3 genuine edge cases (b003 UGC vs KOL, s003 date vs workplace, c003 group-buy vs repurchase); counted in benchmark denominator but flagged as uncertain
 
 ### Pending Todos
 
@@ -79,6 +81,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T07:33:16.996Z
-Stopped at: Completed 19-03-PLAN.md
+Last session: 2026-03-18T07:46:22.038Z
+Stopped at: Completed 20-01-PLAN.md
 Resume file: None
