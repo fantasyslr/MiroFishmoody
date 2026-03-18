@@ -1,20 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getRaceState, raceCampaigns, saveRaceState } from '../lib/api'
-import { CheckCircle2, Circle, Loader2, AlertCircle } from 'lucide-react'
-
-const STEPS = [
-  '正在初始化 BrandState 引擎 v3...',
-  '正在编译历史基线数据...',
-  '正在提取经验漏斗指标（sessions, PDP, ATC, ROAS）...',
-  '正在运行认知模型假设...',
-  '正在综合生成建议...',
-  '正在完成评估结算...'
-]
+import { Loader2, AlertCircle } from 'lucide-react'
 
 export function RunningPage() {
   const navigate = useNavigate()
-  const [currentStep, setCurrentStep] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const startedRef = useRef(false)
 
@@ -29,22 +19,14 @@ export function RunningPage() {
     if (startedRef.current) return
     startedRef.current = true
 
-    // Visual step progression
-    const interval = setInterval(() => {
-      setCurrentStep(s => (s < STEPS.length - 1 ? s + 1 : s))
-    }, 2500)
-
-    // Actual API call — no mock fallback, errors surface honestly
-    raceCampaigns(state.payload).then(result => {
-      saveRaceState({ ...state, result })
-      clearInterval(interval)
-      navigate('/result')
-    }).catch(err => {
-      clearInterval(interval)
-      setError(err.message || 'Race evaluation failed. Check backend connection.')
-    })
-
-    return () => clearInterval(interval)
+    raceCampaigns(state.payload)
+      .then(result => {
+        saveRaceState({ ...state, result })
+        navigate('/result')
+      })
+      .catch(err => {
+        setError(err.message || '推演失败，请检查后端连接')
+      })
   }, [navigate])
 
   if (error) {
@@ -67,45 +49,18 @@ export function RunningPage() {
 
   return (
     <div className="min-h-screen bg-primary text-primary-foreground flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-lg space-y-12">
-        <div className="space-y-4 text-center">
+      <div className="w-full max-w-lg space-y-12 text-center">
+        <div className="space-y-4">
           <h2 className="font-display text-4xl font-semibold">评估进行中</h2>
           <p className="text-primary-foreground/60 text-sm font-mono uppercase tracking-wider">
             正在处理 {getRaceState()?.payload?.plans?.length || 0} 个策略方向
           </p>
         </div>
 
-        <div className="space-y-4">
-          {STEPS.map((step, i) => {
-            const isCompleted = i < currentStep
-            const isActive = i === currentStep
-
-            return (
-              <div
-                key={i}
-                className={`flex items-center gap-4 transition-all duration-500 ${
-                  isActive ? 'opacity-100 translate-x-2' :
-                  isCompleted ? 'opacity-50' : 'opacity-20'
-                }`}
-              >
-                {isCompleted ? (
-                  <CheckCircle2 className="h-5 w-5 text-accent" />
-                ) : isActive ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-primary-foreground" />
-                ) : (
-                  <Circle className="h-5 w-5" />
-                )}
-                <span className={`font-mono text-sm ${isActive ? 'text-primary-foreground' : ''}`}>
-                  {step}
-                </span>
-              </div>
-            )
-          })}
-        </div>
-
-        <div className="pt-8 border-t border-primary-foreground/10 text-center">
-          <p className="text-xs text-primary-foreground/40 uppercase tracking-widest">
-            请勿关闭此窗口
+        <div className="flex flex-col items-center gap-6">
+          <Loader2 className="h-12 w-12 animate-spin text-primary-foreground/80" />
+          <p className="text-primary-foreground/50 text-xs font-mono">
+            推演通常需要 10-20 秒，请勿关闭此窗口
           </p>
         </div>
       </div>
