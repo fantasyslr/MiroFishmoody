@@ -121,6 +121,56 @@ def _parse_campaigns(data: dict) -> CampaignSet:
     return campaign_set
 
 
+def _parse_evaluate_campaigns(data: dict) -> CampaignSet:
+    """解析 EvaluatePayload 形状: {campaign_id, name, description, image_paths}
+
+    与 _parse_campaigns() 的区别：
+    - 接受 campaign_id（不是 id），保持与已上传图片文件名前缀一致
+    - 接受 description（不是 core_message），映射为 LLM 评估上下文
+    - product_line 无效值时安全回退（不抛异常）
+    """
+    campaigns_raw = data.get("campaigns", [])
+    if not campaigns_raw or len(campaigns_raw) < 2:
+        raise ValueError("至少需要 2 个 campaign 方案")
+    if len(campaigns_raw) > Config.MAX_CAMPAIGNS:
+        raise ValueError(f"最多支持 {Config.MAX_CAMPAIGNS} 个方案")
+
+    campaigns = []
+    seen_ids = set()
+    for i, c in enumerate(campaigns_raw):
+        # campaign_id 优先（前端发送 UUID，与图片文件名前缀一致）
+        campaign_id = c.get("campaign_id") or c.get("id") or f"campaign_{i+1}"
+        if campaign_id in seen_ids:
+            raise ValueError(f"方案 {i+1}: campaign_id '{campaign_id}' 重复")
+        seen_ids.add(campaign_id)
+
+        name = c.get("name", "").strip()
+        if not name:
+            raise ValueError(f"方案 {i+1}: name 不能为空")
+
+        # description -> core_message；缺失时回退为 name
+        core_message = c.get("description") or c.get("core_message") or name
+
+        product_line_str = c.get("product_line", "colored_lenses")
+        try:
+            product_line = ProductLine(product_line_str)
+        except ValueError:
+            product_line = ProductLine.COLORED  # 安全回退
+
+        campaigns.append(Campaign(
+            id=campaign_id,
+            name=name,
+            product_line=product_line,
+            target_audience=c.get("target_audience", ""),
+            core_message=core_message,
+            channels=c.get("channels", []),
+            creative_direction=c.get("creative_direction", ""),
+            image_paths=c.get("image_paths", []),
+            extra=c.get("extra", {}),
+        ))
+
+    set_id = data.get("set_id", str(uuid.uuid4()))
+    return CampaignSet(set_id=set_id, campaigns=campaigns)
 
 
 ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
@@ -298,7 +348,7 @@ def evaluate():
         if not data:
             return jsonify({"error": "请求体不能为空"}), 400
 
-        campaign_set = _parse_campaigns(data)
+        campaign_set = _parse_evaluate_campaigns(data)
         category = data.get("category")  # None -> default personas, "moodyplus"/"colored_lenses" -> category-specific
         parent_set_id = data.get("parent_set_id")
         current_user = get_current_user()
@@ -363,7 +413,7 @@ def evaluate():
             "set_id": campaign_set.set_id,
             "campaign_count": len(campaign_set.campaigns),
             "message": "评审已启动，使用 task_id 查询进度",
-        })
+        }), 202
 
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
