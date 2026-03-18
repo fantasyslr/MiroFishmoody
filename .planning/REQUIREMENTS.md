@@ -26,8 +26,8 @@
 
 - [x] **MA-01**: 全局 LLM Semaphore — 从 ImageAnalyzer 层提升到 LLMClient 层，统一并发控制，防止 Bailian 429
 - [x] **MA-02**: AgentScore schema 统一 — 所有 agent 输出统一 schema，确保 CampaignScorer 不静默丢失新 agent 信号
-- [ ] **MA-03**: PersonaRegistry 扩展 — moodyPlus 6→9 人格，colored_lenses 5→8 人格
-- [ ] **MA-04**: MultiJudge 位置交替 ensemble — 每对方案多个独立 judge，强制轮换呈现顺序消除 position bias
+- [x] **MA-03**: PersonaRegistry 扩展 — moodyPlus 6→9 人格，colored_lenses 5→8 人格
+- [x] **MA-04**: MultiJudge 位置交替 ensemble — 每对方案多个独立 judge，强制轮换呈现顺序消除 position bias
 - [ ] **MA-05**: Devil's advocate judge perspective — JUDGE_PERSPECTIVES 新增反面视角，标记异见投票
 - [ ] **MA-06**: Cross-persona 争议分数 + badge — 人格评分标准差作为"争议"指标，前端展示 badge
 - [x] **MA-07**: ConsensusAgent 异常值检测 — `statistics.stdev` 检测评分离群值，标记可疑评分
@@ -71,8 +71,8 @@
 | FE-07 | Phase 14 | Complete |
 | MA-01 | Phase 15 | Complete |
 | MA-02 | Phase 15 | Complete |
-| MA-03 | Phase 16 | Pending |
-| MA-04 | Phase 16 | Pending |
+| MA-03 | Phase 16 | Complete |
+| MA-04 | Phase 16 | Complete |
 | MA-05 | Phase 16 | Pending |
 | MA-06 | Phase 16 | Pending |
 | MA-07 | Phase 16 | Complete |

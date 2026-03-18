@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: 大改造
 status: planning
-stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-03-18T05:05:28.983Z"
+stopped_at: Completed 16-01-PLAN.md
+last_updated: "2026-03-18T05:08:15.990Z"
 last_activity: 2026-03-18 — Roadmap created, v2.0 phases 13-17 defined
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 11
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -66,6 +66,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 15-multi-agent-foundation P01 | 8min | 2 tasks | 4 files |
 | Phase 15-multi-agent-foundation P02 | 3min | 2 tasks | 4 files |
 | Phase 16-multi-agent-evaluation-enhancement P02 | 3min | 2 tasks | 3 files |
+| Phase 16-multi-agent-evaluation-enhancement P01 | 7min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,8 @@ Recent decisions affecting current work:
 - [Phase 15-multi-agent-foundation]: Global LLMSemaphore at LLMClient level (not per-service) — Phase 15-01 delivers unified concurrency cap for all agent types
 - [Phase 15-multi-agent-foundation]: AgentScore.score normalized to 0-1 by agent itself; AGENT_SCORE_WEIGHT=0.1 keeps agent influence modest; Phase 16 agents pass List[AgentScore] to scorer.score() without modifying scorer internals
 - [Phase 16-multi-agent-evaluation-enhancement]: stdev_threshold=2.0 matches controversy badge threshold; suspect flag absent for clean scores (no False written); single-persona campaigns skip detection silently
+- [Phase 16-multi-agent-evaluation-enhancement]: MultiJudgeEnsemble is PairwiseJudge subclass — inherits Bradley-Terry and evaluate_all() without duplication; all normalized votes in PairwiseResult.votes with position field
+- [Phase 16-multi-agent-evaluation-enhancement]: EvaluationOrchestrator default judge switched to MultiJudgeEnsemble (USE_MARKET_JUDGE flag path unchanged)
 
 ### Pending Todos
 
@@ -105,6 +108,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T05:05:28.981Z
-Stopped at: Completed 16-02-PLAN.md
+Last session: 2026-03-18T05:08:15.988Z
+Stopped at: Completed 16-01-PLAN.md
 Resume file: None
