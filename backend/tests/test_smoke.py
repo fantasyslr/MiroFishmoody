@@ -276,7 +276,7 @@ class TestEvaluationFlow:
             "set_id": "smoke-eval-test",
         }
         resp = client.post('/api/campaign/evaluate', json=payload)
-        assert resp.status_code == 200
+        assert resp.status_code == 202
         data = resp.get_json()
         assert "task_id" in data
         assert data["set_id"] == "smoke-eval-test"

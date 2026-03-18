@@ -15,6 +15,9 @@ const PERSONA_PREVIEW: Record<string, string[]> = {
     '办公室长时间佩戴用户',
     '运动爱好者',
     '敏感眼用户',
+    '科技感知者',
+    '医疗合规顾问',
+    '日常佩戴体验者',
   ],
   colored_lenses: [
     '美瞳新用户（颜值驱动）',
@@ -22,6 +25,9 @@ const PERSONA_PREVIEW: Record<string, string[]> = {
     '美妆博主',
     'Coser/特殊场合用户',
     '自然放大需求用户',
+    '彩妆博主',
+    '摄影师/视觉创作者',
+    '亚文化爱好者',
   ],
 }
 
