@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: 大改造
 status: planning
-stopped_at: Completed 14-03-PLAN.md
-last_updated: "2026-03-18T04:25:00.302Z"
+stopped_at: Completed 15-01-PLAN.md
+last_updated: "2026-03-18T04:34:42.446Z"
 last_activity: 2026-03-18 — Roadmap created, v2.0 phases 13-17 defined
 progress:
   total_phases: 5
-  completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  completed_phases: 3
+  total_plans: 8
+  completed_plans: 8
   percent: 0
 ---
 
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 14-frontend-rewrite-core-pages P04 | 3min | 1 tasks | 1 files |
 | Phase 14-frontend-rewrite-core-pages P01 | 3min | 2 tasks | 2 files |
 | Phase 14-frontend-rewrite-core-pages P03 | 3min | 2 tasks | 5 files |
+| Phase 15-multi-agent-foundation P01 | 8min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,7 @@ Recent decisions affecting current work:
 - [Phase 14]: persistForm() spread-override pattern: each onChange passes only changed field, rest read from closure state
 - [Phase 14-03]: LogBuffer is display-only — parent owns log state and appending logic
 - [Phase 14-03]: Race path uses fixed RACE_CURRENT_STEP=1 (synchronous, no polling)
+- [Phase 15-multi-agent-foundation]: Global LLMSemaphore at LLMClient level (not per-service) — Phase 15-01 delivers unified concurrency cap for all agent types
 
 ### Pending Todos
 
@@ -99,6 +101,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T04:21:18.587Z
-Stopped at: Completed 14-03-PLAN.md
+Last session: 2026-03-18T04:34:37.935Z
+Stopped at: Completed 15-01-PLAN.md
 Resume file: None
