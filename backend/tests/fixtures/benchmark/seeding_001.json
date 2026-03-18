@@ -1,0 +1,28 @@
+{
+  "id": "seeding_001",
+  "brief_type": "seeding",
+  "expected_winner_id": "s001_a",
+  "label_confidence": "high",
+  "rationale": "方案A通过真实达人的日常佩戴vlog建立情感共鸣和真实性，在seeding权重配置中emotional_resonance(0.30)和thumb_stop(0.20)均占优，方案B的硬广形式与种草场景不符。",
+  "campaigns": [
+    {
+      "id": "s001_a",
+      "name": "日常通勤系列 — 真实生活种草",
+      "product_line": "moodyplus",
+      "target_audience": "25-30岁职场女性，首次了解透明片",
+      "core_message": "上班戴moodyPlus，眼睛不累，同事说我今天眼睛好亮",
+      "channels": ["小红书达人投放"],
+      "creative_direction": "跟拍vlog风格：早起洗脸+戴镜片+通勤+办公室自然光特写，结尾真实感受分享",
+      "kv_description": "办公室自然光下眼睛特写，无美颜滤镜"
+    },
+    {
+      "id": "s001_b",
+      "name": "moodyPlus年抛硬广投放",
+      "product_line": "moodyplus",
+      "target_audience": "小红书用户",
+      "core_message": "moodyPlus年抛，全年舒适不换片",
+      "channels": ["小红书信息流广告"],
+      "creative_direction": "品牌广告设计风格，logo突出，文案强调年抛功能"
+    }
+  ]
+}

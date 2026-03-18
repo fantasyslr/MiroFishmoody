@@ -1,0 +1,28 @@
+{
+  "id": "conversion_003",
+  "brief_type": "conversion",
+  "expected_winner_id": "c003_a",
+  "label_confidence": "medium",
+  "rationale": "方案A的拼团机制有较强的社交传播和转化双重效果，但claim_risk略高（「邀请3人」可能引起用户反感）。方案B的回购激励对新用户效果存疑。label_confidence=medium反映此边界案例的不确定性。",
+  "campaigns": [
+    {
+      "id": "c003_a",
+      "name": "三人拼团解锁5折 — 社交裂变",
+      "product_line": "moodyplus",
+      "target_audience": "有社交分享习惯的年轻用户",
+      "core_message": "拉上2个朋友一起拼，moodyPlus年抛直降5折，越多人参与越便宜",
+      "channels": ["微信社群", "小程序"],
+      "creative_direction": "拼团进度可视化，3/3格子图展示，倒计时+已拼人数",
+      "promo_mechanic": "3人成团享5折，超出3人每增1人额外降5元"
+    },
+    {
+      "id": "c003_b",
+      "name": "回购用户专属续杯优惠",
+      "product_line": "moodyplus",
+      "target_audience": "购买过1次但未复购的用户",
+      "core_message": "你上次购买的moodyPlus快用完了，专属续杯价等你来",
+      "channels": ["短信", "微信服务号"],
+      "creative_direction": "个性化文案，预测用量节点，专属优惠码，回购激励"
+    }
+  ]
+}

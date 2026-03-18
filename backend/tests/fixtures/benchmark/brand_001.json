@@ -1,0 +1,29 @@
+{
+  "id": "brand_001",
+  "brief_type": "brand",
+  "expected_winner_id": "b001_a",
+  "label_confidence": "high",
+  "rationale": "方案A通过情感化的「看见真实的自己」主题建立品牌共鸣，情感共鸣维度显著优于以促销为核心的方案B，符合品牌传播权重配置中情感共鸣0.30的优先级。",
+  "campaigns": [
+    {
+      "id": "b001_a",
+      "name": "看见真实的自己 — 品牌故事片",
+      "product_line": "moodyplus",
+      "target_audience": "25-35岁都市白领，注重自我表达",
+      "core_message": "moodyPlus透明片让你的眼神更真实，不掩盖，只放大本来的你",
+      "channels": ["小红书", "抖音品牌号"],
+      "creative_direction": "情感故事片：职场女性摘下隐形眼镜后眼神更有力量，旁白「透明不是没有颜色，是本真的颜色」",
+      "kv_description": "自然光下的特写眼神，无滤镜，真实感强"
+    },
+    {
+      "id": "b001_b",
+      "name": "买一送一限时福利",
+      "product_line": "moodyplus",
+      "target_audience": "价格敏感用户",
+      "core_message": "本周买一赠一，moodyPlus年抛首购立减50元",
+      "channels": ["淘宝直播", "微信朋友圈广告"],
+      "creative_direction": "促销海报风格，红色大字标注优惠信息",
+      "promo_mechanic": "买一送一，限时72小时"
+    }
+  ]
+}

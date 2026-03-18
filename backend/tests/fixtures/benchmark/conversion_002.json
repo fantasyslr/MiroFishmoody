@@ -1,0 +1,28 @@
+{
+  "id": "conversion_002",
+  "brief_type": "conversion",
+  "expected_winner_id": "c002_a",
+  "label_confidence": "high",
+  "rationale": "方案A的限时闪购机制通过紧迫感和价格锚点双重驱动，conversion_readiness极强，且信息清晰度高（clarity）。方案B虽然内容丰富但缺乏明确行动指令。",
+  "campaigns": [
+    {
+      "id": "c002_a",
+      "name": "618限时闪购 — 彩片买2送1",
+      "product_line": "colored_lenses",
+      "target_audience": "大促期间比价中的潜客",
+      "core_message": "618限定：moody彩片买2盒送1盒，今晚12点截止，已有8392人加购",
+      "channels": ["淘宝直播", "抖音购物车"],
+      "creative_direction": "倒计时氛围，库存数字实时更新，主播面前堆满产品，紧迫感强",
+      "promo_mechanic": "买2送1，叠加满199减30，限时截止今晚24点"
+    },
+    {
+      "id": "c002_b",
+      "name": "彩片使用攻略长图文",
+      "product_line": "colored_lenses",
+      "target_audience": "对彩片感兴趣但未购买的用户",
+      "core_message": "彩片选购全攻略：从入门到进阶，moody陪你走每一步",
+      "channels": ["小红书", "微信公众号"],
+      "creative_direction": "详细图文攻略，选色指南+护理教程+佩戴技巧，内容丰富"
+    }
+  ]
+}

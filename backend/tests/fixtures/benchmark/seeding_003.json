@@ -1,0 +1,27 @@
+{
+  "id": "seeding_003",
+  "brief_type": "seeding",
+  "expected_winner_id": "s003_a",
+  "label_confidence": "medium",
+  "rationale": "方案A的约会妆容场景与彩片种草契合度高，情感共鸣分高。方案B的职场场景也有合理性，但彩片在职场场景下存在claim_risk（部分公司着装规范），label_confidence降为medium。",
+  "campaigns": [
+    {
+      "id": "s003_a",
+      "name": "约会妆容 + moody彩片搭配教程",
+      "product_line": "colored_lenses",
+      "target_audience": "18-25岁，有约会/节日场景需求",
+      "core_message": "约会必备三件套：口红、腮红、moody彩片，让眼神会说话",
+      "channels": ["抖音", "小红书"],
+      "creative_direction": "妆容教程切片，彩片作为最后一步「点睛之笔」，佩戴前后眼神对比"
+    },
+    {
+      "id": "s003_b",
+      "name": "职场精致感 — 透明感彩片推荐",
+      "product_line": "colored_lenses",
+      "target_audience": "22-30岁职场女性",
+      "core_message": "职场也可以佩戴彩片，选对颜色，精致不浮夸",
+      "channels": ["小红书"],
+      "creative_direction": "职场穿搭 + 彩片搭配建议，强调自然色系"
+    }
+  ]
+}

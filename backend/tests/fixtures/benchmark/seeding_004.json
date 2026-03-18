@@ -1,0 +1,27 @@
+{
+  "id": "seeding_004",
+  "brief_type": "seeding",
+  "expected_winner_id": "s004_b",
+  "label_confidence": "high",
+  "rationale": "方案B通过明确的使用场景（毕业季）和情感钩子（留住美好）触发情感共鸣，thumb_stop和emotional_resonance均强。方案A信息过于分散，种草效率低。",
+  "campaigns": [
+    {
+      "id": "s004_a",
+      "name": "moody彩片多色系全介绍",
+      "product_line": "colored_lenses",
+      "target_audience": "已了解彩片的用户",
+      "core_message": "12个色系任你选，总有一款适合你",
+      "channels": ["小红书", "抖音"],
+      "creative_direction": "产品棚拍，12色平铺展示，每个颜色配一张人像"
+    },
+    {
+      "id": "s004_b",
+      "name": "毕业季种草 — 留住最美的眼神",
+      "product_line": "colored_lenses",
+      "target_audience": "即将毕业的学生，18-23岁",
+      "core_message": "毕业典礼戴上moody，留住这个眼神最美的瞬间",
+      "channels": ["小红书", "抖音"],
+      "creative_direction": "毕业典礼现场拍摄风格，情感化旁白，学士服+彩片的强反差，结尾送给所有毕业生的文案"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "brand_002",
+  "brief_type": "brand",
+  "expected_winner_id": "b002_a",
+  "label_confidence": "high",
+  "rationale": "方案A以品牌价值观「清澈」为核心构建情感叙事，信任感和情感共鸣均强。方案B虽然清晰度高但缺乏情感深度，在品牌传播权重下处于劣势。",
+  "campaigns": [
+    {
+      "id": "b002_a",
+      "name": "清澈是一种态度",
+      "product_line": "moodyplus",
+      "target_audience": "18-28岁大学生及新职场人",
+      "core_message": "看世界的方式决定你是谁，moodyPlus陪伴每一个清醒的眼神",
+      "channels": ["B站", "小红书"],
+      "creative_direction": "mini纪录片风格，跟拍三位年轻人的一天，眼神特写贯穿全片",
+      "kv_description": "三联屏设计：清晨、午后、夜晚三个时间段的眼神对比"
+    },
+    {
+      "id": "b002_b",
+      "name": "moodyPlus透明片产品功能介绍",
+      "product_line": "moodyplus",
+      "target_audience": "初次了解moody品牌的用户",
+      "core_message": "含水量58%，佩戴12小时不干涩，通过ISO认证",
+      "channels": ["天猫店铺详情页", "京东图文"],
+      "creative_direction": "产品参数图表 + 实验室检测截图",
+      "kv_description": "白底产品图 + 参数列表"
+    }
+  ]
+}

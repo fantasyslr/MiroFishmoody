@@ -1,0 +1,27 @@
+{
+  "id": "brand_003",
+  "brief_type": "brand",
+  "expected_winner_id": "b003_b",
+  "label_confidence": "medium",
+  "rationale": "两个方案均有品牌传播潜力，但方案B通过明星合作建立的信任感和情感传播力略强于方案A的UGC路线，标注置信度设为medium因实际效果存在不确定性。",
+  "campaigns": [
+    {
+      "id": "b003_a",
+      "name": "真实用户眼神故事 — UGC合集",
+      "product_line": "colored_lenses",
+      "target_audience": "18-25岁彩妆爱好者",
+      "core_message": "真实的眼神才是最美的妆容，分享你的moody时刻",
+      "channels": ["小红书", "抖音话题挑战"],
+      "creative_direction": "征集UGC内容，品牌官方合辑剪辑发布，真实感强"
+    },
+    {
+      "id": "b003_b",
+      "name": "明星眼神大片 — 品牌代言人内容",
+      "product_line": "colored_lenses",
+      "target_audience": "追星族及时尚敏感人群",
+      "core_message": "她的眼神，因moody而不同",
+      "channels": ["微博", "小红书", "抖音"],
+      "creative_direction": "明星代言人大片，情绪化灯光与眼神特写，强品牌调性"
+    }
+  ]
+}

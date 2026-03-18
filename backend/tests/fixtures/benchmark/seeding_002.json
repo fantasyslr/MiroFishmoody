@@ -1,0 +1,28 @@
+{
+  "id": "seeding_002",
+  "brief_type": "seeding",
+  "expected_winner_id": "s002_a",
+  "label_confidence": "high",
+  "rationale": "方案A通过素人开箱+真实佩戴对比的种草内容建立信任感，真实性和情感共鸣均强。方案B虽然产品信息清晰但种草属性弱，在seeding场景下命中率低。",
+  "campaigns": [
+    {
+      "id": "s002_a",
+      "name": "开箱+30天佩戴测评种草",
+      "product_line": "colored_lenses",
+      "target_audience": "考虑入坑彩片的新用户，20-26岁",
+      "core_message": "戴了30天彩片之后，我终于理解为什么大家都在买moody",
+      "channels": ["小红书", "抖音"],
+      "creative_direction": "开箱仪式感拍摄 + 日常场景佩戴对比图 + 30天真实感受文字记录，结尾「我的推荐」",
+      "kv_description": "前后对比：素颜+moody彩片，同一光线下拍摄"
+    },
+    {
+      "id": "s002_b",
+      "name": "彩片产品参数科普",
+      "product_line": "colored_lenses",
+      "target_audience": "关注眼健康的理性消费者",
+      "core_message": "moody彩片通过国家三类医疗器械认证，安全参数全公开",
+      "channels": ["微信公众号", "知乎"],
+      "creative_direction": "图文科普形式，产品检测报告 + 专家背书"
+    }
+  ]
+}

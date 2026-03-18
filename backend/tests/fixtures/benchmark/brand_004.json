@@ -1,0 +1,27 @@
+{
+  "id": "brand_004",
+  "brief_type": "brand",
+  "expected_winner_id": "b004_a",
+  "label_confidence": "high",
+  "rationale": "方案A通过跨品类联名建立品牌高端感和情感关联，在情感共鸣和信任感维度均优于方案B的纯产品展示，符合品牌传播权重配置。",
+  "campaigns": [
+    {
+      "id": "b004_a",
+      "name": "moody × 独立设计师联名 — 美学宣言",
+      "product_line": "colored_lenses",
+      "target_audience": "22-32岁审美独特的时尚消费者",
+      "core_message": "好的设计让你看见世界的方式不同，moody彩片是你的美学声明",
+      "channels": ["小红书", "instagram风格抖音"],
+      "creative_direction": "艺术装置风格拍摄，设计师与产品共同出镜，强调美学态度"
+    },
+    {
+      "id": "b004_b",
+      "name": "彩片新品上市图文展示",
+      "product_line": "colored_lenses",
+      "target_audience": "对新品有需求的老用户",
+      "core_message": "新色系上市，5色可选，日抛更方便",
+      "channels": ["微信公众号", "天猫新品"],
+      "creative_direction": "产品平铺拍摄，色卡展示，上新氛围"
+    }
+  ]
+}

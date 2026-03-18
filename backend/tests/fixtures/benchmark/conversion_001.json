@@ -1,0 +1,28 @@
+{
+  "id": "conversion_001",
+  "brief_type": "conversion",
+  "expected_winner_id": "c001_a",
+  "label_confidence": "high",
+  "rationale": "方案A通过明确的首单优惠机制和零风险承诺直接推动转化，conversion_readiness维度显著优于方案B的纯品牌曝光，符合转化拉新权重配置中conversion_readiness占0.35的设定。",
+  "campaigns": [
+    {
+      "id": "c001_a",
+      "name": "首单立减30 + 7天无理由退换",
+      "product_line": "moodyplus",
+      "target_audience": "从未购买过moody的潜在新用户",
+      "core_message": "新用户专享：首单立减30元，7天无理由退换，零风险试用moodyPlus",
+      "channels": ["抖音信息流", "小红书开屏"],
+      "creative_direction": "利益前置：「首单-30」大字突出，下方真实用户「第一次戴就回购了」评价截图",
+      "promo_mechanic": "新用户首单立减30元，叠加平台优惠券最高减50元，7天无理由退换"
+    },
+    {
+      "id": "c001_b",
+      "name": "moodyPlus品牌故事短片",
+      "product_line": "moodyplus",
+      "target_audience": "泛兴趣用户",
+      "core_message": "moody，让每一个眼神都真实而有力量",
+      "channels": ["抖音品牌号"],
+      "creative_direction": "品牌故事短片，情感叙事，结尾品牌logo"
+    }
+  ]
+}
