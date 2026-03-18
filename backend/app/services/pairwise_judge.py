@@ -364,3 +364,83 @@ class PairwiseJudge:
             strength = {i: v / total * n for i, v in new_strength.items()}
 
         return strength
+
+
+class MultiJudgeEnsemble(PairwiseJudge):
+    """Position-alternating multi-judge ensemble.
+
+    Judges at even indices evaluate (A, B); odd indices evaluate (B, A) then flip.
+    All normalized votes collected in PairwiseResult.votes.
+    """
+
+    def __init__(self, llm_client: LLMClient = None, num_judges: int = None):
+        super().__init__(llm_client=llm_client)
+        # Default: repeat JUDGE_PERSPECTIVES twice (6 judges) for 3-normal + 3-swapped
+        self._num_judges = num_judges or (len(JUDGE_PERSPECTIVES) * 2)
+
+    def evaluate_pair(self, a: Campaign, b: Campaign) -> PairwiseResult:
+        """Alternate (A,B) and (B,A) across judge slots. All votes normalized to A/B labels."""
+        perspectives = (JUDGE_PERSPECTIVES * ((self._num_judges // len(JUDGE_PERSPECTIVES)) + 1))
+        perspectives = perspectives[:self._num_judges]
+
+        all_votes = []
+        for idx, judge in enumerate(perspectives):
+            if idx % 2 == 0:
+                # Normal order: A vs B
+                try:
+                    vote = self._safe_judge(a, b, judge)
+                    vote["position"] = "normal"
+                    all_votes.append(vote)
+                except Exception as e:
+                    logger.error(f"MultiJudge[{idx}] normal {a.id} vs {b.id}: {e}")
+            else:
+                # Swapped order: B vs A, then flip labels back to A/B
+                try:
+                    raw = self._safe_judge(b, a, judge)
+                    vote = self._flip_vote(raw)
+                    vote["position"] = "swapped"
+                    all_votes.append(vote)
+                except Exception as e:
+                    logger.error(f"MultiJudge[{idx}] swapped {b.id} vs {a.id}: {e}")
+
+        # Majority across all normalized votes
+        a_wins = sum(1 for v in all_votes if v["winner"] == "A")
+        b_wins = sum(1 for v in all_votes if v["winner"] == "B")
+
+        if a_wins > b_wins:
+            winner_id = a.id
+        elif b_wins > a_wins:
+            winner_id = b.id
+        else:
+            winner_id = None
+
+        # Dimension consensus across all votes
+        merged_dims = {}
+        for dim in DIMENSIONS:
+            dim_votes = [v["dimensions"].get(dim, "tie") for v in all_votes]
+            a_count = dim_votes.count("A")
+            b_count = dim_votes.count("B")
+            merged_dims[dim] = (
+                a.id if a_count > b_count else (b.id if b_count > a_count else "tie")
+            )
+
+        # position_swap_consistent: check if normal sub-majority matches swapped sub-majority
+        normal_votes = [v for v in all_votes if v.get("position") == "normal"]
+        swap_votes_list = [v for v in all_votes if v.get("position") == "swapped"]
+        normal_a = sum(1 for v in normal_votes if v["winner"] == "A")
+        normal_b = sum(1 for v in normal_votes if v["winner"] == "B")
+        swap_a = sum(1 for v in swap_votes_list if v["winner"] == "A")
+        swap_b = sum(1 for v in swap_votes_list if v["winner"] == "B")
+        normal_majority = "A" if normal_a > normal_b else ("B" if normal_b > normal_a else "tie")
+        swap_majority = "A" if swap_a > swap_b else ("B" if swap_b > swap_a else "tie")
+        position_swap_consistent = (normal_majority == swap_majority)
+
+        return PairwiseResult(
+            campaign_a_id=a.id,
+            campaign_b_id=b.id,
+            winner_id=winner_id,
+            votes=all_votes,
+            dimensions=merged_dims,
+            position_swap_consistent=position_swap_consistent,
+            swap_votes=swap_votes_list,
+        )

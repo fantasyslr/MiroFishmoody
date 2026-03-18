@@ -8,7 +8,7 @@ from ..utils.logger import get_logger
 from ..models.task import TaskManager, TaskStatus
 from ..services.audience_panel import AudiencePanel
 from ..config import Config
-from ..services.pairwise_judge import PairwiseJudge
+from ..services.pairwise_judge import PairwiseJudge, MultiJudgeEnsemble
 from ..services.campaign_scorer import CampaignScorer
 from ..services.summary_generator import SummaryGenerator
 from ..services.judge_calibration import JudgeCalibration
@@ -97,7 +97,7 @@ class EvaluationOrchestrator:
                 judge = MarketJudge(llm_client=llm)
                 logger.info("使用 Market-Making Judge 模式")
             else:
-                judge = PairwiseJudge(llm_client=llm)
+                judge = MultiJudgeEnsemble(llm_client=llm)
             pairwise_results, bt_scores = judge.evaluate_all(campaigns)
             if not pairwise_results:
                 raise RuntimeError(
