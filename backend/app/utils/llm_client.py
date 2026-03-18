@@ -115,8 +115,9 @@ class LLMClient:
         response_format: dict | None = None,
     ) -> str:
         """支持图文混合的聊天请求（OpenAI Vision 格式）"""
+        vision_model = getattr(Config, 'LLM_VISION_MODEL', None) or self.model
         kwargs = {
-            "model": self.model,
+            "model": vision_model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,

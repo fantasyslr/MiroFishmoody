@@ -22,8 +22,9 @@ class Config:
 
     # LLM配置（OpenAI格式）
     LLM_API_KEY = os.environ.get('LLM_API_KEY')
-    LLM_BASE_URL = os.environ.get('LLM_BASE_URL', 'https://api.openai.com/v1')
-    LLM_MODEL_NAME = os.environ.get('LLM_MODEL_NAME', 'gpt-4o-mini')
+    LLM_BASE_URL = os.environ.get('LLM_BASE_URL', 'https://coding.dashscope.aliyuncs.com/v1')
+    LLM_MODEL_NAME = os.environ.get('LLM_MODEL_NAME', 'qwen3-coder-plus')
+    LLM_VISION_MODEL = os.environ.get('LLM_VISION_MODEL', 'qwen3.5-plus')
 
     # 评审引擎配置
     JUDGE_TEMPERATURE = float(os.environ.get('JUDGE_TEMPERATURE', '0.3'))
