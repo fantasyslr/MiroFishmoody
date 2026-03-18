@@ -111,11 +111,11 @@ Plans:
   1. `_evaluation_store` 的所有 lock 作用域仅覆盖 dict 读写操作，LLM 调用和文件 I/O 不在 lock 内（代码审查可验证）
   2. BrandStateEngine 的 characterization tests 覆盖现有全部公开方法的输入输出，`pytest` 绿灯
   3. BacktestEngine 已从 BrandStateEngine 提取为独立文件，原 BrandStateEngine 引用该类，现有测试不变
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 17-01: TD-01 threading.Lock 范围收窄 + TD-02 BrandStateEngine characterization tests
-- [ ] 17-02: TD-02 BacktestEngine 提取（strangler fig 第一刀）
+- [ ] 17-01-PLAN.md — TD-01 threading.Lock 范围收窄（注释审计 + EvaluationOrchestrator 分步分离）
+- [ ] 17-02-PLAN.md — TD-02 BrandStateEngine characterization tests + BacktestEngine 提取（strangler fig）
 
 ---
 
