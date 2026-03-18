@@ -7,7 +7,7 @@ Campaign Scoring Engine — 综合评分
 """
 
 import os
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 from collections import defaultdict
 
 from ..utils.logger import get_logger
@@ -20,6 +20,7 @@ from ..models.scoreboard import (
 )
 from .probability_aggregator import ProbabilityAggregator
 from .submarket_evaluator import DimensionEvaluator
+from ..models.agent_score import AgentScore
 
 logger = get_logger('ranker.campaign_scorer')
 
@@ -32,6 +33,9 @@ KILL_LOSS_RATE = float(os.environ.get('KILL_LOSS_RATE', '0.8'))
 # Scoring 参数
 CONFIDENCE_THRESHOLD = float(os.environ.get('CONFIDENCE_THRESHOLD', '0.10'))
 SHIP_MIN_SCORE = float(os.environ.get('SHIP_MIN_SCORE', '0.35'))
+
+# Agent score 混入权重（0-1，越大表示 agent 贡献占比越高）
+AGENT_SCORE_WEIGHT = float(os.environ.get('AGENT_SCORE_WEIGHT', '0.1'))
 
 
 class CampaignScorer:
@@ -54,6 +58,7 @@ class CampaignScorer:
         panel_scores: List[PanelScore],
         pairwise_results: List[PairwiseResult],
         bt_scores: Dict[str, float],
+        agent_scores: Optional[List[AgentScore]] = None,
     ) -> Tuple[List[CampaignRanking], ScoreBoard]:
         """
         综合评分，输出 (rankings, scoreboard)。
@@ -89,6 +94,23 @@ class CampaignScorer:
         scores = self.prob_aggregator.aggregate(
             campaigns, panel_scores, pairwise_results, bt_scores,
         )
+
+        # --- Agent score contribution (optional) ---
+        if agent_scores:
+            agent_by_campaign: Dict[str, List[AgentScore]] = defaultdict(list)
+            for a in agent_scores:
+                agent_by_campaign[a.campaign_id].append(a)
+            for cid, a_list in agent_by_campaign.items():
+                if cid not in scores:
+                    continue
+                total_weight = sum(a.weight for a in a_list)
+                if total_weight <= 0:
+                    continue
+                weighted_contrib = sum(a.score * a.weight for a in a_list) / total_weight
+                scores[cid] = (
+                    scores[cid] * (1.0 - AGENT_SCORE_WEIGHT)
+                    + weighted_contrib * AGENT_SCORE_WEIGHT
+                )
 
         # --- Dimension scores ---
         dimension_results = self.dimension_eval.evaluate(campaigns, panel_scores)
