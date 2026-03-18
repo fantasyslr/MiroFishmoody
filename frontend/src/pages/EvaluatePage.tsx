@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getEvaluateState, getEvaluateStatus, getEvaluateResult, saveEvaluateState } from '../lib/api'
 import { CheckCircle2, Circle, Loader2, AlertCircle } from 'lucide-react'
+import { StepIndicator } from '../components/StepIndicator'
+import { LogBuffer } from '../components/LogBuffer'
 
 const EVAL_STAGES = [
   { key: 'panel', label: 'Audience Panel 评审', range: [0, 40] as const },
@@ -17,12 +19,21 @@ function getCurrentStageIndex(progress: number): number {
   return 0
 }
 
+const STEP_LABELS = ['方案解析', '评审分析', '结果汇总']
+// progress 0-39 = step 0, 40-79 = step 1, 80-100 = step 2
+function progressToStep(p: number): number {
+  if (p < 40) return 0
+  if (p < 80) return 1
+  return 2
+}
+
 export function EvaluatePage() {
   const navigate = useNavigate()
   const [progress, setProgress] = useState(0)
   const [message, setMessage] = useState('')
   const [, setStatus] = useState<'pending' | 'processing' | 'completed' | 'failed'>('pending')
   const [error, setError] = useState<string | null>(null)
+  const [logs, setLogs] = useState<string[]>([])
   const startedRef = useRef(false)
 
   useEffect(() => {
@@ -45,6 +56,9 @@ export function EvaluatePage() {
         setProgress(res.progress)
         setMessage(res.message)
         setStatus(res.status)
+        if (res.message) {
+          setLogs(prev => [...prev, res.message])
+        }
 
         if (res.status === 'completed') {
           clearInterval(interval)
@@ -100,6 +114,8 @@ export function EvaluatePage() {
           </p>
         </div>
 
+        <StepIndicator steps={STEP_LABELS} currentStep={progressToStep(progress)} />
+
         <div className="space-y-4">
           {EVAL_STAGES.map((stage, i) => {
             const isCompleted = i < currentStageIndex
@@ -145,6 +161,12 @@ export function EvaluatePage() {
           <p className="text-center text-xs text-primary-foreground/40 font-mono">
             {message}
           </p>
+        )}
+
+        {logs.length > 0 && (
+          <div className="mt-4 h-24">
+            <LogBuffer messages={logs} className="h-24" />
+          </div>
         )}
 
         <div className="pt-8 border-t border-primary-foreground/10 text-center">
