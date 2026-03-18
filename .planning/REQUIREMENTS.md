@@ -35,7 +35,7 @@
 ### Tech Debt
 
 - [x] **TD-01**: threading.Lock 范围收窄 — 只在 dict ops 下加锁，不在 I/O 或 LLM 调用内
-- [ ] **TD-02**: BrandStateEngine 渐进分解 — 先写表征测试（characterization tests），再逐步拆分 God class
+- [x] **TD-02**: BrandStateEngine 渐进分解 — 先写表征测试（characterization tests），再逐步拆分 God class
 
 ## Future Requirements (v2.x)
 
@@ -77,7 +77,7 @@
 | MA-06 | Phase 16 | Complete |
 | MA-07 | Phase 16 | Complete |
 | TD-01 | Phase 17 | Complete |
-| TD-02 | Phase 17 | Pending |
+| TD-02 | Phase 17 | Complete |
 
 **Coverage:**
 - v2.0 requirements: 20 total

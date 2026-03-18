@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: 大改造
 status: planning
-stopped_at: Completed 17-01-PLAN.md
-last_updated: "2026-03-18T05:25:43.877Z"
+stopped_at: Completed 17-02-PLAN.md
+last_updated: "2026-03-18T05:26:02.687Z"
 last_activity: 2026-03-18 — Roadmap created, v2.0 phases 13-17 defined
 progress:
   total_phases: 5
@@ -69,6 +69,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 16-multi-agent-evaluation-enhancement P01 | 7min | 2 tasks | 5 files |
 | Phase 16-multi-agent-evaluation-enhancement P03 | 2min | 2 tasks | 3 files |
 | Phase 17-tech-debt-paydown P01 | 4min | 2 tasks | 2 files |
+| Phase 17-tech-debt-paydown P02 | 2min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,7 @@ Recent decisions affecting current work:
 - [Phase 16-multi-agent-evaluation-enhancement]: EvaluationOrchestrator default judge switched to MultiJudgeEnsemble (USE_MARKET_JUDGE flag path unchanged)
 - [Phase 16-multi-agent-evaluation-enhancement]: DEVIL_ADVOCATE_PERSPECTIVE separate from JUDGE_PERSPECTIVES; dissent flag in judge_pair() return; isControversial() pure frontend combining suspect+dissent; MultiJudgeEnsemble._perspectives includes 4 judge types
 - [Phase 17-tech-debt-paydown]: TD-01 annotation pattern: comment-only enforcement with # TD-01 prefix, no logic changes required; step 1/step 2 separation in EvaluationOrchestrator makes lock/IO boundary explicit
+- [Phase 17-tech-debt-paydown]: BacktestEngine receives engine instance via __init__ to reuse compute_intervention_impact and _inject_competitor_delta without copying them; lazy import inside method body prevents circular import
 
 ### Pending Todos
 
@@ -112,6 +114,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T05:25:43.875Z
-Stopped at: Completed 17-01-PLAN.md
+Last session: 2026-03-18T05:25:57.976Z
+Stopped at: Completed 17-02-PLAN.md
 Resume file: None
