@@ -185,5 +185,5 @@ Plans:
 | 16. Multi-Agent Enhancement | v2.0 | 3/3 | Complete | 2026-03-18 |
 | 17. Tech Debt | v2.0 | 2/2 | Complete | 2026-03-18 |
 | 18. Deployment Fix | 2/2 | Complete    | 2026-03-18 | - |
-| 19. Brief-Type Weight Profiles | v2.1 | 0/3 | Not started | - |
+| 19. Brief-Type Weight Profiles | 1/3 | In Progress|  | - |
 | 20. Benchmark Dataset + Runner | v2.1 | 0/2 | Not started | - |

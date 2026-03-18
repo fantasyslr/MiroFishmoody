@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: 部署修复 + 评审偏差修正
 status: planning
-stopped_at: Completed 18-02-PLAN.md — Railway deployment verified
-last_updated: "2026-03-18T07:04:29.676Z"
+stopped_at: Completed 19-01-PLAN.md
+last_updated: "2026-03-18T07:20:24.948Z"
 last_activity: 2026-03-18 — v2.1 roadmap created (Phases 18-20), 12/12 requirements mapped
 progress:
   total_phases: 8
   completed_phases: 6
-  total_plans: 15
-  completed_plans: 15
+  total_plans: 18
+  completed_plans: 16
   percent: 0
 ---
 
@@ -62,6 +62,7 @@ Recent decisions affecting current work:
 - [Phase 18-02]: Dockerfile CMD shell form: exec form 不展开 shell 变量，必须用 shell form 才能读取 Railway ${PORT}
 - [Phase 18-02]: railway.json 不支持 volumes 字段，volume mount 只能在 Railway Dashboard 手动配置
 - [Phase 18]: Phase 18-02 checkpoint:human-action approved — Railway deployment live: / returns 200, /api/health returns uploads_writable: ok
+- [Phase 19-01]: BriefType 放在 ProductLine 之后，与已有 Enum 模式一致；emotional_resonance 作为第 6 维度占位，权重 0 不影响已有评分
 
 ### Pending Todos
 
@@ -74,6 +75,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T07:02:01.943Z
-Stopped at: Completed 18-02-PLAN.md — Railway deployment verified
+Last session: 2026-03-18T07:20:24.946Z
+Stopped at: Completed 19-01-PLAN.md
 Resume file: None
