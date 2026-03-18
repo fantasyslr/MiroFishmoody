@@ -149,12 +149,16 @@ class EvaluationOrchestrator:
                 visual_diagnostics=visual_diagnostics if visual_diagnostics else None,
             )
 
+            # TD-01: step 1 — dict write under lock
             result_dict = result.to_dict()
             if self.store_lock:
                 with self.store_lock:
+                    # TD-01: dict-only — no I/O or LLM inside lock
                     self.evaluation_store[campaign_set.set_id] = result_dict
             else:
                 self.evaluation_store[campaign_set.set_id] = result_dict
+
+            # TD-01: step 2 — file I/O outside lock
             self.save_result_fn(campaign_set.set_id, result_dict)
 
             top = scoreboard.campaigns[0] if scoreboard.campaigns else None
