@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: 大改造
 status: planning
-stopped_at: Completed 13-02-PLAN.md
-last_updated: "2026-03-18T04:03:21.632Z"
+stopped_at: Completed 14-02-PLAN.md
+last_updated: "2026-03-18T04:19:32.382Z"
 last_activity: 2026-03-18 — Roadmap created, v2.0 phases 13-17 defined
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 6
+  completed_plans: 3
   percent: 0
 ---
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 13 P01 | 4min | 2 tasks | 3 files |
 | Phase 13-critical-bug-fixes-api-contract-lock P02 | 3min | 2 tasks | 3 files |
+| Phase 14-frontend-rewrite-core-pages P02 | 5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,7 @@ Recent decisions affecting current work:
 - [Phase 13]: 新增 _parse_evaluate_campaigns() 而非修改 _parse_campaigns()，保持 /race 路径不受影响
 - [Phase 13-02]: Both mode evaluate uses try/finally so navigate fires even if evaluate POST fails — Race path remains available
 - [Phase 13-02]: contracts.ts frozen at 2026-03-18 — page components import API types from contracts.ts not api.ts directly; lib/api.ts must NOT be modified
+- [Phase 14-02]: Cross-path conflict badges use try/catch for defensive cross-state reads; ResultPage badge gated on evalStatus=completed to prevent premature display
 
 ### Pending Todos
 
@@ -88,6 +90,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T04:00:24.398Z
-Stopped at: Completed 13-02-PLAN.md
+Last session: 2026-03-18T04:19:32.380Z
+Stopped at: Completed 14-02-PLAN.md
 Resume file: None

@@ -14,11 +14,11 @@
 ### Frontend Rewrite
 
 - [ ] **FE-01**: 表单状态持久化 — sessionStorage save/restore，导航不丢数据
-- [ ] **FE-02**: Winner-first 结果页布局 — EvaluateResultPage 顶部直接展示冠军方案，无需切换 tab
+- [x] **FE-02**: Winner-first 结果页布局 — EvaluateResultPage 顶部直接展示冠军方案，无需切换 tab
 - [ ] **FE-03**: 品类选择器显示人格预览 — 选择品类后侧边显示人格名称和数量
 - [ ] **FE-04**: 导出可靠性修复 — 测试并修复 html2canvas PDF 在 5 方案满载下的导出
 - [ ] **FE-05**: SplitPanel + LogBuffer 新 UI 组件 — 参考 MiroFish 双面板分割和日志缓冲模式
-- [ ] **FE-06**: 跨路径一致性 badge — Race winner vs Evaluate winner 矛盾时显示警示标记
+- [x] **FE-06**: 跨路径一致性 badge — Race winner vs Evaluate winner 矛盾时显示警示标记
 - [ ] **FE-07**: Step indicator 进度指示器 — 参考 MiroFish 步骤指示器模式，展示推演流程进度
 - [x] **FE-08**: API 契约锁定 — `contracts.ts` 冻结 API 类型定义，防止重写过程中 contract drift
 
@@ -63,11 +63,11 @@
 | BUG-07 | Phase 13 | Complete |
 | FE-08 | Phase 13 | Complete |
 | FE-01 | Phase 14 | Pending |
-| FE-02 | Phase 14 | Pending |
+| FE-02 | Phase 14 | Complete |
 | FE-03 | Phase 14 | Pending |
 | FE-04 | Phase 14 | Pending |
 | FE-05 | Phase 14 | Pending |
-| FE-06 | Phase 14 | Pending |
+| FE-06 | Phase 14 | Complete |
 | FE-07 | Phase 14 | Pending |
 | MA-01 | Phase 15 | Pending |
 | MA-02 | Phase 15 | Pending |
