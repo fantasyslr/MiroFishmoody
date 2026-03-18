@@ -5,11 +5,11 @@ milestone_name: 大改造
 status: active
 stopped_at: null
 last_updated: "2026-03-18"
-last_activity: 2026-03-18 — Milestone v2.0 started
+last_activity: 2026-03-18 — Roadmap created for v2.0 (phases 13-17, 20 requirements mapped)
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
-  total_plans: 0
+  total_plans: 13
   completed_plans: 0
   percent: 0
 ---
@@ -21,50 +21,42 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** 让每一次 campaign 在上线前都能得到数据化的推演对比，用 AI 推演替代"拍脑袋"决策
-**Current focus:** Defining v2.0 requirements
+**Current focus:** Phase 13 — Critical Bug Fixes + API Contract Lock
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-18 — Milestone v2.0 started
+Phase: 13 of 17 (Critical Bug Fixes + API Contract Lock)
+Plan: — (not yet planned)
+Status: Ready to plan
+Last activity: 2026-03-18 — Roadmap created, v2.0 phases 13-17 defined
 
 Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
-**Velocity (v1.0):**
-- Total plans completed: 12
-- Average duration: 2.7 min
-- Total execution time: ~32 min
+**Velocity (v1.0 + v1.1 history):**
+- Total plans completed: 20 (v1.0: 12, v1.1: 8)
+- Average duration: ~2.7 min
+- Total execution time: ~54 min
 
-**By Phase (v1.0):**
+**By Phase (v1.1):**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| Phase 01 | 2 | 5min | 2.5min |
-| Phase 02 | 1 | 4min | 4min |
-| Phase 03 | 2 | 6min | 3min |
-| Phase 04 | 1 | 2min | 2min |
-| Phase 05 | 1 | 3min | 3min |
-| Phase 06 | 2 | 5min | 2.5min |
-| Phase 07 | 1 | 3min | 3min |
-| Phase 08 | 2 | 4min | 2min |
+| Phase 09 P01 | 1 | 1min | 1min |
+| Phase 09 P02 | 1 | 1min | 1min |
+| Phase 10 P01 | 1 | 4min | 4min |
+| Phase 10 P02 | 1 | 2min | 2min |
+| Phase 11 P01 | 1 | 3min | 3min |
+| Phase 11 P02 | 1 | 3min | 3min |
+| Phase 12 P01 | 1 | 5min | 5min |
+| Phase 12 P02 | 1 | 2min | 2min |
 
 **Recent Trend:**
-- Last 5 plans: 3min, 3min, 2min, 2min, 2min
+- Last 5 plans: 3min, 3min, 5min, 2min, 2min
 - Trend: Stable
 
 *Updated after each plan completion*
-| Phase 09 P01 | 1min | 1 tasks | 1 files |
-| Phase 09 P02 | 1min | 2 tasks | 4 files |
-| Phase 10 P01 | 4min | 2 tasks | 5 files |
-| Phase 10 P02 | 2min | 2 tasks | 3 files |
-| Phase 11 P01 | 3min | 2 tasks | 3 files |
-| Phase 11 P02 | 3min | 2 tasks | 1 files |
-| Phase 12 P01 | 5min | 2 tasks | 8 files |
-| Phase 12 P02 | 2min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -73,19 +65,11 @@ Progress: [░░░░░░░░░░] 0%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- [Phase 08]: RadarChart domain [0,10]; EvaluateResultPage diagnosticsMap wired empty for future backend integration
-- [Phase 08]: Radar chart on ResultPage uses visual profile dimensions
-- [Phase 07]: Both mode navigates to /running immediately, fires evaluate in background
-- [Phase 09]: Both-mode polling 3s interval matches EvaluatePage pattern
-- [Phase 09]: Fail-safe ImageAnalyzer in evaluate pipeline; errors don't break pipeline
-- [Phase 10]: Hash plaintext passwords at load time in _load_users, not lazily at first login
-- [Phase 10]: Lock scopes minimal — only dict ops under lock, no I/O or LLM calls
-- [Phase 10]: SQLite WAL + busy_timeout=5000ms for concurrent access
-- [Phase 11]: Client-side PDF/PNG export via html2canvas + jsPDF, 2x retina scale, exportRef excludes header
-- [Phase 11]: Same export toolbar pattern on EvaluateResultPage as ResultPage for consistency
-- [Phase 12]: Version computed by walking parent chain at evaluate time, stored in result JSON
-- [Phase 12]: Closure-wrapped save_result_fn to inject parent_set_id/version without modifying orchestrator
 - [Phase 12]: Trends endpoint scans all result JSON files on each request (no caching, acceptable for MVP scale)
+- [Phase 11]: Client-side PDF/PNG export via html2canvas + jsPDF, 2x retina scale
+- [Phase 10]: Lock scopes minimal — only dict ops under lock, no I/O or LLM calls
+- [v2.0 Roadmap]: lib/api.ts MUST NOT change during frontend rewrite — contracts.ts is the safety layer
+- [v2.0 Roadmap]: Global LLMSemaphore at LLMClient level (not per-service) — Phase 15 pre-condition for all new agent types
 
 ### Pending Todos
 
@@ -93,11 +77,12 @@ None yet.
 
 ### Blockers/Concerns
 
-- ~~BUG-04 requires Evaluate pipeline to produce image diagnostics~~ RESOLVED in 09-02
-- ~~EXP-01/EXP-02 PDF/image export may need headless browser or server-side rendering~~ RESOLVED in 11-01: client-side html2canvas + jsPDF
+- BUG-05 (silent image dropout): All current Evaluate results are partially blind — AudiencePanel/PairwiseJudge calling os.path.exists() on API URLs. Must fix in Phase 13 before any backend work.
+- Phase 15 research flag: Bailian account tier RPM/TPM limits should be verified before setting MAX_LLM_CONCURRENT default.
+- Phase 16 research flag: CrossAgentValidator debate-round cost — validate variance threshold against real campaign data before enabling in production.
 
 ## Session Continuity
 
-Last session: 2026-03-17T09:21:25.496Z
-Stopped at: Completed 12-02-PLAN.md
+Last session: 2026-03-18
+Stopped at: Roadmap v2.0 created (phases 13-17)
 Resume file: None

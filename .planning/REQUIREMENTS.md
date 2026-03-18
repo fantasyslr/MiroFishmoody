@@ -58,32 +58,32 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-05 | — | Pending |
-| BUG-06 | — | Pending |
-| BUG-07 | — | Pending |
-| FE-01 | — | Pending |
-| FE-02 | — | Pending |
-| FE-03 | — | Pending |
-| FE-04 | — | Pending |
-| FE-05 | — | Pending |
-| FE-06 | — | Pending |
-| FE-07 | — | Pending |
-| FE-08 | — | Pending |
-| MA-01 | — | Pending |
-| MA-02 | — | Pending |
-| MA-03 | — | Pending |
-| MA-04 | — | Pending |
-| MA-05 | — | Pending |
-| MA-06 | — | Pending |
-| MA-07 | — | Pending |
-| TD-01 | — | Pending |
-| TD-02 | — | Pending |
+| BUG-05 | Phase 13 | Pending |
+| BUG-06 | Phase 13 | Pending |
+| BUG-07 | Phase 13 | Pending |
+| FE-08 | Phase 13 | Pending |
+| FE-01 | Phase 14 | Pending |
+| FE-02 | Phase 14 | Pending |
+| FE-03 | Phase 14 | Pending |
+| FE-04 | Phase 14 | Pending |
+| FE-05 | Phase 14 | Pending |
+| FE-06 | Phase 14 | Pending |
+| FE-07 | Phase 14 | Pending |
+| MA-01 | Phase 15 | Pending |
+| MA-02 | Phase 15 | Pending |
+| MA-03 | Phase 16 | Pending |
+| MA-04 | Phase 16 | Pending |
+| MA-05 | Phase 16 | Pending |
+| MA-06 | Phase 16 | Pending |
+| MA-07 | Phase 16 | Pending |
+| TD-01 | Phase 17 | Pending |
+| TD-02 | Phase 17 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 20 total
-- Mapped to phases: 0
-- Unmapped: 20 ⚠️
+- Mapped to phases: 20
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-18*
-*Last updated: 2026-03-18 after initial definition*
+*Last updated: 2026-03-18 — traceability mapped after roadmap creation*
