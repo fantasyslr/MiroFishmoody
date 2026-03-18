@@ -17,8 +17,8 @@
 - [x] **EVAL-01**: Campaign 模型新增 `brief_type` 字段 — BriefType enum（brand/seeding/conversion），API 层接收并传导
 - [ ] **EVAL-02**: 前端表单新增 brief_type 选择器 — 品牌传播 / 达人种草 / 转化拉新，必选字段
 - [x] **EVAL-03**: WeightProfile 权重配置 — JSON 配置文件，3 种 brief 类型各有 6 维权重，env var 可覆盖
-- [ ] **EVAL-04**: CampaignScorer 按 brief_type 加载权重 — 评分聚合时使用对应 brief 的维度权重而非平权
-- [ ] **EVAL-05**: EvaluationResult 记录 weight_profile_version — 结果可追溯用了哪套权重
+- [x] **EVAL-04**: CampaignScorer 按 brief_type 加载权重 — 评分聚合时使用对应 brief 的维度权重而非平权
+- [x] **EVAL-05**: EvaluationResult 记录 weight_profile_version — 结果可追溯用了哪套权重
 
 ### Benchmark & Regression
 
@@ -51,8 +51,8 @@
 | EVAL-01 | Phase 19 | Complete |
 | EVAL-02 | Phase 19 | Pending |
 | EVAL-03 | Phase 19 | Complete |
-| EVAL-04 | Phase 19 | Pending |
-| EVAL-05 | Phase 19 | Pending |
+| EVAL-04 | Phase 19 | Complete |
+| EVAL-05 | Phase 19 | Complete |
 | BENCH-01 | Phase 20 | Pending |
 | BENCH-02 | Phase 20 | Pending |
 | BENCH-03 | Phase 20 | Pending |

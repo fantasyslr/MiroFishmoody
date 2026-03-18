@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: 部署修复 + 评审偏差修正
 status: planning
-stopped_at: Completed 19-01-PLAN.md
-last_updated: "2026-03-18T07:20:24.948Z"
+stopped_at: Completed 19-02-PLAN.md
+last_updated: "2026-03-18T07:25:12.169Z"
 last_activity: 2026-03-18 — v2.1 roadmap created (Phases 18-20), 12/12 requirements mapped
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 18
-  completed_plans: 16
+  completed_plans: 17
   percent: 0
 ---
 
@@ -63,6 +63,8 @@ Recent decisions affecting current work:
 - [Phase 18-02]: railway.json 不支持 volumes 字段，volume mount 只能在 Railway Dashboard 手动配置
 - [Phase 18]: Phase 18-02 checkpoint:human-action approved — Railway deployment live: / returns 200, /api/health returns uploads_writable: ok
 - [Phase 19-01]: BriefType 放在 ProductLine 之后，与已有 Enum 模式一致；emotional_resonance 作为第 6 维度占位，权重 0 不影响已有评分
+- [Phase 19-02]: brief_type=None → dim_weights={} → softmax 概率不缩放，100% backward compatible
+- [Phase 19-02]: Softmax 后权重缩放（不归一化），各维度独立，weight 仅影响跨维度聚合时的贡献比例
 
 ### Pending Todos
 
@@ -75,6 +77,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T07:20:24.946Z
-Stopped at: Completed 19-01-PLAN.md
+Last session: 2026-03-18T07:25:07.110Z
+Stopped at: Completed 19-02-PLAN.md
 Resume file: None
