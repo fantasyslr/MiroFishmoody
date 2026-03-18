@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: 大改造
-status: active
-stopped_at: null
-last_updated: "2026-03-18"
-last_activity: 2026-03-18 — Roadmap created for v2.0 (phases 13-17, 20 requirements mapped)
+status: planning
+stopped_at: "Completed 13-01-PLAN.md: BUG-05 fix for evaluate endpoint payload mismatch"
+last_updated: "2026-03-18T03:59:44.682Z"
+last_activity: 2026-03-18 — Roadmap created, v2.0 phases 13-17 defined
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 13
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: Stable
 
 *Updated after each plan completion*
+| Phase 13 P01 | 4min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,7 @@ Recent decisions affecting current work:
 - [Phase 10]: Lock scopes minimal — only dict ops under lock, no I/O or LLM calls
 - [v2.0 Roadmap]: lib/api.ts MUST NOT change during frontend rewrite — contracts.ts is the safety layer
 - [v2.0 Roadmap]: Global LLMSemaphore at LLMClient level (not per-service) — Phase 15 pre-condition for all new agent types
+- [Phase 13]: 新增 _parse_evaluate_campaigns() 而非修改 _parse_campaigns()，保持 /race 路径不受影响
 
 ### Pending Todos
 
@@ -83,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18
-Stopped at: Roadmap v2.0 created (phases 13-17)
+Last session: 2026-03-18T03:59:44.680Z
+Stopped at: Completed 13-01-PLAN.md: BUG-05 fix for evaluate endpoint payload mismatch
 Resume file: None

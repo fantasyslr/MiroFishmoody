@@ -7,7 +7,7 @@
 
 ### Critical Bug Fixes
 
-- [ ] **BUG-05**: 图片路径解析修复 — AudiencePanel/PairwiseJudge 对 API URL 调用 `os.path.exists()` 恒返回 False，视觉评估实为盲评
+- [x] **BUG-05**: 图片路径解析修复 — AudiencePanel/PairwiseJudge 对 API URL 调用 `os.path.exists()` 恒返回 False，视觉评估实为盲评
 - [ ] **BUG-06**: Both 模式 race condition 修复 — `Promise.all` 确保 Race + Evaluate POST 均完成后再导航，evaluateTaskId 必须在导航前存储
 - [ ] **BUG-07**: RunningPage 假动画替换为真实后端轮询 — 当前用假定时步骤动画，无真实进度信号
 
@@ -58,7 +58,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-05 | Phase 13 | Pending |
+| BUG-05 | Phase 13 | Complete |
 | BUG-06 | Phase 13 | Pending |
 | BUG-07 | Phase 13 | Pending |
 | FE-08 | Phase 13 | Pending |
