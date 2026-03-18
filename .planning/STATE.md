@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: 部署修复 + 评审偏差修正
 status: planning
-stopped_at: Completed 19-02-PLAN.md
-last_updated: "2026-03-18T07:25:12.169Z"
+stopped_at: Completed 19-03-PLAN.md
+last_updated: "2026-03-18T07:33:25.463Z"
 last_activity: 2026-03-18 — v2.1 roadmap created (Phases 18-20), 12/12 requirements mapped
 progress:
   total_phases: 8
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 18
-  completed_plans: 17
+  completed_plans: 18
   percent: 0
 ---
 
@@ -65,6 +65,8 @@ Recent decisions affecting current work:
 - [Phase 19-01]: BriefType 放在 ProductLine 之后，与已有 Enum 模式一致；emotional_resonance 作为第 6 维度占位，权重 0 不影响已有评分
 - [Phase 19-02]: brief_type=None → dim_weights={} → softmax 概率不缩放，100% backward compatible
 - [Phase 19-02]: Softmax 后权重缩放（不归一化），各维度独立，weight 仅影响跨维度聚合时的贡献比例
+- [Phase 19-03]: Thread args tuple extended to (task_id, campaign_set, category, brief_type_enum) — None value ensures backward compatibility without branching
+- [Phase 19-03]: API double validation: BRIEF_TYPE_VALUES frozenset check before BriefType() constructor, returns 400 with Chinese error message
 
 ### Pending Todos
 
@@ -77,6 +79,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T07:25:07.110Z
-Stopped at: Completed 19-02-PLAN.md
+Last session: 2026-03-18T07:33:16.996Z
+Stopped at: Completed 19-03-PLAN.md
 Resume file: None

@@ -39,7 +39,7 @@ Phases 13-17 delivered: critical bug fixes + API contract lock, frontend rewrite
 ## Phases (v2.1)
 
 - [x] **Phase 18: Deployment Fix** - 修复生产 / 返回 404，迁移 Railway，双重健康检查确认部署正常 (completed 2026-03-18)
-- [ ] **Phase 19: Brief-Type Weight Profiles** - brief_type 字段端到端贯穿，3 种评审权重配置，结果可追溯用了哪套权重
+- [x] **Phase 19: Brief-Type Weight Profiles** - brief_type 字段端到端贯穿，3 种评审权重配置，结果可追溯用了哪套权重 (completed 2026-03-18)
 - [ ] **Phase 20: Benchmark Dataset + Regression Runner** - 10 组已标注 benchmark，回归 runner 按 brief 类型分别报告命中率
 
 ---
@@ -185,5 +185,5 @@ Plans:
 | 16. Multi-Agent Enhancement | v2.0 | 3/3 | Complete | 2026-03-18 |
 | 17. Tech Debt | v2.0 | 2/2 | Complete | 2026-03-18 |
 | 18. Deployment Fix | 2/2 | Complete    | 2026-03-18 | - |
-| 19. Brief-Type Weight Profiles | 2/3 | In Progress|  | - |
+| 19. Brief-Type Weight Profiles | 3/3 | Complete   | 2026-03-18 | - |
 | 20. Benchmark Dataset + Runner | v2.1 | 0/2 | Not started | - |
