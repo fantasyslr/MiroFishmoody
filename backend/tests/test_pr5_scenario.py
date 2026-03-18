@@ -275,7 +275,8 @@ class TestInjectCompetitorDelta:
         import inspect
         source = inspect.getsource(BrandStateEngine.replay_history)
         assert "_inject_competitor_delta" in source
-        bt_source = inspect.getsource(BrandStateEngine.backtest)
+        from app.services.backtest_engine import BacktestEngine
+        bt_source = inspect.getsource(BacktestEngine.backtest)
         assert "_inject_competitor_delta" in bt_source
 
 
