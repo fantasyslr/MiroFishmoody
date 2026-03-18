@@ -728,3 +728,117 @@ def _latest_non_none(vals: list):
         if v is not None:
             return v
     return None
+
+
+# ------------------------------------------------------------------
+# Visual Adjustment Layer
+# ------------------------------------------------------------------
+
+# 当两个方案的 baseline score 差距在此阈值内，视觉分析可以影响排序
+_VISUAL_ADJUSTMENT_SCORE_THRESHOLD = 0.15
+
+# 视觉分数对 score 的最大调整幅度（绝对值）
+_VISUAL_MAX_ADJUSTMENT = 0.08
+
+
+def apply_visual_adjustment(
+    entries: List[Dict],
+    visual_profiles: Dict[str, Dict],
+) -> List[Dict]:
+    """
+    在 baseline ranking 基础上，用图片分析结果做透明的 visual adjustment。
+
+    触发条件（必须全部满足）：
+    1. 至少有一个 plan 有 visual_profile
+    2. 存在至少两个 plan 的 baseline score 差距 <= threshold
+
+    调整逻辑：
+    - 计算每个有图片的 plan 的 visual_score (0-1)
+    - 对 score 差距在阈值内的 plan，按 visual_score 差异施加调整
+    - 调整是加性的、有上限的，且完全透明记录
+
+    Returns: 修改后的 entries（原地修改 + 返回）
+    """
+    from .image_analyzer import compute_visual_score
+
+    if not visual_profiles:
+        return entries
+    if len(entries) < 2:
+        return entries
+
+    # 计算 visual scores — keyed by plan_id (unique), not plan_name
+    plan_visual_scores: Dict[str, float] = {}
+    for entry in entries:
+        plan_id = entry["plan"].get("id") or entry["plan"].get("name", "")
+        profile = visual_profiles.get(plan_id)
+        if profile:
+            plan_visual_scores[plan_id] = compute_visual_score(profile)
+
+    if not plan_visual_scores:
+        return entries
+
+    # 判断是否存在 close scores
+    scores = [e["score"] for e in entries]
+    has_close_scores = False
+    all_insufficient = all(not e["data_sufficient"] for e in entries)
+
+    for i in range(len(scores)):
+        for j in range(i + 1, len(scores)):
+            if abs(scores[i] - scores[j]) <= _VISUAL_ADJUSTMENT_SCORE_THRESHOLD:
+                has_close_scores = True
+                break
+        if has_close_scores:
+            break
+
+    # 也在所有 plan 都是 cold start / no_data 时触发
+    if not has_close_scores and not all_insufficient:
+        # 仍然记录 visual info 但不调整 score
+        for entry in entries:
+            pid = entry["plan"].get("id") or entry["plan"].get("name", "")
+            vs = plan_visual_scores.get(pid)
+            if vs is not None:
+                entry["visual_adjustment"] = {
+                    "applied": False,
+                    "reason": "baseline_scores_sufficiently_different",
+                    "visual_score": vs,
+                }
+        return entries
+
+    # 计算所有有 visual score 的 plan 的均值
+    vs_values = list(plan_visual_scores.values())
+    vs_mean = sum(vs_values) / len(vs_values) if vs_values else 0.5
+
+    for entry in entries:
+        pid = entry["plan"].get("id") or entry["plan"].get("name", "")
+        vs = plan_visual_scores.get(pid)
+
+        if vs is None:
+            entry["visual_adjustment"] = {
+                "applied": False,
+                "reason": "no_image",
+                "visual_score": None,
+            }
+            continue
+
+        # 调整 = (vs - mean) * max_adjustment * 2
+        # 这样 vs 比均值高 0.5 时得到满额调整
+        delta = (vs - vs_mean) * _VISUAL_MAX_ADJUSTMENT * 2
+        delta = max(-_VISUAL_MAX_ADJUSTMENT, min(_VISUAL_MAX_ADJUSTMENT, delta))
+
+        original_score = entry["score"]
+        entry["score"] = round(original_score + delta, 4)
+        entry["visual_adjustment"] = {
+            "applied": True,
+            "reason": "close_baseline_scores" if has_close_scores else "all_cold_start",
+            "visual_score": round(vs, 3),
+            "visual_score_mean": round(vs_mean, 3),
+            "score_delta": round(delta, 4),
+            "original_score": round(original_score, 4),
+        }
+
+    # 重新排序
+    entries.sort(key=lambda e: (e["data_sufficient"], e["score"]), reverse=True)
+    for rank, e in enumerate(entries, 1):
+        e["rank"] = rank
+
+    return entries
