@@ -367,6 +367,7 @@ def evaluate():
                     break
 
         # 防重复 set_id：检查内存和磁盘是否已有该 set_id 的结果
+        # TD-01: dict-only — no I/O or LLM inside lock
         with _store_lock:
             in_memory = campaign_set.set_id in _evaluation_store
         if in_memory or _load_result(campaign_set.set_id):
@@ -436,11 +437,13 @@ def evaluate_status(task_id: str):
 @login_required
 def get_result(set_id: str):
     """获取评审结果，附带 campaign 图片 URL 映射"""
+    # TD-01: dict-only — no I/O or LLM inside lock
     with _store_lock:
         result = _evaluation_store.get(set_id)
     if not result:
         result = _load_result(set_id)
         if result:
+            # TD-01: dict-only — no I/O or LLM inside lock
             with _store_lock:
                 _evaluation_store[set_id] = result
     if not result:
@@ -456,11 +459,13 @@ def get_result(set_id: str):
 @login_required
 def export_result(set_id: str):
     """导出评审结果为可下载的 JSON 文件"""
+    # TD-01: dict-only — no I/O or LLM inside lock
     with _store_lock:
         result = _evaluation_store.get(set_id)
     if not result:
         result = _load_result(set_id)
         if result:
+            # TD-01: dict-only — no I/O or LLM inside lock
             with _store_lock:
                 _evaluation_store[set_id] = result
     if not result:
@@ -518,6 +523,7 @@ def resolve():
 
         # 尝试从内存获取 predicted scores
         predicted = None
+        # TD-01: dict-only — no I/O or LLM inside lock
         with _store_lock:
             stored = _evaluation_store.get(set_id)
         if stored:
@@ -699,6 +705,7 @@ def retry_task(task_id: str):
         return jsonify({"error": "任务缺少 set_id 元数据，无法重试"}), 400
 
     # 清除旧结果，允许重新提交
+    # TD-01: dict-only — no I/O or LLM inside lock
     with _store_lock:
         _evaluation_store.pop(set_id, None)
     result_path = os.path.join(_RESULTS_DIR, f"{set_id}.json")
