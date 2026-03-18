@@ -17,7 +17,7 @@ from ..config import Config
 from ..utils.logger import get_logger
 from ..utils.llm_client import LLMClient
 from ..models.task import TaskManager, TaskStatus
-from ..models.campaign import Campaign, CampaignSet, ProductLine
+from ..models.campaign import Campaign, CampaignSet, ProductLine, BriefType
 from ..models.evaluation import EvaluationResult
 from ..services.audience_panel import AudiencePanel
 from ..services.pairwise_judge import PairwiseJudge
@@ -27,6 +27,7 @@ from ..services.judge_calibration import JudgeCalibration
 from ..services.resolution_tracker import ResolutionTracker
 from ..services.brief_parser import BriefParser
 from ..services.evaluation_orchestrator import EvaluationOrchestrator
+from ..services.brief_weights import BRIEF_TYPE_VALUES
 
 logger = get_logger('ranker.api.campaign')
 task_manager = TaskManager()
@@ -350,6 +351,19 @@ def evaluate():
 
         campaign_set = _parse_evaluate_campaigns(data)
         category = data.get("category")  # None -> default personas, "moodyplus"/"colored_lenses" -> category-specific
+        brief_type_raw = data.get("brief_type")
+        brief_type_enum = None
+        if brief_type_raw is not None:
+            if brief_type_raw not in BRIEF_TYPE_VALUES:
+                return jsonify({
+                    "error": f"brief_type 必须是 brand / seeding / conversion，收到 '{brief_type_raw}'"
+                }), 400
+            try:
+                brief_type_enum = BriefType(brief_type_raw)
+            except ValueError:
+                return jsonify({
+                    "error": f"brief_type 无效值: '{brief_type_raw}'"
+                }), 400
         parent_set_id = data.get("parent_set_id")
         current_user = get_current_user()
         submitted_by = current_user["display_name"] if current_user else data.get("submitted_by", "")
@@ -384,6 +398,7 @@ def evaluate():
                 "campaign_count": len(campaign_set.campaigns),
                 "submitted_at": datetime.now().strftime("%m/%d %H:%M"),
                 "category": category,
+                "brief_type": brief_type_raw,
                 "parent_set_id": parent_set_id,
                 "version": version,
             }
@@ -404,7 +419,7 @@ def evaluate():
         )
         thread = threading.Thread(
             target=orchestrator.run,
-            args=(task_id, campaign_set, category),
+            args=(task_id, campaign_set, category, brief_type_enum),
             daemon=True,
         )
         thread.start()
