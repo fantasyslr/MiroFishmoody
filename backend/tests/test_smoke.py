@@ -167,12 +167,13 @@ class TestUploadSecurity:
 
 class TestHealth:
     def test_enhanced_health(self, client):
-        resp = client.get('/health')
+        resp = client.get('/api/health')
         assert resp.status_code == 200
         data = resp.get_json()
         assert "db" in data
         assert "disk" in data
         assert "uploads_writable" in data
+        assert "llm" in data
         assert data["status"] in ("ok", "degraded")
 
 

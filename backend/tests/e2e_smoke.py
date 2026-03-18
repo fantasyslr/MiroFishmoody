@@ -30,7 +30,7 @@ def api(method, path, body=None):
 
 def test_health():
     print("=== 1. Health Check ===")
-    status, body = api("GET", "/health")
+    status, body = api("GET", "/api/health")
     assert status == 200, f"Expected 200, got {status}"
     assert body["status"] == "ok"
     print(f"  OK: {body}")
