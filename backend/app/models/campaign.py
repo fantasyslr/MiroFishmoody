@@ -13,6 +13,13 @@ class ProductLine(str, Enum):
     MOODYPLUS = "moodyplus"
 
 
+class BriefType(str, Enum):
+    """Brief 类型 — 决定评审维度权重"""
+    BRAND = "brand"           # 品牌传播
+    SEEDING = "seeding"       # 达人种草
+    CONVERSION = "conversion" # 转化拉新
+
+
 @dataclass
 class Campaign:
     """单个 campaign 方案"""
