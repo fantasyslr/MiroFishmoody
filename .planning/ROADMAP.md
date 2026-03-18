@@ -34,7 +34,7 @@ Phases 9-12 delivered: Both-mode cross-path navigation, Evaluate diagnostics pan
 - [x] **Phase 14: Frontend Rewrite — Core Pages** - 用 MiroFish 模式重写全部核心页面交互（7 个 FE 需求） (completed 2026-03-18)
 - [x] **Phase 15: Multi-Agent Foundation** - 全局 LLM Semaphore + AgentScore schema 统一，为新 agent 类型建立并发和数据基础 (completed 2026-03-18)
 - [x] **Phase 16: Multi-Agent Evaluation Enhancement** - 扩展人格池、MultiJudge ensemble、devil's advocate、争议 badge (completed 2026-03-18)
-- [ ] **Phase 17: Tech Debt Paydown** - 收窄 threading.Lock 范围，BrandStateEngine 渐进分解
+- [x] **Phase 17: Tech Debt Paydown** - 收窄 threading.Lock 范围，BrandStateEngine 渐进分解 (completed 2026-03-18)
 
 ---
 
@@ -131,4 +131,4 @@ Plans:
 | 14. Frontend Rewrite | 4/4 | Complete    | 2026-03-18 | - |
 | 15. Multi-Agent Foundation | 2/2 | Complete    | 2026-03-18 | - |
 | 16. Multi-Agent Enhancement | 3/3 | Complete    | 2026-03-18 | - |
-| 17. Tech Debt | v2.0 | 0/2 | Not started | - |
+| 17. Tech Debt | 2/2 | Complete   | 2026-03-18 | - |

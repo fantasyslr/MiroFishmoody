@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: 大改造
 status: planning
-stopped_at: Completed 16-03-PLAN.md
-last_updated: "2026-03-18T05:16:00.953Z"
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-03-18T05:25:43.877Z"
 last_activity: 2026-03-18 — Roadmap created, v2.0 phases 13-17 defined
 progress:
   total_phases: 5
-  completed_phases: 4
-  total_plans: 11
-  completed_plans: 11
+  completed_phases: 5
+  total_plans: 13
+  completed_plans: 13
   percent: 0
 ---
 
@@ -68,6 +68,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 16-multi-agent-evaluation-enhancement P02 | 3min | 2 tasks | 3 files |
 | Phase 16-multi-agent-evaluation-enhancement P01 | 7min | 2 tasks | 5 files |
 | Phase 16-multi-agent-evaluation-enhancement P03 | 2min | 2 tasks | 3 files |
+| Phase 17-tech-debt-paydown P01 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,7 @@ Recent decisions affecting current work:
 - [Phase 16-multi-agent-evaluation-enhancement]: MultiJudgeEnsemble is PairwiseJudge subclass — inherits Bradley-Terry and evaluate_all() without duplication; all normalized votes in PairwiseResult.votes with position field
 - [Phase 16-multi-agent-evaluation-enhancement]: EvaluationOrchestrator default judge switched to MultiJudgeEnsemble (USE_MARKET_JUDGE flag path unchanged)
 - [Phase 16-multi-agent-evaluation-enhancement]: DEVIL_ADVOCATE_PERSPECTIVE separate from JUDGE_PERSPECTIVES; dissent flag in judge_pair() return; isControversial() pure frontend combining suspect+dissent; MultiJudgeEnsemble._perspectives includes 4 judge types
+- [Phase 17-tech-debt-paydown]: TD-01 annotation pattern: comment-only enforcement with # TD-01 prefix, no logic changes required; step 1/step 2 separation in EvaluationOrchestrator makes lock/IO boundary explicit
 
 ### Pending Todos
 
@@ -110,6 +112,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T05:13:15.505Z
-Stopped at: Completed 16-03-PLAN.md
+Last session: 2026-03-18T05:25:43.875Z
+Stopped at: Completed 17-01-PLAN.md
 Resume file: None
