@@ -131,4 +131,4 @@ Plans:
 | 14. Frontend Rewrite | 4/4 | Complete    | 2026-03-18 | - |
 | 15. Multi-Agent Foundation | 2/2 | Complete    | 2026-03-18 | - |
 | 16. Multi-Agent Enhancement | 3/3 | Complete    | 2026-03-18 | - |
-| 17. Tech Debt | 2/2 | Complete   | 2026-03-18 | - |
+| 17. Tech Debt | 2/2 | Complete    | 2026-03-18 | - |
