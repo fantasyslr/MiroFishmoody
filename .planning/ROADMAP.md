@@ -132,11 +132,11 @@ Plans:
   2. 发起一次 Evaluate 推演并等待完成，重启 Railway service 后再访问推演结果页，结果仍然可见（SQLite + 上传图片持久化确认）
   3. Dockerfile 构建阶段若 `frontend/dist/index.html` 不存在则构建失败，不将空白容器推送到生产
   4. `/api/health` 返回 `uploads_writable: ok` 且 `/` 返回 200，两个检查同时通过
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 18-01-PLAN.md — DEPLOY-01 + DEPLOY-02: Flask 静态路由修复（503 fallback）+ Dockerfile 构建断言
-- [ ] 18-02-PLAN.md — DEPLOY-03 + DEPLOY-04: Railway 部署配置（volume mount + env var 迁移）+ 健康检查双重验证
+- [ ] 18-01-PLAN.md — Flask /api/health 路由 + 503 fallback + Dockerfile 构建断言 (DEPLOY-01, DEPLOY-02, DEPLOY-04)
+- [ ] 18-02-PLAN.md — Railway gunicorn PORT 绑定 + railway.json + Dashboard volume/env 配置 (DEPLOY-03, DEPLOY-04)
 
 ### Phase 19: Brief-Type Weight Profiles
 **Goal**: 用户在发起推演时必须选择 brief 类型（品牌传播/达人种草/转化拉新），评审引擎按选定类型加载对应维度权重，每条历史结果可追溯当时用了哪套权重
