@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: 大改造
 status: planning
-stopped_at: Completed 14-02-PLAN.md
-last_updated: "2026-03-18T04:19:32.382Z"
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-03-18T04:21:01.147Z"
 last_activity: 2026-03-18 — Roadmap created, v2.0 phases 13-17 defined
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 6
   percent: 0
 ---
 
@@ -60,6 +60,8 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 13 P01 | 4min | 2 tasks | 3 files |
 | Phase 13-critical-bug-fixes-api-contract-lock P02 | 3min | 2 tasks | 3 files |
 | Phase 14-frontend-rewrite-core-pages P02 | 5min | 2 tasks | 2 files |
+| Phase 14-frontend-rewrite-core-pages P04 | 3min | 1 tasks | 1 files |
+| Phase 14-frontend-rewrite-core-pages P01 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -77,6 +79,10 @@ Recent decisions affecting current work:
 - [Phase 13-02]: Both mode evaluate uses try/finally so navigate fires even if evaluate POST fails — Race path remains available
 - [Phase 13-02]: contracts.ts frozen at 2026-03-18 — page components import API types from contracts.ts not api.ts directly; lib/api.ts must NOT be modified
 - [Phase 14-02]: Cross-path conflict badges use try/catch for defensive cross-state reads; ResultPage badge gated on evalStatus=completed to prevent premature display
+- [Phase 14-frontend-rewrite-core-pages]: PDF pagination via canvas slicing (drawImage with source offsets) — more compatible than negative-y single image approach
+- [Phase 14-frontend-rewrite-core-pages]: 0.5mm trailing-page tolerance prevents float arithmetic adding a near-empty last PDF page
+- [Phase 14]: loadHomeForm() called synchronously in component body (not useEffect) — useState initializer gets restored value without a flash of default state
+- [Phase 14]: persistForm() spread-override pattern: each onChange passes only changed field, rest read from closure state
 
 ### Pending Todos
 
@@ -90,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T04:19:32.380Z
-Stopped at: Completed 14-02-PLAN.md
+Last session: 2026-03-18T04:21:01.145Z
+Stopped at: Completed 14-01-PLAN.md
 Resume file: None
