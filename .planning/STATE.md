@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: 部署修复 + 评审偏差修正
-status: active
-stopped_at: null
-last_updated: "2026-03-18"
-last_activity: 2026-03-18 — Roadmap created, Phase 18 ready to plan
+status: planning
+stopped_at: Completed 18-01-PLAN.md (Flask 503 fallback + Dockerfile build assertion)
+last_updated: "2026-03-18T06:26:14.293Z"
+last_activity: 2026-03-18 — v2.1 roadmap created (Phases 18-20), 12/12 requirements mapped
 progress:
-  total_phases: 3
-  completed_phases: 0
-  total_plans: 7
-  completed_plans: 0
+  total_phases: 8
+  completed_phases: 5
+  total_plans: 15
+  completed_plans: 14
   percent: 0
 ---
 
@@ -57,6 +57,8 @@ Recent decisions affecting current work:
 - [v2.1 Research]: Phase 19 must complete before Phase 20 benchmark labeling; labels captured against flat-weight evaluator are biased ground truth
 - [v2.1 Research]: Railway may inject PORT env var; gunicorn start command must read PORT from env or Railway must expose 5001 explicitly — handle in Phase 18
 - [Phase 17]: BacktestEngine receives engine instance via __init__ to reuse compute_intervention_impact; lazy import inside method body prevents circular import
+- [Phase 18-01]: /api/health route instead of /health — Railway health check convention + CORS /api/* wildcard alignment
+- [Phase 18-01]: Dockerfile RUN test -f assertion placed immediately after COPY dist — fail fast at build time not runtime
 
 ### Pending Todos
 
@@ -69,6 +71,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18
-Stopped at: v2.1 roadmap created — Phases 18-20 written to ROADMAP.md, STATE.md initialized
+Last session: 2026-03-18T06:26:14.291Z
+Stopped at: Completed 18-01-PLAN.md (Flask 503 fallback + Dockerfile build assertion)
 Resume file: None
