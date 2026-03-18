@@ -31,11 +31,11 @@ RUN mkdir -p /app/backend/uploads/results \
 
 EXPOSE 5001
 
-CMD ["gunicorn", \
-     "--chdir", "/app/backend", \
-     "--bind", "0.0.0.0:5001", \
-     "--workers", "2", \
-     "--threads", "4", \
-     "--timeout", "300", \
-     "--access-logfile", "-", \
-     "app:create_app()"]
+CMD gunicorn \
+    --chdir /app/backend \
+    --bind "0.0.0.0:${PORT:-5001}" \
+    --workers 2 \
+    --threads 4 \
+    --timeout 300 \
+    --access-logfile - \
+    "app:create_app()"
