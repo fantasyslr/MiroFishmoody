@@ -85,9 +85,10 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260318-nwv | 修众测4项: LLM健康检查+/health统一+smoke test+gunicorn依赖 | 2026-03-18 | ee2885b | [260318-nwv](./quick/260318-nwv-4-1-llm-2-health-api-health-3-smoke-test/) |
+| 260318-ohu | brief_type 加权维度分混入 overall_score + brand_005 benchmark fixture | 2026-03-18 | c560389 | [260318-ohu](./quick/260318-ohu-brief-type-ranking-brand-editorial/) |
 
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed quick task 260318-nwv
+Stopped at: Completed quick task 260318-ohu
 Resume file: None
