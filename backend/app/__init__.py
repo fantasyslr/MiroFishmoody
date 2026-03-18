@@ -72,7 +72,7 @@ def create_app(config_class=Config):
     from .api.brandiction import brandiction_bp
     app.register_blueprint(brandiction_bp, url_prefix='/api/brandiction')
 
-    @app.route('/health')
+    @app.route('/api/health')
     def health():
         """增强健康检查：DB 连通性、磁盘空间、上传目录可写性"""
         import sqlite3 as _sqlite3
@@ -115,6 +115,8 @@ def create_app(config_class=Config):
 
     # 生产模式：Flask 托管前端静态文件
     dist = os.path.abspath(FRONTEND_DIST)
+    if should_log_startup:
+        logger.info(f"前端 dist 路径: {dist} (exists={os.path.isdir(dist)})")
     if os.path.isdir(dist):
         @app.route('/assets/<path:filename>')
         def serve_assets(filename):
@@ -133,7 +135,13 @@ def create_app(config_class=Config):
             logger.info(f"前端静态文件托管: {dist}")
     else:
         if should_log_startup:
-            logger.info(f"前端 dist 目录不存在 ({dist})，仅提供 API 服务")
+            logger.warning(f"前端 dist 目录不存在 ({dist})，/ 路由返回 503")
+
+        @app.route('/', defaults={'path': ''})
+        @app.route('/<path:path>')
+        def serve_frontend_fallback(path):
+            # dist 缺失时返回 503，而非静默 404
+            return {"error": "frontend dist not built", "dist_path": dist}, 503
 
     if should_log_startup:
         logger.info("Campaign Ranker Engine 启动完成")
