@@ -1,236 +1,306 @@
 # Stack Research
 
-**Domain:** Campaign evaluation engine — v2.0 frontend rewrite + multi-agent backend enhancement
+**Domain:** Campaign evaluation engine — v2.1 deployment fix + brief-type evaluation weights
 **Researched:** 2026-03-18
-**Confidence:** HIGH (existing stack verified from codebase; MiroFish patterns verified from source; new additions rely on stdlib only)
+**Confidence:** HIGH (all code paths verified locally; deployment options verified via official docs)
 
 ---
 
 ## Scope
 
-This document covers ONLY what is new or changed for v2.0. The previous milestone (v1.x) STACK.md entries (bcrypt, structlog, @tanstack/react-query, recharts, asyncio) are already implemented or superseded.
+This document covers only what is new or changed for **v2.1**. Previous milestone stack entries (multi-agent, PersonaRegistry, font stack, ConsensusAgent, etc.) are already shipped in v2.0.
 
-**v2.0 goals:**
-1. Frontend rewrite — translate MiroFish original Vue UX patterns into existing React/TypeScript stack
-2. Multi-agent parallel evaluation backend — increase agent count, add cross-validation, improve accuracy
-
----
-
-## What MiroFish Original Uses (Reference Architecture)
-
-MiroFish frontend: Vue 3 + Vue Router 4 + D3.js (force-directed graph) + axios + Vite. No component library. Minimal CSS reset.
-
-**Key UX patterns MiroFishmoody v2.0 should adopt:**
-
-| Pattern | MiroFish Implementation | MiroFishmoody Translation |
-|---------|------------------------|--------------------------|
-| Step workflow indicator | 5-step numbered header, status dot (orange/green/red) | React component, existing Tailwind + lucide-react |
-| Dual-panel split layout | CSS transitions `width 0.4s cubic-bezier`, view mode toggle | `motion.div animate={{ width }}` (motion 12.x already installed) |
-| Task status polling | `setInterval` every 2s calling `getTaskStatus()` | Already in `EvaluatePage.tsx`, extend to `RunningPage.tsx` |
-| Graph/data refresh polling | Separate `setInterval` every 10-30s | Separate interval per concern |
-| Rolling log buffer | Array capped at 200 entries, `{ time, msg }` objects | `useReducer` with APPEND action, max 200 |
-| Maximize/restore panel | Header click toggles between split and full-width | Zustand local state or `useState` |
-| Font stack | JetBrains Mono + Space Grotesk + Noto Sans SC | Add to `tailwind.config.js` fontFamily, load via Google Fonts CDN |
-
-Since MiroFishmoody already uses React 19 + TypeScript + Tailwind + motion, these patterns translate directly. No stack changes required.
+**v2.1 goals:**
+1. Fix production `/` returning 404
+2. Migrate deployment from Vercel to stateful platform (SQLite + file uploads require persistent disk)
+3. Add brief-type-aware evaluation weights (brand / seeding / conversion)
 
 ---
 
-## Recommended Stack
+## Focus 1: Static Asset 404 Fix
 
-### Core Technologies — NO CHANGES
+### Root Cause (Code-Verified)
 
-| Technology | Current Version | Status |
-|------------|----------------|--------|
-| React | 19.x | Keep as-is |
-| TypeScript | 5.9 | Keep as-is |
-| Tailwind CSS | 3.4 | Keep as-is (add font families) |
-| Vite | 8.x | Keep as-is |
-| React Router DOM | 7.x | Keep as-is |
-| Zustand | 5.x | Keep as-is |
-| motion (Framer fork) | 12.x | Keep as-is |
-| Flask | 3.0+ | Keep as-is |
-| SQLite WAL | — | Keep as-is |
-| ThreadPoolExecutor | stdlib | Keep as-is, extend |
-| openai SDK | >=1.0.0 | Keep as-is |
+The milestone context referenced `server/index.ts` — that file does not exist. This is a Flask/Python project. The actual static serving logic is in `backend/app/__init__.py`.
 
-### New Frontend Libraries — NONE
+**Relevant code (`backend/app/__init__.py`, lines 117–136):**
 
-No new npm packages are needed. All MiroFish UX patterns are achievable with the existing stack:
+```python
+FRONTEND_DIST = os.path.join(os.path.dirname(__file__), '../../frontend/dist')
+dist = os.path.abspath(FRONTEND_DIST)
 
-- Split-panel animations → `motion.div` (already installed)
-- Step indicators + status dots → Tailwind + lucide-react (already installed)
-- Polling → `setInterval` + `useEffect` (React stdlib)
-- Log buffer → `useReducer` (React stdlib)
-- Font additions → `tailwind.config.js` config change, no package
+if os.path.isdir(dist):
+    @app.route('/assets/<path:filename>')
+    def serve_assets(filename):
+        return send_from_directory(os.path.join(dist, 'assets'), filename)
 
-**Rationale:** Adding new libraries for UI patterns achievable with installed tools increases bundle size, adds upgrade surface, and creates inconsistency in animation/styling approach.
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve_frontend(path):
+        file_path = os.path.join(dist, path)
+        if path and os.path.isfile(file_path):
+            return send_from_directory(dist, path)
+        return send_from_directory(dist, 'index.html')
+```
 
-### New Backend Libraries — NONE
+**Path resolution at Docker runtime:**
+- `__file__` = `/app/backend/app/__init__.py`
+- `os.path.dirname(__file__)` = `/app/backend/app`
+- `../../frontend/dist` resolves to `/app/frontend/dist`
+- `Dockerfile` line: `COPY --from=frontend-build /app/frontend/dist /app/frontend/dist` ✓ correct
 
-Multi-agent enhancement uses only Python stdlib:
+**Path logic is correct.** The `/` 404 happens when `os.path.isdir(dist)` returns `False` at container startup — the entire static-serving block is skipped, Flask has no route for `/`, and returns 404.
 
-- `concurrent.futures.ThreadPoolExecutor` — already in use
-- `threading.Semaphore` — already in use (ImageAnalyzer pattern)
-- `statistics.mean`, `statistics.stdev` — stdlib, for ConsensusAgent outlier detection
-- `threading.Lock` — already in use (_evaluation_store)
+**Root cause candidates in order of likelihood:**
 
-**Rationale:** The multi-agent expansion is a structural change (more agents, cross-validation), not a dependency change.
+1. **Vite build failed silently during `docker build`** — `npm run build` exited non-zero but Docker cached the layer. Result: `/app/frontend/dist/index.html` missing. The `if os.path.isdir(dist)` evaluates to `False` because the directory is empty or absent.
+2. **Deployment platform strips or resets volume contents** (if deployed to Vercel, which has no persistent filesystem — each function invocation gets a fresh read-only container).
+3. **`gunicorn --chdir /app/backend`** shifts the working directory, but `FRONTEND_DIST` uses `os.path.dirname(__file__)` (absolute, not relative to cwd), so this is not the cause.
+
+**Fix — two changes required:**
+
+**Change 1:** Add Dockerfile assertion after frontend copy (prevents silent build failures):
+
+```dockerfile
+# In Dockerfile, after: COPY --from=frontend-build /app/frontend/dist /app/frontend/dist
+RUN test -f /app/frontend/dist/index.html || \
+    (echo "ERROR: frontend/dist/index.html missing — Vite build may have failed" && exit 1)
+```
+
+**Change 2:** Add explicit 503 fallback in `backend/app/__init__.py` when dist is absent (replaces silent 404):
+
+```python
+else:
+    if should_log_startup:
+        logger.error(f"FATAL: frontend dist not found at {dist}")
+
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def no_frontend(path):
+        return {"error": "frontend not built", "expected_dist": dist}, 503
+```
+
+**No new libraries required.** Both fixes are configuration/code changes only.
 
 ---
 
-## Supporting Libraries (Existing — Confirmed Adequate for v2.0)
+## Focus 2: Deployment Platform
 
-### Frontend
+### Requirement Profile
 
-| Library | Version | v2.0 Usage |
-|---------|---------|------------|
-| lucide-react | 0.577 | Status dot icons, workflow step icons |
-| tailwind-merge + clsx | 3.5 + 2.1 | Panel mode toggle classes, agent status badges |
-| motion | 12.x | Panel width transitions, step entry animations |
-| recharts | existing | Radar charts (no change) |
-| @tanstack/react-query | 5.x | Task polling (already in use in EvaluatePage) |
+| Requirement | Detail |
+|-------------|--------|
+| Persistent storage | SQLite at `/app/backend/uploads/tasks.db` |
+| File uploads | `/app/backend/uploads/` — campaign images, results JSON |
+| Long-running processes | Gunicorn, evaluation tasks 30–300s |
+| Container format | Single Docker container, existing `Dockerfile` and `docker-compose.yml` |
+| Current broken platform | Vercel — no persistent filesystem, 10s function timeout, incompatible |
 
-### Backend
+### Platform Comparison
 
-| Library | Version | v2.0 Usage |
-|---------|---------|------------|
-| concurrent.futures | stdlib | Extend max_workers for multi-judge |
-| threading | stdlib | Lock for ConsensusAgent result aggregation |
-| statistics | stdlib | Mean/stdev for outlier detection in ConsensusAgent |
-| openai | >=1.0.0 | No change (all LLM calls go through LLMClient) |
+| Criterion | Railway | Render | Fly.io | VPS + Docker (Hetzner) |
+|-----------|---------|--------|--------|------------------------|
+| Persistent disk | Yes — volumes, 5GB on Hobby | Yes — persistent disks, daily snapshots | Yes — block volumes per VM | Full filesystem control |
+| SQLite suitability | Good — 3000 IOPS R/W | Good — daily snapshot backup | Good — single-region limitation | Best (no I/O restrictions) |
+| Docker deployment | Yes (existing Dockerfile works) | Yes | Yes (native Machines API) | Native `docker compose up` |
+| Long-running processes | Yes (300s+ supported) | Yes | Yes | Yes |
+| Zero-downtime deploy with disk | No — brief restart on redeploy | No — same limitation | No — same limitation | Manual via nginx reload |
+| Env var management | Dashboard UI | Dashboard UI | `fly secrets` CLI | `.env` file on server |
+| Entry pricing | $5/mo Hobby + storage usage | $7/mo Starter + disk add-on | $0 + usage-based | ~€4/mo (Hetzner CX11) |
+| DX / deployment speed | Excellent (GitHub push) | Good | Good, steeper CLI curve | Manual SSH + scripts |
+| Volume attachment | 1 volume per service; mount to any path | Persistent disk add-on; attach to service | 1 volume per VM; mount via fly.toml | Host directory mount |
+
+**Source:** Railway volumes documented at https://docs.railway.com/reference/volumes (verified 2026-03-18, HIGH confidence).
+
+### Recommendation: Railway
+
+**Recommended platform for v2.1 migration.** Rationale:
+
+1. **Existing `Dockerfile` works without modification.** Railway deploys from GitHub using the existing Dockerfile.
+2. **Volume mount aligns with existing Docker volume.** Mount Railway volume to `/app/backend/uploads` — same path as `docker-compose.yml` volume `uploads-data:/app/backend/uploads`.
+3. **Env vars map directly.** `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL_NAME`, `SECRET_KEY`, `MOODY_USERS`, `FLASK_DEBUG` all set via Railway dashboard, no refactor.
+4. **$5/mo Hobby plan + storage usage** is acceptable for an internal tool. SQLite WAL + uploads for <20 concurrent users will stay well under 5GB.
+5. **No new infra skills required.** Team already has Docker experience; Railway is GitHub push-to-deploy.
+
+**Migration — no code changes required for deployment itself:**
+
+```bash
+npm install -g @railway/cli
+railway login
+railway init        # in project root
+# Create and attach volume in Railway dashboard:
+# Service > Volumes > Add Volume > mount path: /app/backend/uploads
+# Set env vars in Service > Variables (copy from .env)
+railway up
+```
+
+**Known limitation:** Each redeploy causes ~5–15s container restart downtime (Railway volumes prevent zero-downtime deploys). For an internal tool this is acceptable. If this becomes a problem in a future milestone, use Railway's `startCommand` with gunicorn `--preload` and keep response queuing in flight.
+
+### Fallback: VPS + Docker (Hetzner CX11, €4/mo)
+
+If Railway becomes too expensive or ops team prefers full control, the existing `docker-compose.yml` and `nginx.conf.template` work identically on any Linux VPS. Requires: SSH access, Docker, Certbot for TLS, manual deploy script. Recommended as a fallback only — Railway removes this operational overhead.
 
 ---
 
-## Frontend Rewrite: Specific Implementation Decisions
+## Focus 3: Brief-Type-Aware Evaluation Weights
 
-### 1. Polling Parity (RunningPage fix)
+### Current State (Code-Verified)
 
-Current `RunningPage.tsx` fakes progress with a `setInterval` visual animation. The actual API call result is the only real signal. MiroFish uses 2 separate intervals: 2s for task status, 10-30s for graph data.
+The evaluation pipeline uses **static, brief-type-agnostic weights**:
 
-**Decision:** Add real task status polling to `RunningPage.tsx` matching the pattern already in `EvaluatePage.tsx`. The visual step animation stays (good UX), but completion detection must come from the backend, not a timer.
+| File | Current behavior |
+|------|-----------------|
+| `probability_aggregator.py` | `W_PAIRWISE=0.55`, `W_PANEL=0.45` — fixed blend regardless of brief type |
+| `submarket_evaluator.py` | 5 fixed dimensions; persona-to-dimension mapping is static |
+| `campaign_scorer.py` | `judge_weights`/`persona_weights` from `JudgeCalibration` only (Brier-score based, not brief-type based) |
+| `campaign.py` `Campaign` model | No `brief_type` field; `extra: Dict` is available as escape hatch |
+| `campaign.py` `CampaignSet` | Has `context: str` but it is not parsed downstream |
 
-**Implementation:** One `setInterval` at 2s calling `/api/tasks/{task_id}/status`, cleared on completion or error. Existing `getRaceState` / `saveRaceState` pattern handles state handoff.
+**The `objective` field (awareness/traffic/conversion) exists only in `brandiction.py`**, not the main campaign evaluation pipeline.
 
-### 2. Log Buffer Component
+### What Needs to Be Added
 
-New component `LogBuffer` with:
-- `useReducer` state: `{ entries: Array<{ time: string; msg: string }>, maxEntries: 200 }`
-- Action `APPEND` prepends new entry, slices to maxEntries
-- Renders as `font-mono text-xs` scrollable div
-- No external dependency
+**No new Python packages required.** All changes are pure logic — dict config + a new enum.
 
-### 3. Split Panel Layout
+#### Step 1: `BriefType` enum in `campaign.py`
 
-New component `SplitPanel` using `motion.div`:
-- `viewMode: 'left' | 'split' | 'right'`
-- Left panel width: `viewMode === 'left' ? '100%' : viewMode === 'split' ? '50%' : '0%'`
-- `motion.div animate={{ width: panelWidth }} transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}`
-- The cubic-bezier `[0.4, 0, 0.2, 1]` matches MiroFish's CSS `cubic-bezier(0.4, 0, 0.2, 1)` (Tailwind's default ease-in-out)
+```python
+# backend/app/models/campaign.py — add before Campaign dataclass
+class BriefType(str, Enum):
+    BRAND = "brand"          # 品牌向：品牌认知，停留力 + 信任 优先
+    SEEDING = "seeding"      # 种草向：KOC/社交种草，停留力 + 清晰度 优先
+    CONVERSION = "conversion"  # 转化向：购买引导，转化就绪度 优先
+```
 
-### 4. Font Stack Addition
+Add to `Campaign` dataclass:
 
-Add to `frontend/tailwind.config.js`:
+```python
+brief_type: BriefType = BriefType.SEEDING  # default to seeding (most common brief)
+```
 
-```js
-fontFamily: {
-  mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
-  display: ['Space Grotesk', 'system-ui', 'sans-serif'],
-  sans: ['Space Grotesk', 'Noto Sans SC', 'system-ui', 'sans-serif'],
+Add to `Campaign.to_dict()`:
+
+```python
+"brief_type": self.brief_type.value,
+```
+
+#### Step 2: New `brief_weights.py` config file
+
+New file: `backend/app/services/brief_weights.py`
+
+```python
+"""Brief-type-aware dimension weight tables."""
+
+# Weights must sum to 1.0 per brief type.
+# Higher weight = this dimension matters more for this brief type.
+BRIEF_DIMENSION_WEIGHTS: dict[str, dict[str, float]] = {
+    "brand": {
+        "thumb_stop": 0.35,          # Must stop scroll to build awareness
+        "clarity": 0.15,             # Message can be evocative, not necessarily explicit
+        "trust": 0.30,               # Brand credibility is primary KPI
+        "conversion_readiness": 0.05, # Not a conversion campaign
+        "claim_risk": 0.15,          # Brand campaigns carry higher reputational risk
+    },
+    "seeding": {
+        "thumb_stop": 0.35,          # KOC content must stop scroll
+        "clarity": 0.30,             # Usage/product must be immediately understood
+        "trust": 0.15,               # Authentic peer trust, lower bar than brand
+        "conversion_readiness": 0.10, # Some purchase intent signal expected
+        "claim_risk": 0.10,          # Lower regulatory sensitivity for seeding
+    },
+    "conversion": {
+        "thumb_stop": 0.15,          # Intent-triggered placements — scroll-stopping less critical
+        "clarity": 0.25,             # CTA and offer must be crystal clear
+        "trust": 0.15,               # Some trust needed for purchase
+        "conversion_readiness": 0.40, # Primary KPI for conversion briefs
+        "claim_risk": 0.05,          # Lower weight — conversion copy is typically checked
+    },
 }
+
+DEFAULT_BRIEF_TYPE = "seeding"
 ```
 
-Load in `frontend/index.html`:
+**Weight rationale:**
+- **品牌向 (brand)**: `thumb_stop` + `trust` = 0.65 combined — brand campaigns measure memorability and credibility.
+- **种草向 (seeding)**: `thumb_stop` + `clarity` = 0.65 combined — KOC content needs to stop scroll and be understood without context.
+- **转化向 (conversion)**: `conversion_readiness` = 0.40 solo — conversion campaigns are measured by purchase intent signals first.
 
-```html
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+#### Step 3: Thread `brief_type` through `DimensionEvaluator`
+
+In `submarket_evaluator.py`, modify `evaluate()` signature and apply weights:
+
+```python
+from .brief_weights import BRIEF_DIMENSION_WEIGHTS, DEFAULT_BRIEF_TYPE
+
+class DimensionEvaluator:
+    def evaluate(
+        self,
+        campaigns: List[Campaign],
+        panel_scores: List[PanelScore],
+        brief_type: str = DEFAULT_BRIEF_TYPE,   # ADD THIS
+    ) -> List[DimensionScore]:
+        weights = BRIEF_DIMENSION_WEIGHTS.get(brief_type, BRIEF_DIMENSION_WEIGHTS[DEFAULT_BRIEF_TYPE])
+        # ... existing loop ...
+        # After computing raw_scores per dimension, apply brief-type weight
+        # as a post-hoc multiplier on the raw_score before softmax:
+        for cid in all_ids:
+            raw_scores[cid] *= weights.get(dimension_key, 1.0)
+        probs = _softmax_probs(raw_scores, temperature=1.5)
 ```
 
-No npm package required.
+#### Step 4: Thread into `CampaignScorer`
+
+```python
+# campaign_scorer.py
+def score(
+    self, campaigns, panel_scores, pairwise_results,
+    bt_scores, agent_scores=None,
+    brief_type: str = "seeding",   # ADD THIS
+):
+    dimension_results = self.dimension_eval.evaluate(
+        campaigns, panel_scores, brief_type=brief_type
+    )
+```
+
+#### Step 5: Thread into `EvaluationOrchestrator`
+
+```python
+# evaluation_orchestrator.py — run() signature
+def run(self, task_id: str, campaign_set, category: str = None, brief_type: str = "seeding"):
+    # pass brief_type through to CampaignScorer.score()
+```
+
+#### Step 6: API + Frontend
+
+**Backend (`backend/app/api/campaign.py`):** Add `brief_type` to the evaluate endpoint payload deserialization. The field is already available at the `CampaignSet` level — add it as a top-level param alongside `category`.
+
+**Frontend (`frontend/src/pages/HomePage.tsx`):** Add a `brief_type` field to the set-level form. The `DEFAULT_PLAN` already has `channel_family` — add `brief_type: 'seeding'` as default. A simple `<select>` with three options (品牌向 / 种草向 / 转化向) is sufficient.
+
+**Frontend type (`frontend/src/lib/api.ts`):** Add `brief_type?: string` to the `EvaluateRequest` type (or equivalent).
+
+### Estimated Scope
+
+| Change | File | Lines |
+|--------|------|-------|
+| Add `BriefType` enum + field | `backend/app/models/campaign.py` | ~10 |
+| New weight config | `backend/app/services/brief_weights.py` | ~30 (new file) |
+| Thread through `DimensionEvaluator` | `backend/app/services/submarket_evaluator.py` | ~10 |
+| Thread through `CampaignScorer` | `backend/app/services/campaign_scorer.py` | ~5 |
+| Thread through `EvaluationOrchestrator` | `backend/app/services/evaluation_orchestrator.py` | ~5 |
+| API endpoint + deserialization | `backend/app/api/campaign.py` | ~5 |
+| Frontend form + type | `frontend/src/pages/HomePage.tsx` + `lib/api.ts` | ~15 |
+
+**No new pip or npm packages required.**
 
 ---
 
-## Backend Multi-Agent: Specific Implementation Decisions
+## No New Dependencies for v2.1
 
-### Current State
-
-| Service | Agents | Concurrency |
-|---------|--------|-------------|
-| AudiencePanel | 6 personas (moodyPlus) / 5 (colored_lenses) | ThreadPoolExecutor(max_workers=4) |
-| PairwiseJudge | 1 judge per pair | ThreadPoolExecutor(max_workers=4) |
-| ImageAnalyzer | 1 analyzer | ThreadPoolExecutor + Semaphore(3) |
-
-### Multi-Agent Enhancement Plan
-
-**1. Expand PersonaRegistry (config-only change)**
-
-Add 3-4 new personas per category in `PersonaRegistry`:
-- moodyPlus: 6 → 9 personas
-- colored_lenses: 5 → 8 personas
-
-This is pure configuration. No code change in `AudiencePanel.evaluate_all()`. The ThreadPoolExecutor scales automatically to the persona count.
-
-**2. MultiJudge Wrapper (new service, ~80 lines)**
-
-New `MultiJudge` wraps `PairwiseJudge` to run each campaign pair through N independent judges:
-
-```python
-class MultiJudge:
-    def __init__(self, llm_client, n_judges: int = 3):
-        self.judges = [PairwiseJudge(llm_client) for _ in range(n_judges)]
-        self._sem = threading.Semaphore(Config.MAX_LLM_CONCURRENT)
-
-    def judge_pair(self, a, b):
-        # Run n_judges in parallel, take majority vote
-        with ThreadPoolExecutor(max_workers=self.n_judges) as ex:
-            futures = [ex.submit(j.judge_pair, a, b) for j in self.judges]
-            results = [f.result() for f in as_completed(futures)]
-        return self._majority_vote(results)
-```
-
-Majority vote reduces single-LLM variance. With 3 judges, one outlier doesn't change the result.
-
-**3. ConsensusAgent (new service, ~60 lines)**
-
-After AudiencePanel completes, ConsensusAgent detects outlier persona scores:
-
-```python
-class ConsensusAgent:
-    def flag_outliers(self, panel_scores: List[PanelScore]) -> dict:
-        per_campaign_scores = defaultdict(list)
-        for ps in panel_scores:
-            per_campaign_scores[ps.campaign_id].append(ps.score)
-        outliers = {}
-        for cid, scores in per_campaign_scores.items():
-            if len(scores) < 3:
-                continue
-            mean = statistics.mean(scores)
-            stdev = statistics.stdev(scores)
-            outliers[cid] = [s for s in scores if abs(s - mean) > 2 * stdev]
-        return outliers
-```
-
-Outlier flags surface in the result UI (DiagnosticsPanel) as "评审意见分歧明显" warnings. They do NOT exclude persona scores from ranking — they inform the human reviewer.
-
-**4. `max_workers` Scaling**
-
-Increase from `max_workers=4` to `max_workers=min(agent_count, 8)` in both AudiencePanel and MultiJudge. The Semaphore pattern from ImageAnalyzer (currently `Semaphore(3)`) should be applied to MultiJudge too, controlled by `Config.MAX_LLM_CONCURRENT` (new config var, default 5).
-
-### Pipeline Integration
-
-Multi-agent changes slot into `EvaluationOrchestrator.run()`:
-
-```
-Phase 1: AudiencePanel (9 personas → parallel)
-Phase 1.5: ConsensusAgent flags outliers (sync, ~1ms)
-Phase 1.5b: ImageAnalysis (unchanged)
-Phase 2: MultiJudge (3 judges per pair → parallel)
-Phase 3: CampaignScorer (unchanged)
-Phase 4: SummaryGenerator (unchanged)
-```
-
-No new API endpoints needed. Existing `/api/evaluate/start` and `/api/tasks/{id}/status` cover the flow.
+| What | Why No New Dep Needed |
+|------|-----------------------|
+| Static 404 fix | Code + Dockerfile change only |
+| Railway deployment | Existing Dockerfile deploys directly |
+| Brief-type weights | Pure Python dict config, stdlib only |
 
 ---
 
@@ -238,73 +308,40 @@ No new API endpoints needed. Existing `/api/evaluate/start` and `/api/tasks/{id}
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| Vue.js / vue-router | MiroFish uses Vue but MiroFishmoody is React — translating UX patterns is the goal, not migrating frameworks | React + motion for animations |
-| D3.js | MiroFish uses D3 for knowledge graphs — MiroFishmoody has no graph visualization need | recharts covers existing radar/bar needs |
-| WebSocket / Flask-SocketIO | 3-minute evaluation tasks don't need sub-second push — 2s polling is adequate | `setInterval` polling (existing) |
-| Celery + Redis | Internal tool, <10 concurrent users — distributed task queue is operational overhead without benefit | Extend existing TaskManager |
-| LangGraph / LangChain | Adds abstraction over direct LLM calls that are already well-structured; multi-agent here is simple parallel fan-out, not a stateful graph | ThreadPoolExecutor directly |
-| Zep Cloud | MiroFish uses Zep for session memory across agent conversations — campaign evaluation is stateless per run | SQLite result storage sufficient |
-| GraphRAG | MiroFish builds knowledge graphs from documents — not applicable to image/text campaign evaluation | N/A |
-| scipy / numpy | `statistics.stdev` (stdlib) is sufficient for 1D outlier detection on ≤9 values | Python stdlib `statistics` module |
-| LiteLLM | Single LLM provider (Qwen via Bailian) — routing/fallback abstraction has no value here | openai SDK directly |
-| axios (frontend) | MiroFish uses axios but MiroFishmoody already has a well-structured `lib/api.ts` using fetch — adding axios creates two HTTP layers | Keep existing fetch-based api.ts |
+| Node.js proxy layer | No need — Flask serves static files correctly when `dist` exists | Fix the dist assertion in Dockerfile |
+| PostgreSQL migration | SQLite WAL handles current load; migration adds ops overhead not warranted for v2.1 | Keep SQLite, mount Railway volume |
+| LLM-inferred brief weights | Adds latency and cost per evaluation run; weights should be auditable by brand team | Static dict config in `brief_weights.py` |
+| Heroku | Ephemeral filesystem destroys SQLite on dyno restart; 2022 pricing changes make it expensive | Railway |
+| Vercel | 10s function timeout, no persistent disk — already confirmed incompatible | Railway |
 
 ---
 
 ## Alternatives Considered
 
-| Recommended | Alternative | Why Not |
-|-------------|-------------|---------|
-| Translate MiroFish UX patterns to React | Migrate frontend to Vue 3 | Full framework migration for existing 10-page React app — zero user-visible difference, 2-3 weeks of work |
-| `statistics.stdev` for outlier detection | scipy stats | Stdlib avoids a heavy scientific computing dependency for a 5-line calculation |
-| ThreadPoolExecutor for multi-judge | asyncio + async LLM calls | Flask is sync; asyncio in Flask 3.0 requires `async def` views throughout — partial async adoption creates bugs; ThreadPoolExecutor already proven in this codebase |
-| Extend PersonaRegistry config | Separate MultiAgent orchestration framework | Persona expansion is configuration, not architecture — adding 3 personas is a `personas.yaml` edit |
-| motion `animate={{ width }}` for panels | CSS transition classes in Tailwind | motion provides better control over cubic-bezier and play/stop; Tailwind transitions can't be driven by dynamic JS state as cleanly |
-
----
-
-## Version Compatibility
-
-| Package | Compatible With | Notes |
-|---------|-----------------|-------|
-| React 19.x | React Router DOM 7.x | Confirmed compatible |
-| motion 12.x | React 19 | Confirmed — Framer Motion fork explicitly supports React 19 |
-| Tailwind CSS 3.4 | Vite 8.x | Confirmed — postcss pipeline |
-| Python 3.11+ | statistics module | stdlib, no version concern |
-| ThreadPoolExecutor | Python 3.11+ | stdlib, no version concern |
-
----
-
-## Installation
-
-No new packages required for v2.0. All new capabilities use already-installed libraries or Python stdlib.
-
-```bash
-# Verify deps are current — both commands should be no-ops
-cd /Users/slr/MiroFishmoody/frontend && npm install
-cd /Users/slr/MiroFishmoody/backend && uv sync
-```
-
-The only file changes needed before coding:
-1. `frontend/tailwind.config.js` — add fontFamily entries
-2. `frontend/index.html` — add Google Fonts `<link>` tags
-3. `backend/app/config.py` — add `MAX_LLM_CONCURRENT` config var (default: 5)
-4. `.env.example` — document `MAX_LLM_CONCURRENT`
+| Decision | Recommended | Alternative | When Alternative Wins |
+|----------|-------------|-------------|----------------------|
+| Deployment | Railway | VPS + Docker | If ops team prefers full control or Railway pricing grows; existing `docker-compose.yml` + `nginx.conf.template` works on any VPS |
+| Deployment | Railway | Render | Render is valid; Railway's volume docs are clearer and Docker deployment is more direct |
+| Deployment | Railway | Fly.io | Fly.io works well but steeper CLI curve; `fly.toml` config required; no benefit over Railway for a single-container internal tool |
+| Brief weights | Static dict config | Env var overrides | If brand team wants runtime tuning without code deploys, each weight can be added as `os.environ.get('BRAND_WEIGHT_THUMB_STOP', '0.35')` |
+| Brief type field | `BriefType` enum on `Campaign` | Reuse `extra` dict | `extra` is valid for a quick patch; enum provides type safety and IDE support for longer-term maintenance |
 
 ---
 
 ## Sources
 
-- MiroFish source: https://github.com/666ghj/MiroFish — frontend patterns (polling intervals, log buffer size 200, cubic-bezier values, step workflow)
-- MiroFish `frontend/package.json` (verified): vue@^3.5.24, vue-router@^4.6.3, d3@^7.9.0, axios@^1.13.2
-- `/Users/slr/MiroFishmoody/.planning/codebase/STACK.md` — verified existing stack (2026-03-17)
-- `/Users/slr/MiroFishmoody/backend/app/services/audience_panel.py` — ThreadPoolExecutor(max_workers=4), 6/5 persona counts
-- `/Users/slr/MiroFishmoody/backend/app/services/pairwise_judge.py` — single judge pattern, max_workers=4
-- `/Users/slr/MiroFishmoody/backend/app/services/evaluation_orchestrator.py` — full pipeline structure
-- `/Users/slr/MiroFishmoody/frontend/src/pages/RunningPage.tsx` — confirmed fake-step animation pattern (no real polling)
-- `/Users/slr/MiroFishmoody/frontend/src/pages/EvaluatePage.tsx` — confirmed real polling pattern (2s setInterval)
+- `backend/app/__init__.py` — static serving logic, verified locally (2026-03-18)
+- `backend/app/models/campaign.py` — Campaign model, no `brief_type` field confirmed locally
+- `backend/app/services/submarket_evaluator.py` — dimension weighting logic, verified locally
+- `backend/app/services/probability_aggregator.py` — weight constants `W_PAIRWISE`, `W_PANEL`, verified locally
+- `backend/app/services/campaign_scorer.py` — full scoring pipeline, verified locally
+- `Dockerfile` — multi-stage build, path verification, verified locally
+- `docker-compose.yml` — volume mount `uploads-data:/app/backend/uploads`, verified locally
+- https://docs.railway.com/reference/volumes — Railway volume limits, IOPS, pricing (HIGH confidence, official docs, verified 2026-03-18)
+- https://www.pkgpulse.com/blog/railway-vs-render-vs-fly-io-app-hosting-platforms-nodejs-2026 — platform comparison (MEDIUM confidence)
+- https://fly.io/docs/rails/advanced-guides/sqlite3/ — Fly.io SQLite guidance (MEDIUM confidence, Rails context but principle applies)
 
 ---
 
-*Stack research for: MiroFishmoody v2.0 — frontend rewrite + multi-agent backend*
+*Stack research for: MiroFishmoody v2.1 — deployment fix + brief-type evaluation weights*
 *Researched: 2026-03-18*

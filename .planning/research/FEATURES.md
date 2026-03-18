@@ -1,199 +1,267 @@
 # Feature Research
 
-**Domain:** Brand Campaign Pre-testing / 推演 (Internal Tool) — v2.0 Frontend Rewrite + Multi-Agent Backend
+**Domain:** Brand Campaign Pre-testing Tool — v2.1 Brief-Type-Aware Evaluation + Benchmark Dataset
 **Researched:** 2026-03-18
-**Confidence:** HIGH — based on direct reading of existing codebase (all 10 frontend pages + 20 backend services), MiroFish upstream repo analysis, and peer-reviewed 2025 research on multi-agent LLM evaluation
+**Confidence:** MEDIUM — weight proportions from industry research (WebSearch verified against multiple sources); benchmark schema from LLM evaluation literature (HIGH confidence for structure, MEDIUM for domain-specific field selection)
 
 ---
 
-## Context: What v1.1 Already Ships
+## Context: v2.1 Delta from v2.0
 
-Before mapping new features, the baseline matters. All items below are **already built and working**:
+v2.0 ships: 9/8 persona pool, MultiJudge ensemble, devil's advocate, ConsensusAgent, cross-path badge, visual diagnostics.
 
-| Capability | Status |
-|-----------|--------|
-| Race path: baseline ranking + visual analysis + quick ranking | Done |
-| Evaluate path: persona panel scoring + pairwise comparison + BT ranking | Done |
-| Both mode (Race + Evaluate combined, async) | Done |
-| Per-category personas (moodyPlus 6, colored_lenses 5) | Done |
-| Image upload + multimodal analysis (parallel, Semaphore-controlled) | Done |
-| PairwiseJudge with 3 judge perspectives (策略/用户/品牌) + position-swap debiasing | Done |
-| PDF/image export (html2canvas + jsPDF) | Done |
-| Version iteration + comparison | Done |
-| Trends dashboard (recharts, by category) | Done |
-| Auth (login/logout/role) | Done |
+v2.1 adds three things:
+1. **Deployment fix** — static asset 404 on `/`, Railway/Docker migration
+2. **Brief-type-aware evaluation** — weights differ by campaign objective (品牌/种草/转化)
+3. **Benchmark dataset** — labeled historical examples to regression-test scoring accuracy
 
-v2.0 is **not a greenfield build**. It is a targeted rewrite of the frontend interaction layer and a precision enhancement of the multi-agent evaluation engine.
+This FEATURES.md covers (2) and (3) only. Deployment is an ops concern, not a feature concern.
 
 ---
 
 ## Feature Landscape
 
-### Table Stakes (Must Have for v2.0)
+### Table Stakes (Must Have for v2.1)
 
-Features where the current implementation has known bugs, interaction logic failures, or UX gaps that block real usage. These are the reasons v2.0 exists.
+These are features where their absence makes the current evaluation system demonstrably wrong — not just incomplete.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **Form state persists through navigation** | Users fill in 5 plans with images, click submit, something fails, they navigate back — they expect the form to still be there | MEDIUM | Current: `useState` initializes fresh on every mount. Fix: sessionStorage or React context persistence across navigation |
-| **Image upload status is honest** | Users need to know if images are "ready" before submitting. Current status indicators have race conditions with React StrictMode double-fire | MEDIUM | `startedRef` guard already in RunningPage for StrictMode — same pattern needed everywhere image state is mutated async |
-| **Progress page does not poll blindly** | Evaluate path shows static step animation while polling every 3s. If network drops, user sees spinner forever | LOW | Add timeout + visible error recovery. RunningPage already shows error state for Race; EvaluatePage needs same treatment |
-| **Both mode: evaluate link is clickable only when ready** | In Both mode, ResultPage shows "查看深度评审" button that appears when polling completes. If eval fails, this link should show failure — not just disappear | LOW | Current code already handles `evalStatus: 'failed'` but UI text and visibility need clarity |
-| **Version iterate flow is complete end-to-end** | "基于上一版本迭代" banner appears on HomePage when iterateState exists. But Race→Evaluate cross-mode parentSetId is not passed (known debt: `parent_set_id` empty in Race-then-Evaluate flow) | MEDIUM | Fix: when Both mode completes, capture the eval setId and surface it for next iteration |
-| **Result page does not require manual tab switching** | Current EvaluateResultPage has 3 tabs (排名/人格/对比). Users may miss the 人格 tab details. The most important finding (winner + reasons) must be visible without clicking | LOW | Restructure: show winner prominently, collapse others behind toggle |
-| **Export works on all result types** | Export buttons exist on both ResultPage and EvaluateResultPage. html2canvas sometimes clips content or produces blank PDFs on large result sets | MEDIUM | Test with real 5-plan result sets. May need scroll-capture or page-break logic |
-| **Category selector drives visible persona list** | Users select "彩片" but have no confirmation which personas will evaluate them. They should see the persona set before submitting | LOW | Add persona preview in the right-panel "评估矩阵" sidebar before submission |
+| **Brief type field in campaign form** | Without knowing campaign objective, the evaluator cannot apply correct weights. A seeding brief scored with conversion weights will always rank wrong. | LOW | Add `brief_type: enum["brand", "seeding", "conversion"]` to the campaign submission form. Already have `category` field pattern to follow. |
+| **Per-brief-type weight profiles** | Industry consensus: conversion campaigns weight ROAS/CVR 50-60%; brand campaigns weight storytelling/emotional resonance 40-50%; seeding campaigns weight content generation rate and authentic alignment 40-50%. Using a single flat weight across all three gives systematically wrong rankings. | MEDIUM | Implement as a `BriefTypeWeightProfile` config class. Store as YAML/JSON alongside persona configs. Follow existing PersonaRegistry DI pattern. |
+| **Brief-type weights applied in BaselineRanker** | The Race path currently scores against ROAS/CVR/purchase_rate baselines uniformly. A brand campaign should be penalized less for low purchase_rate and more for low brand_recall proxy signals. | MEDIUM | BaselineRanker already accepts dimension configs. Add brief_type param that selects weight overrides before scoring. No schema change needed. |
+| **Brief-type weights applied in EvaluationOrchestrator** | The Evaluate path must pass brief context to each persona judge. A "conversion" brief changes how a persona interprets "success" — "竹竹" cares about aspiration regardless, but her weight in the final score should shift based on brief type. | MEDIUM | Inject brief_type into persona system prompts and into final score aggregation. Two touch points: persona instructions + CampaignScorer aggregation weights. |
+| **Brief type visible in result pages** | Users need to verify the brief type used in evaluation. Evaluating a brand campaign with conversion weights by mistake has no visible trace today. | LOW | Add brief_type badge to ResultPage header and exported PDF. Read from stored result JSON — no backend change if brief_type is stored in the result. |
+| **Benchmark dataset schema** | Without labeled examples, there is no way to know if weight changes improve or regress accuracy. Any weight tuning is blind. The benchmark is the minimum verification infrastructure for the weight feature. | MEDIUM | See Benchmark Dataset Schema section below. |
+| **Benchmark regression test runner** | A script that loads the benchmark dataset and checks whether the current evaluator produces the expected winner for each labeled example. Reports hit rate (% correct). | LOW | Single Python script. No UI needed. Run in CI or manually before releases. |
 
-### Differentiators (Multi-Agent Accuracy Enhancement)
-
-Features that move the evaluation engine from "one LLM pretending to be 5 different people" to "genuinely independent signal sources that catch each other's errors."
-
-Research basis: 2025 literature consistently shows multi-agent debate and panel approaches improve accuracy 8-20 percentage points over single-judge evaluation, with the largest gains in domains requiring nuanced judgment (exactly our case — brand aesthetics, audience resonance).
+### Differentiators (v2.1 Specific Value)
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Cross-persona disagreement surfacing** | When personas disagree strongly (e.g., moodyPlus "科学派" loves a rational claim, "美感派" rejects the same visual), this disagreement is more informative than the averaged score. Currently averaged away silently. | MEDIUM | Backend already has per-persona scores. Add disagreement_score = std dev of persona scores. Surface in UI as "争议方案" badge when std dev > threshold |
-| **Devil's advocate judge in pairwise** | Current 3-judge pairwise (策略/用户/品牌) votes by majority. Add a 4th judge with explicit adversarial role: "你的工作是找到多数评委忽略的风险或被高估的优点" — prevents groupthink convergence | MEDIUM | Add `devil_advocate` perspective to JUDGE_PERSPECTIVES in pairwise_judge.py. Mark its dissenting votes separately so UI can show "少数意见" |
-| **Inconsistency detection between Race and Evaluate** | When Both mode runs, Race ranks plan A first, Evaluate ranks plan B first. This contradiction is currently invisible. It is actually the most valuable signal ("your historical data says A, but independent judges say B — investigate why"). | MEDIUM | In ResultPage Both mode: add cross-path consistency badge. Show explicitly when Race winner != Evaluate winner and flag for review |
-| **Persona confidence flagging** | LLM outputs a score of 7/10 but its reasoning text contradicts the score ("this would not resonate with me... 7/10"). Current code trusts the JSON number. Add a pass checking score vs reasoning semantic alignment. | HIGH | Use a second LLM call (cheaper/faster model) to verify score-reasoning alignment. Flag low-confidence evaluations in UI. This is the "meta-judge" pattern from 2025 literature |
-| **Expanded pairwise judge perspectives** | Current 3 judges (strategist, consumer, brand guardian) all evaluate from Moody's existing brand frame. Add: "竞品视角" — assumes the evaluator is a Acuvue/Bausch&Lomb brand manager assessing threat level. This surfaces competitive differentiation gaps. | LOW | Add 1-2 more JUDGE_PERSPECTIVES entries. Minimal code change, high signal value for brand team |
-| **Calibrated scoring against historical winners** | All persona scores are relative to each other, not anchored to real-world outcomes. If campaign X was a historical top performer (high ROAS), and current personas gave it 6/10, there's a calibration gap. Use JudgeCalibration service (already exists) to apply learned weights. | HIGH | JudgeCalibration.get_weights() already called in orchestrator but weights are likely not trained on real data yet. Needs historical outcome data pipeline |
+| **Weight transparency panel** | Show the brand team which dimensions drove the final ranking and what weight each carried. "Plan A won because visual-brand-fit (weight 0.35) was 8.2 vs Plan B's 6.1" is actionable. "Plan A scored 87" is not. | MEDIUM | Backend already has per-dimension scores. Add weight × score breakdown to result detail view. Collapsible panel, not front-and-center. |
+| **Brief-type calibration history** | Over time, track whether brief-type-A evaluations that scored "Plan X winner" were validated by real performance. This closes the feedback loop. | HIGH | Requires real-outcome capture (post-campaign ROAS/CTR linkage). Long-term only. Include in benchmark schema but don't build UI yet. |
+| **Benchmark hit rate in admin dashboard** | The admin user can see current model hit rate against benchmark — e.g., "brand brief: 78%, seeding brief: 65%, conversion brief: 82%". Reveals which brief type needs better calibration. | LOW | Read from benchmark runner output. Static JSON → dashboard chart. |
 
-### Anti-Features (Deliberately NOT Build in v2.0)
+### Anti-Features (Do Not Build in v2.1)
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| **Full Vue.js → React rewrite mirroring MiroFish exactly** | "MiroFish frontend patterns" sounds like "copy their code" | MiroFish is a Vue.js simulation platform for thousands of agents. Its UI patterns (knowledge graph visualization, real-time agent chat, simulation state) are completely inapplicable to a 5-plan campaign evaluation tool. Taking UI patterns from MiroFish means misreading the task. | Rewrite React frontend to fix current bugs and improve interaction clarity. MiroFish's value is its multi-agent backend architecture concept, not its Vue components. |
-| **Full LLM orchestration rewrite (LangChain/LangGraph)** | "Add more agents = need orchestration framework" | Current ThreadPoolExecutor + custom services works and is debuggable. LangChain adds abstraction overhead, version churn, and debugging difficulty for marginal gains. The team already knows Flask services. | Add agents by extending existing service classes. EvaluationOrchestrator already coordinates phases correctly — extend it, don't replace it. |
-| **Thousands of agents (MiroFish simulation scale)** | "More agents = better accuracy" is a common extrapolation | 2025 research shows gains plateau after 3-5 diverse agents. Beyond that, cost and latency grow linearly while accuracy gains are marginal. MiroFish's "thousands of agents" is designed for macro social simulation, not per-campaign evaluation. | 5-7 well-differentiated agents (current 6 personas + 3 judges + 1 devil's advocate = already near optimal). Focus on quality of disagreement, not quantity. |
-| **Real-time agent chat interface** | MiroFish has interactive "chat with agents" feature — seems valuable | Campaign evaluation is async batch, not interactive. Adding chat would require stateful agent sessions, session storage, and a fundamentally different UX model. The brand team wants a result PDF, not a conversation. | After evaluation completes, show "follow-up questions" as expandable pre-baked responses from each persona (e.g., "竹竹的具体担忧是什么?" → shows stored objections). Zero added complexity. |
-| **GraphRAG knowledge graph visualization** | MiroFish shows entity relationship graphs — looks impressive | This is for exploring multi-agent simulation state. For campaign evaluation, the "knowledge graph" would be personas knowing each other... which adds nothing actionable. | Clean tabular persona scores + radar chart is clearer and faster to interpret than a graph visualization. |
-| **Realtime collaboration / multi-user editing** | "Multiple team members should work on the same campaign" | Internal tool with sequential workflow. simultaneous editing creates race conditions in evaluation state (already managed with threading.Lock). | One user submits evaluation, shares exported PDF in meeting. If needed, add read-only result sharing link (trivial to implement) as v2.x. |
+| **Fully separate evaluation pipelines per brief type** | "Brand campaigns are so different they need a different model" | Creates 3x maintenance burden. The personas and judges are already differentiated enough; the only variable is the weight profile. Separate pipelines mean 3x bugs, 3x tests, 3x config drift. | Single pipeline, injected weight profile. The `BriefTypeWeightProfile` abstraction handles all variation without code duplication. |
+| **LLM-inferred brief type** | "Let the AI figure out the brief type from the description" | LLM inference of intent is unreliable and adds latency + cost. A 2-second form field is more reliable than a prompt that may miscategorize. Wrong brief-type detection silently corrupts all evaluation scores. | Explicit user selection in form. Add validation: brief_type required before submit. |
+| **Sub-brief-types (e.g., awareness vs recall within brand)** | "Brand campaigns have sub-goals too" | v2.1 has 3 categories; more granularity requires more labeled examples to validate. With no ground truth data yet, sub-types would be invented weights with no verification path. | Start with 3 types. After benchmark dataset is built and hit rates are measured, add sub-types only where hit rate is low and sub-type separation would logically help. |
+| **Automatic weight optimization via ML** | "Train on benchmark data to find optimal weights" | 20-50 labeled examples (realistic benchmark size) is far too small for ML-derived weights to beat expert-designed weights. Risk: overfitting to benchmark, failing on real campaigns. | Expert-designed weights from industry research, validated against benchmark hit rate. Revisit when benchmark reaches 200+ examples. |
+
+---
+
+## Brief Type Weight Profiles
+
+Research synthesis from multiple industry sources (MEDIUM confidence — cross-verified against Adstellar, SmartInsights, Motimatic KPI frameworks):
+
+### Brand Campaign (品牌向)
+
+Objective: Build brand equity, establish positioning, increase aided/unaided recall.
+
+| Dimension | Weight | Rationale |
+|-----------|--------|-----------|
+| Visual brand consistency | 0.25 | Brand campaigns live or die on visual coherence with existing brand system |
+| Emotional resonance | 0.25 | Brand recall is driven by emotional association, not rational argument |
+| Storytelling quality | 0.20 | Narrative-structured messaging improves brand attitude 38% vs feature-based (ISO 20671 data) |
+| Audience-brand fit | 0.15 | Target affinity with Moody's aesthetic/value positioning |
+| Conversion signal | 0.05 | Deliberately low — brand campaigns are not optimized for immediate purchase |
+| Competitive differentiation | 0.10 | Does this campaign make Moody visually distinct from ACUVUE/Bausch&Lomb? |
+
+### Seeding Campaign (种草向)
+
+Objective: Generate authentic content, seed consideration, build social proof.
+
+| Dimension | Weight | Rationale |
+|-----------|--------|-----------|
+| Content authenticity | 0.30 | Seeding fails when it reads as advertising. Authenticity is the product. |
+| Audience-creator fit | 0.25 | Will the target creator persona genuinely post this? Misfit = zero content generation rate. |
+| Visual shareability | 0.20 | Content must work in feed context (not in-ad context). Thumb-stop, repost potential. |
+| Emotional resonance | 0.15 | Engagement > reach in seeding; emotional hooks drive comments/saves |
+| Brand consistency | 0.05 | Deliberately low — seeding allows more creative latitude than brand campaigns |
+| Conversion signal | 0.05 | Seeding is top-of-funnel; conversion measurement is lagged and indirect |
+
+### Conversion Campaign (转化向)
+
+Objective: Drive purchase, maximize ROAS/CVR, capture bottom-of-funnel intent.
+
+| Dimension | Weight | Rationale |
+|-----------|--------|-----------|
+| Purchase intent signal | 0.30 | Does the visual/copy create urgency and a clear reason to buy now? |
+| Product clarity | 0.25 | Conversion ads must communicate product benefit unambiguously within 3 seconds |
+| CTA effectiveness | 0.20 | Is there a clear, low-friction call to action? |
+| Audience targeting fit | 0.15 | Conversion campaigns waste budget on mismatched audiences more than brand campaigns do |
+| Brand consistency | 0.05 | Lower weight — conversion campaigns can deviate from brand aesthetic for performance |
+| Storytelling quality | 0.05 | Lower weight — narrative structure matters less when the goal is immediate action |
+
+**Implementation note:** These weights should be stored as YAML config, not hardcoded. The brand team must be able to adjust them after seeing benchmark hit rates.
+
+---
+
+## Benchmark Dataset Schema
+
+Research basis: LLM evaluation literature (Kili Technology, Maxim AI, LitBench methodology, evidentlyai). MEDIUM-HIGH confidence — these patterns are well-established for domain-specific LLM evaluation.
+
+### What a Good Benchmark Dataset Contains
+
+A benchmark for campaign evaluation needs:
+1. **Inputs** — the same data the evaluator receives (brief, visual descriptions, campaign metadata)
+2. **Expected output** — human-expert-labeled winner + ranking
+3. **Outcome linkage** — actual post-campaign performance (where available), for long-term calibration
+4. **Metadata** — enough to slice results by brief type, category, recency
+
+### Minimum Required Fields per Example
+
+```json
+{
+  "example_id": "bm_2025_q4_001",
+  "brief_type": "brand | seeding | conversion",
+  "category": "moodyPlus | colored_lenses",
+  "campaign_name": "string (may be anonymized)",
+  "evaluation_date": "ISO 8601",
+
+  "plans": [
+    {
+      "plan_id": "A",
+      "plan_name": "string",
+      "visual_description": "string — what the image shows (for text-only benchmark runs)",
+      "image_path": "optional — relative path to image file",
+      "brief_description": "string — plan's approach to the brief"
+    }
+  ],
+
+  "ground_truth": {
+    "winner": "A | B | C ...",
+    "ranking": ["A", "C", "B"],
+    "labeled_by": "string — role of labeler (e.g., brand_director)",
+    "label_confidence": "high | medium | low",
+    "label_rationale": "string — why this plan won (required for high-confidence labels)"
+  },
+
+  "outcome": {
+    "available": true,
+    "winner_actual": "A | B | null",
+    "roas_delta": "float | null — relative ROAS of labeled winner vs alternatives",
+    "cvr_delta": "float | null",
+    "outcome_source": "string — where this data came from"
+  },
+
+  "tags": ["string"],
+  "notes": "string"
+}
+```
+
+### Minimum Dataset Size for Useful Hit Rate Measurement
+
+| Size | What You Can Do | Confidence Level |
+|------|-----------------|-----------------|
+| 10-20 examples | Sanity check only. Can detect catastrophic failures. | LOW |
+| 20-50 examples | Per-brief-type breakdown starts to be meaningful. Spot-check calibration. | MEDIUM |
+| 50-100 examples | Weight tuning is defensible. Can run A/B test of weight profiles. | MEDIUM-HIGH |
+| 100+ examples | ML-based weight optimization becomes viable. Cross-validation possible. | HIGH |
+
+**Recommendation for v2.1:** Target 30 labeled examples minimum before shipping brief-type weights to production. Even 30 examples — roughly 10 per brief type — gives the brand team a falsifiable hit rate number rather than "we think this is better."
+
+### Annotation Guidelines (Required for Label Consistency)
+
+Labels are only useful if consistently applied. Minimum annotation guidelines:
+
+1. **Winner = the plan you would recommend to leadership** given the stated brief. Not "which image is prettier" — which plan best serves the objective.
+2. **Brief type determines the evaluation lens.** Label a seeding plan by seeding criteria, not by whether you personally like the product.
+3. **Label confidence = high** only when the winner is clear to any senior marketer. If two plans are tied, label confidence = low and note it.
+4. **Image availability.** If images are available, the labeler must view them before labeling. Text-only labels are acceptable only as a fallback, and must be tagged `text_only: true`.
+5. **Outcome data.** Attach actual performance data whenever it exists. This is the only ground truth that beats expert opinion.
+
+---
 
 ## Feature Dependencies
 
 ```
-[Frontend interaction fixes] — no backend deps, can ship independently
-    └──enables──> [Stable form state]
-    └──enables──> [Honest async feedback]
-    └──enables──> [Both-mode cross-path surfacing]
+[Brief type field in form]
+    └──required by──> [Per-brief-type weight profiles]
+    └──required by──> [BaselineRanker weight injection]
+    └──required by──> [EvaluationOrchestrator weight injection]
+    └──required by──> [Brief type in result/export]
 
-[Cross-persona disagreement surfacing]
-    └──requires──> [per-persona scores in API response] (already in backend)
-    └──enables──> [Calibrated scoring]
+[Benchmark dataset (manually labeled)]
+    └──required by──> [Benchmark regression test runner]
+    └──required by──> [Hit rate in admin dashboard]
+    └──enables──> [Weight profile validation]
+    └──enables (long-term)──> [Brief-type calibration history]
 
-[Devil's advocate judge]
-    └──requires──> [pairwise_judge.py JUDGE_PERSPECTIVES extension]
-    └──independent──> (no frontend changes needed for backend addition)
-    └──enables──> [UI: 少数意见 badge] (optional frontend)
+[BaselineRanker weight injection]
+    └──independent from──> [EvaluationOrchestrator weight injection]
+    (Race and Evaluate paths can be migrated independently)
 
-[Race + Evaluate cross-path inconsistency detection]
-    └──requires──> [Both mode result storage] (already exists)
-    └──requires──> [Frontend ResultPage change only]
-
-[Persona confidence flagging]
-    └──requires──> [Secondary LLM verification call]
-    └──requires──> [Score-reasoning extraction from panel output]
-    └──HIGH COST — defer unless accuracy gap proven
-
-[Calibrated scoring against historical winners]
-    └──requires──> [JudgeCalibration training data pipeline]
-    └──requires──> [Historical outcome → score mapping]
-    └──HIGH COST — long-term only
+[Weight transparency panel]
+    └──requires──> [per-dimension scores with weights stored in result JSON]
+    (backend already has scores; needs weight metadata added to output)
 ```
 
 ### Dependency Notes
 
-- **Frontend fixes are independent of backend**: All frontend table stakes can be shipped without touching any backend service. This is a clean separation.
-- **Devil's advocate is backend-only first**: Add the judge perspective in pairwise_judge.py. The frontend can display it without code changes (votes already shown per-judge). Frontend badge is an enhancement, not a requirement.
-- **Cross-path inconsistency requires zero backend changes**: Both-mode already stores Race result AND Evaluate result. This is purely a ResultPage UI computation.
-- **Confidence flagging is the most expensive feature**: Requires a second LLM call per persona score. At 6 personas × N campaigns × secondary call, this doubles LLM cost. Only do this if users report trusting wrong scores.
+- **Brief type field is the v2.1 gate.** Every other feature in this milestone depends on it. Ship it first, wire backend after.
+- **Benchmark and weight injection are independent.** You can build the benchmark dataset in parallel while developing the weight profiles. The benchmark validates the weights, but building the benchmark does not block building the weights.
+- **BaselineRanker and EvaluationOrchestrator are decoupled.** Race path and Evaluate path weighting can be migrated one at a time. Start with EvaluationOrchestrator (Evaluate path) because it has more dimensions to weight.
 
-## MVP Definition for v2.0
+---
 
-### Ship in v2.0 Phase 1: Frontend Rewrite
+## MVP Definition for v2.1
 
-These are interaction fixes with no backend dependency. Can be developed, tested, and shipped independently.
+### Ship in v2.1 (Brief-Type Evaluation)
 
-- [ ] **Form state persistence across navigation** — sessionStorage save/restore of HomePage state
-- [ ] **Timeout + recovery on Evaluate polling** — prevents infinite spinner
-- [ ] **Both mode: cross-path consistency badge** — zero backend work, high signal value
-- [ ] **Category selector shows persona preview** — add persona names/count to sidebar before submit
-- [ ] **Result page: winner-first layout** — restructure EvaluateResultPage to show top campaign without requiring tab navigation
-- [ ] **Export reliability** — test + fix html2canvas PDF generation on full result sets
-- [ ] **Race→Evaluate parentSetId fix** — pass setId correctly in Both mode for version chain
+- [ ] **Brief type field** — add `brief_type` to campaign form, required field, enum validation
+- [ ] **BriefTypeWeightProfile config** — YAML-based weight profiles for 3 brief types, loaded via registry pattern
+- [ ] **EvaluationOrchestrator weight injection** — brief_type param passed through to score aggregation
+- [ ] **BaselineRanker weight injection** — brief_type selects dimension weight override in Race path
+- [ ] **Brief type visible in result** — badge on ResultPage and in PDF export
+- [ ] **Benchmark dataset seed** — 10-30 labeled examples in `/backend/benchmark/` as JSON, created by brand team
+- [ ] **Benchmark runner script** — `python benchmark/run.py` outputs hit rate by brief type
 
-### Ship in v2.0 Phase 2: Multi-Agent Enhancement
+### Defer to v2.2
 
-Backend extensions that increase evaluation signal quality.
+- [ ] **Weight transparency panel** — UI breakdown of weight × score. Useful but not blocking.
+- [ ] **Benchmark hit rate in admin dashboard** — nice-to-have; runner script is sufficient for v2.1
+- [ ] **Brief-type calibration history** — requires post-campaign outcome collection pipeline. Long-term.
 
-- [ ] **Cross-persona disagreement score** — std dev of persona scores, surfaced as "争议" badge
-- [ ] **Devil's advocate judge perspective** — add to JUDGE_PERSPECTIVES, mark dissenting votes
-- [ ] **Expanded pairwise perspectives (+1 竞品视角)** — extend judge set for brand differentiation signal
-
-### Defer to v2.x: High-Cost Features
-
-Only build if specific need is validated.
-
-- [ ] **Persona confidence flagging** — defer until users report score-reasoning contradictions
-- [ ] **Calibrated scoring against historical winners** — defer until historical outcome data is systematically captured and linked to evaluation results
+---
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Form state persistence | HIGH (prevents lost work) | LOW | **P1** |
-| Evaluate polling timeout/recovery | HIGH (prevents stuck UI) | LOW | **P1** |
-| Both mode cross-path inconsistency badge | HIGH (new insight) | LOW (frontend only) | **P1** |
-| Winner-first result layout | MEDIUM | LOW | **P1** |
-| Export reliability fix | MEDIUM | MEDIUM | **P1** |
-| Category → persona preview | MEDIUM | LOW | **P2** |
-| Race→Evaluate parentSetId fix | MEDIUM | LOW | **P2** |
-| Cross-persona disagreement score | HIGH (new signal) | MEDIUM | **P2** |
-| Devil's advocate judge | HIGH (reduces groupthink) | LOW (backend only) | **P2** |
-| Expanded pairwise perspectives | MEDIUM | LOW | **P2** |
-| Persona confidence flagging | MEDIUM | HIGH (2x LLM cost) | **P3** |
-| Calibrated scoring (historical) | HIGH (long-term) | HIGH | **P3** |
+| Brief type form field | HIGH (gates entire feature) | LOW | **P1** |
+| BriefTypeWeightProfile config | HIGH | LOW-MEDIUM | **P1** |
+| EvaluationOrchestrator weight injection | HIGH | MEDIUM | **P1** |
+| BaselineRanker weight injection | MEDIUM | MEDIUM | **P1** |
+| Brief type in result/export | MEDIUM | LOW | **P1** |
+| Benchmark dataset (manual labeling) | HIGH (verification) | MEDIUM (human time) | **P1** |
+| Benchmark runner script | HIGH (regression safety) | LOW | **P1** |
+| Weight transparency panel | MEDIUM | MEDIUM | **P2** |
+| Benchmark hit rate dashboard | LOW | LOW | **P2** |
+| Brief-type calibration history | HIGH (long-term) | HIGH | **P3** |
 
-**Priority key:**
-- P1: Ship in v2.0 Phase 1 (frontend rewrite)
-- P2: Ship in v2.0 Phase 2 (multi-agent enhancement)
-- P3: Validated need required before building
-
-## What "MiroFish Frontend Patterns" Actually Means for This Project
-
-The MiroFish upstream repo (https://github.com/666ghj/MiroFish) is a **Vue.js multi-agent simulation platform** for macro social simulation (policy testing, financial forecasting, public opinion modeling via thousands of agents with emergent behavior). Its frontend interaction patterns are:
-
-1. Upload seed materials (documents, narratives)
-2. Query in natural language
-3. Watch real-time simulation unfold (knowledge graph, agent interactions)
-4. Chat with individual simulated agents
-5. Read ReportAgent synthesis
-
-**None of these patterns map directly to campaign evaluation.** The "MiroFish frontend rewrite" in PROJECT.md means: use MiroFish's multi-agent evaluation *philosophy* (diverse agent perspectives, emergent disagreement as signal, structured consensus) to redesign the frontend to correctly surface what the backend already produces.
-
-The valuable translation is:
-
-| MiroFish concept | MiroFishmoody v2.0 equivalent |
-|------------------|-------------------------------|
-| Thousands of agents with distinct personalities | 6 personas (moodyPlus) / 5 personas (colored_lenses) with brand-specific evaluation focus |
-| Emergent disagreement as signal | Cross-persona std dev surfaced as "争议" badge |
-| ReportAgent synthesis | SummaryGenerator structured output |
-| Agent chat for verification | Pre-baked persona objections expandable in result view |
-| Real-time simulation progress | Async task polling with honest stage display |
+---
 
 ## Sources
 
-- Direct codebase analysis: `/Users/slr/MiroFishmoody/frontend/src/pages/` (all 10 pages)
-- Direct codebase analysis: `/Users/slr/MiroFishmoody/backend/app/services/` (all 20 services)
-- [MiroFish upstream README-EN](https://github.com/666ghj/MiroFish/blob/main/README-EN.md) — multi-agent architecture description
-- [Multi-LLM-Agents Debate — Performance, Efficiency, and Scaling Challenges (ICLR 2025)](https://d2jud02ci9yv69.cloudfront.net/2025-04-28-mad-159/blog/mad/) — debate scaling results
-- [Judging the Judges: A Systematic Study of Position Bias in LLM-as-a-Judge (ACL 2025)](https://aclanthology.org/2025.ijcnlp-long.18/) — position bias mechanics and majority vote mitigation
-- [ChatEval: Towards Better LLM-based Evaluators through Multi-Agent Debate (Semantic Scholar)](https://www.semanticscholar.org/paper/ChatEval:-Towards-Better-LLM-based-Evaluators-Chan-Chen/ec58a564fdda29e6a9a0a7bab5eeb4c290f716d7) — multi-agent debate evaluation framework
-- [Adversarial Multi-Agent Evaluation of LLMs through Iterative Debates (arXiv 2410.04663)](https://arxiv.org/html/2410.04663v1) — devil's advocate patterns
-- [Orq.ai: Comprehensive Guide to Evaluating Multi-Agent LLM Systems](https://orq.ai/blog/multi-agent-llm-eval-system) — ensemble patterns
-- [Beyond Consensus: Mitigating Agreeableness Bias in LLM Judge Evaluations (NUS 2025)](https://aicet.comp.nus.edu.sg/wp-content/uploads/2025/10/Beyond-Consensus-Mitigating-the-agreeableness-bias-in-LLM-judge-evaluations.pdf) — agreeableness bias mitigation
+- [Adstellar: Meta Campaign Performance Scoring — weighted KPI framework](https://www.adstellar.ai/blog/meta-campaign-performance-scoring)
+- [SmartInsights: Brand Evaluation and Marketing KPIs Beyond a Single Campaign Metric](https://www.smartinsights.com/goal-setting-evaluation/goals-kpis/kpis-measuring-brand-marketing/)
+- [Motimatic: KPIs in Digital Marketing — Brand Awareness vs Lead Generation](https://motimatic.com/industry/other/kpis-in-digital-marketing/)
+- [Nepa: Campaign Evaluation — Measuring True Impact](https://nepa.com/blog/campaign-evaluation-measuring-true-impact-and-maximizing-marketing-roi/)
+- [MightyScout: Ultimate Guide to Influencer Marketing KPIs 2025](https://mightyscout.com/blog/the-ultimate-guide-to-influencer-marketing-kpis)
+- [Sprout Social: Influencer Marketing KPIs](https://sproutsocial.com/insights/influencer-marketing-kpis/)
+- [Maxim AI: Building a Golden Dataset for AI Evaluation](https://www.getmaxim.ai/articles/building-a-golden-dataset-for-ai-evaluation-a-step-by-step-guide/)
+- [Kili Technology: How to Build LLM Evaluation Datasets for Domain-Specific Use Cases](https://kili-technology.com/large-language-models-llms/how-to-build-llm-evaluation-datasets-for-your-domain-specific-use-cases/)
+- [LitBench: A Benchmark and Dataset for Reliable Evaluation of Creative Writing (arXiv 2507.00769)](https://arxiv.org/abs/2507.00769) — benchmark methodology for subjective creative evaluation
+- [evidentlyai: LLM-as-a-Judge Complete Guide](https://www.evidentlyai.com/llm-guide/llm-as-a-judge)
+- [Keylabs AI: Creating Reliable Benchmark Datasets — Gold Standard](https://keylabs.ai/blog/creating-reliable-benchmark-datasets-gold-standard-data-for-model-evaluation/)
+- ISO 20671 brand evaluation framework — storytelling dimension weighting basis (referenced via SmartInsights)
 
 ---
-*Feature research for: MiroFishmoody v2.0 — Frontend Rewrite + Multi-Agent Enhancement*
+
+*Feature research for: MiroFishmoody v2.1 — Brief-Type-Aware Evaluation + Benchmark Dataset*
 *Researched: 2026-03-18*

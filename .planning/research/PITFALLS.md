@@ -1,385 +1,286 @@
 # Pitfalls Research
 
 **Domain:** Brand campaign simulation with LLM-based multimodal evaluation
-**Researched:** 2026-03-18 (updated for v2.0: frontend rewrite + multi-agent)
+**Researched:** 2026-03-18 (updated for v2.1: deployment fix + evaluation bias correction)
 **Confidence:** HIGH (grounded in codebase analysis + domain research)
 
 ---
 
-## v2.0 Milestone-Specific Pitfalls
+## v2.1 Milestone-Specific Pitfalls
 
-The following pitfalls are specific to the two goals of this milestone:
-(A) Frontend rewrite referencing MiroFish original while keeping Flask backend unchanged.
-(B) Adding parallel multi-agent evaluation to the existing Qwen/Bailian pipeline.
+The following pitfalls are specific to the three goals of this milestone:
+(A) Fixing the Flask static file serving path that causes `/` to return 404 in Docker.
+(B) Migrating from Vercel (serverless) to Railway/Docker (stateful long-running process).
+(C) Adding brief-type-driven weighted scoring profiles to fix evaluator bias.
 
 ---
 
-### Pitfall F1: API Contract Drift During Frontend Rewrite
+### Pitfall D1: Static Path Computed at Module Import Time, Not Runtime Working Directory
 
 **What goes wrong:**
-The rewrite starts with the MiroFish reference frontend and maps its data shapes to the existing Flask API. Midway through the rewrite, a developer changes a field name or nests a previously flat payload to match MiroFish conventions, without updating the Flask route. Both sides compile; the runtime error is silent: the field arrives as `undefined`, a default value kicks in, and the evaluation runs with the wrong parameter. In this codebase, the risk points are:
-- `product_line` vs `productLine` (camelCase/snake_case mismatch between store.ts and Flask routes)
-- `category` field used in Evaluate payload but not validated on the backend — can silently default
-- Image path format: the store holds `File` objects; the API expects already-uploaded paths from `/api/campaign/upload`
+`FRONTEND_DIST = os.path.join(os.path.dirname(__file__), '../../frontend/dist')` is computed once when `app/__init__.py` is imported. `__file__` resolves to the Python source file's absolute path inside the container, which is `/app/backend/app/__init__.py`. The computed path becomes `/app/backend/app/../../frontend/dist` → `/app/frontend/dist`. The Dockerfile copies the frontend build to `/app/frontend/dist`, so this works in theory. The actual bug is that `os.path.abspath(FRONTEND_DIST)` collapses correctly, but gunicorn is launched with `--chdir /app/backend`, which changes the process working directory to `/app/backend`. If any code uses a **relative** fallback or the dist path is edited to be relative (e.g., `frontend/dist` without the `__file__`-based anchor), it resolves to `/app/backend/frontend/dist` which does not exist — and the `if os.path.isdir(dist)` check silently skips static file registration with no error, causing 404 on every non-API route.
 
 **Why it happens:**
-Frontend rewrites reference two sources simultaneously (MiroFish original + current Flask API), and the two have divergent naming conventions. Developers copy field names from the wrong source.
+The distinction between `os.path.dirname(__file__)` (anchored to source file location) and `os.getcwd()` (anchored to process working directory) is invisible during local development because both resolve the same way when running from the project root. In Docker, gunicorn's `--chdir /app/backend` shifts `os.getcwd()` without affecting `__file__`.
 
 **How to avoid:**
-- Before writing any new component, create a `contracts.ts` file that mirrors each Flask route's expected request/response shape exactly (copy from `api.ts`, expand where needed).
-- Run `npm run build` after every component — TypeScript strict mode will catch most shape mismatches at compile time if API types are accurate.
-- Never change a field name without checking the Flask route handler first. Changes to the API layer require a corresponding backend change.
+- Keep the `os.path.join(os.path.dirname(__file__), ...)` anchor. Never replace it with a relative string or `os.getcwd()`-based path.
+- Add a startup log that prints the resolved absolute path of `dist` and whether `os.path.isdir(dist)` is `True`. This takes one line and makes the failure immediately visible in `docker compose logs`.
+- Write a test: start the Flask app with `create_app()`, make a `GET /` request, assert the response is not 404. Run this test as part of the Docker build verification step (not just the unit test suite).
 
 **Warning signs:**
-- A field is `undefined` in a network request body where a string is expected
-- Evaluation runs without error but `category` defaults to `null`, causing the wrong persona set to load
-- Backend logs show `KeyError` on fields that were renamed on the frontend side
+- `docker compose logs` shows "前端 dist 目录不存在" at startup, or the log line for "前端静态文件托管" is missing.
+- `GET /` returns 404 in production but works in local `npm run dev` (which uses Vite's dev server, not Flask static serving).
+- `curl http://localhost:5001/health` succeeds (API routes work) but `curl http://localhost:5001/` fails (SPA routes broken).
 
 **Phase to address:**
-Phase F1 (Frontend Foundation) — lock down `contracts.ts` before writing page components.
+Phase D1 (Deployment Fix) — first change in the milestone, verified with `curl http://localhost:5001/` returning 200 before merging.
 
 ---
 
-### Pitfall F2: MiroFish Reference Logic Carries Assumptions That Don't Match This Backend
+### Pitfall D2: Serverless Platform Silently Accepts a Stateful App and Fails at Runtime
 
 **What goes wrong:**
-MiroFish (https://github.com/666ghj/MiroFish) was built for a different backend with different data models. Developers copy interaction flows verbatim: routing logic, state management patterns, polling mechanisms. Some patterns are incompatible:
-- MiroFish may use different polling patterns (WebSocket, SSE, or different HTTP polling intervals) vs. the current `GET /api/campaign/task/<task_id>` polling approach
-- MiroFish campaign model differs from the `CampaignPlan` / `EvaluatePayload` types in this codebase
-- File upload flow in MiroFish may differ from the current `/api/campaign/upload` + path reference pattern
+Vercel accepts deployment of any Docker container or Node/Python app. The deployment succeeds. `DEPLOYMENT_NOT_FOUND` does not appear until a request is made that violates serverless constraints: any operation that requires persistent state on disk (SQLite writes, uploaded image files, task queue in `TaskManager`) fails or appears to succeed but does not persist across requests. Specifically:
+
+- SQLite `tasks.db` is written to `/app/backend/uploads/tasks.db`. Each Vercel invocation may run in a fresh ephemeral container, so a task submitted in one request is invisible to the next request's status poll.
+- Image files uploaded to `/app/backend/uploads/` disappear between invocations.
+- Gunicorn with multiple workers is incompatible with Vercel's execution model (Vercel invokes a single function handler, not a long-running gunicorn process).
+- Vercel's free tier has a 10-second function timeout; the evaluation pipeline takes 90-150 seconds.
+
+The project's `docker-compose.yml` already uses a named volume `uploads-data` mounted at `/app/backend/uploads`, proving the design requires persistent disk. This is inherently incompatible with serverless.
 
 **Why it happens:**
-"Reference the original" is interpreted as "copy from the original." Logic that worked in MiroFish's context is assumed to work here without verifying the API contract.
+Vercel's UI and CLI successfully build and deploy the container. There is no pre-flight check that says "this app requires persistent disk." The failure only appears at runtime when SQLite tries to write, or when a user polls for a task that was created in a different ephemeral invocation.
 
 **How to avoid:**
-- Treat MiroFish as a UI/UX reference, not a code reference. Copy visual design and interaction flow, not data models or API calls.
-- Before implementing any data-flow component, document which Flask API endpoint it calls and what shape it expects.
-- The existing `lib/api.ts` is the authoritative source for API shape. New components must import from it — never replicate API call logic inline.
+- Deploy to Railway (natively supports Docker containers with persistent volumes), a VPS with Docker + docker compose, or any container platform that provides persistent disk.
+- On Railway: set a volume mount at `/app/backend/uploads` in the Railway dashboard. The `docker-compose.yml` volumes block translates directly to Railway's volume configuration.
+- Verify persistence explicitly: submit a campaign, restart the container (`docker compose restart`), poll the task status — it must still be visible. This proves the database and uploads survived the restart.
+- Do not attempt to make the app work on Vercel by moving state to external storage (Redis, S3, PostgreSQL). That is a larger architectural change than a v2.1 deployment fix.
 
 **Warning signs:**
-- A component polls an endpoint that doesn't exist in Flask
-- Image upload uses a different multipart field name than the Flask route expects
-- A new store slice has fields not present in any Flask response
+- `DEPLOYMENT_NOT_FOUND` on Vercel (the app compiled but the deployment target does not support long-running processes).
+- Task status polling returns 404 or "task not found" for tasks that were definitely submitted.
+- Uploaded images disappear after a browser refresh or after a few minutes.
+- Evaluation takes longer than Vercel's function timeout and returns a cold timeout error with no log output.
 
 **Phase to address:**
-Phase F1 (Frontend Foundation) — review MiroFish source before writing any page, extract only the UI patterns.
+Phase D1 (Deployment Fix) — validate with the explicit persistence test before considering the migration complete.
 
 ---
 
-### Pitfall F3: Zustand Store State Surviving a Rewrite Creates Ghost State Bugs
+### Pitfall D3: Railway Volume Mount Path Mismatch Silently Writes to Container Ephemeral Layer
 
 **What goes wrong:**
-The current `store.ts` uses in-memory Zustand state (no persistence). The rewrite adds new fields or restructures the store. If old store shape is still in memory (from a hot-reload or browser tab kept open), stale closures capture the old shape and the new component reads `undefined` where a value is expected. In the specific case of `iterateState.parentSetId` (which is set when iterating on a campaign version), stale state from the previous version chain could be silently injected into a new evaluation.
+Railway requires the volume mount path to match exactly what the application writes to. The Dockerfile creates `/app/backend/uploads/results` and `/app/backend/uploads/calibration/predictions`. If the Railway volume is mounted at `/app/uploads` (wrong) instead of `/app/backend/uploads` (correct), the application writes files to the correct path on the container's ephemeral layer, which appears to work during a session but loses all data on container restart. No error is raised; files just disappear silently.
 
 **Why it happens:**
-In-memory state during development doesn't have schema migrations. Hot-reload keeps old state alive. Adding fields to a Zustand store while the app is running means the old state object doesn't have the new fields.
+Railway's volume configuration is set manually in the dashboard and is disconnected from the Dockerfile's `RUN mkdir` commands. There is no schema validation between volume mount paths and what the app actually uses.
 
 **How to avoid:**
-- When restructuring the store, always hard-refresh (not hot-reload) before testing the new shape.
-- Add a store version key and reset state when the version changes. For the `iterateState` in particular, assert that `parentSetId` is cleared before every new evaluation submission (this already exists in `clearIterateState()` — preserve it in the rewrite).
-- For critical state transitions (submitting an evaluation, clearing iterate state), add explicit `console.log` entries during development to confirm the state is what's expected.
+- The authoritative path is `Config.UPLOAD_FOLDER` in `backend/app/config.py`. Check this before setting the Railway volume mount. The `healthcheck` endpoint already verifies `uploads_writable` — use it as the post-deploy smoke test.
+- After the first deploy, write a test file, restart the service, and verify the file is still there.
 
 **Warning signs:**
-- `parentSetId` appears in a new evaluation request that shouldn't have it
-- A new evaluation inherits plan data from a previous session
-- Form fields show stale values on first render after navigation
+- `/health` returns `uploads_writable: error` immediately after deploy.
+- Evaluation results are visible during a session but disappear after the next deploy or container restart.
+- SQLite `tasks.db` is not found on the next startup, causing the app to re-initialize a blank database.
 
 **Phase to address:**
-Phase F1 (Frontend Foundation) — validate state shape reset behavior as part of the store rewrite.
+Phase D1 (Deployment Fix) — part of the Railway migration checklist.
 
 ---
 
-### Pitfall F4: Both Mode Race Condition: Evaluate Task ID Lost Before Navigation
+### Pitfall W1: Flat Dimension Weights Systematically Favor "Conversion-Ready" Campaign Descriptions
 
 **What goes wrong:**
-In `Both` mode, the current code fires `evaluateCampaigns()` asynchronously without waiting, then immediately navigates to `/running` for the Race result. If the evaluate API call completes after the navigation but before `saveEvaluateState` is called, the task ID is stored correctly. But if the evaluate call fails silently (network error, rate limit), `bothModeState.evaluateTaskId` is never set. When the user clicks "View Evaluate Results" from the Race result page, there is no task ID to poll. The UI shows an error with no explanation.
+The current evaluator in `pairwise_judge.py` uses five dimensions: `reach_potential`, `conversion_potential`, `brand_alignment`, `risk_level`, `feasibility`. These dimensions have equal weight in the `DimensionEvaluator` and `ProbabilityAggregator`. For campaigns with a conversion-focused brief (e.g., 618 sale promo), the LLM judges naturally rate `conversion_potential` and `feasibility` higher because the brief explicitly describes conversion mechanics. For brand awareness campaigns, those same dimensions score lower (awareness briefs don't optimize for immediate purchase), but `brand_alignment` and `reach_potential` are more relevant. With flat weights, conversion-brief campaigns win systematically over awareness briefs even when the awareness campaign is better for its stated goal.
 
-This is a known issue flagged in `PROJECT.md` as "Race→Evaluate 跨模式迭代 parentSetId 传空" — the rewrite must fix this explicitly, not carry it forward.
+The milestone context identifies this concretely: the heuristic evaluator over-weights `conversionPotential` and `executionReadiness` (lines 271-272 of the prior evaluator version). The same structural problem exists in the current `DimensionEvaluator._compute_raw()` — `conversion_readiness` is computed from `price_conscious` and `daily_wearer` personas, which are structurally more engaged with conversion signals than brand-awareness signals.
 
 **Why it happens:**
-The fire-and-forget pattern is convenient for UX (not blocking Race navigation) but creates a gap between "task submitted" and "task ID persisted."
+The initial dimension set was designed when the primary use case was conversion campaign evaluation. Brand awareness and content seeding campaigns were added later without revisiting the weight structure.
 
 **How to avoid:**
-- Change the Both mode flow: fire both Race and Evaluate requests concurrently using `Promise.all`, navigate to `/running` only after both task IDs are confirmed. The latency difference is minimal (both are HTTP POST calls that return task IDs within 200ms).
-- If one fails, show a specific error: "Evaluate submission failed — proceeding with Race only." Do not silently hide the failure.
-- The Evaluate task ID must be stored before navigation in both the `evaluate` and `both` paths.
+- Introduce a `brief_type` field in the campaign submission payload: `brand` (品牌), `seeding` (种草), `conversion` (转化). This field should be a required enum, not a free-text field.
+- Define a `WeightProfile` per brief type that adjusts the contribution of each dimension when aggregating the final score. Example: for `brand` briefs, `brand_alignment` and `reach_potential` should be 2x weight; `conversion_potential` and `feasibility` should be 0.5x. For `conversion` briefs, invert this.
+- Store `brief_type` alongside the campaign submission so that historical evaluations can be filtered by type when doing trend analysis.
+- Do NOT change the dimension computation logic (what each dimension measures) — only change how dimensions are aggregated. This preserves backward compatibility with existing results.
 
 **Warning signs:**
-- User completes Race, clicks "View Evaluate" on ResultPage, gets an empty or error state
-- `bothModeState.evaluateTaskId` is null/undefined when ResultPage tries to link to Evaluate results
-- Network tab shows evaluate POST completing after page navigation
+- Conversion-brief campaigns consistently winning evaluations against brand-brief campaigns in the same evaluation set (category mismatch).
+- Users saying "the tool always recommends the most promotional-sounding campaign, even for brand campaigns."
+- `conversion_readiness` scores are the most discriminating dimension across all brief types (when they should only be discriminating for conversion briefs).
 
 **Phase to address:**
-Phase F2 (Both Mode and Navigation) — fix the race condition explicitly when reimplementing `handleSubmit`.
+Phase W1 (Weight Profile) — introduce `brief_type` and `WeightProfile` before running any benchmark regression tests, since benchmark results are meaningless without brief-type-aware scoring.
 
 ---
 
-### Pitfall M1: Agent Count Growth Without Concurrency Budget Control
+### Pitfall W2: Adding Brief-Type Weights Without Preserving Backward Compatibility of Historical Results
 
 **What goes wrong:**
-Adding more evaluation agents (more personas, more pairwise judges, more image analyzers) increases parallelism. With 6 personas and 5 campaigns, the panel phase already fires 30 LLM calls. Adding 3 more agent types multiplies this. Without a concurrency limit, all calls fire simultaneously, hit Bailian's RPM/TPM quota, receive 429 errors, and the entire evaluation fails with a cryptic timeout. The current `Semaphore` in `ImageAnalyzer` controls image analysis concurrency but does not gate the combined load of panel + pairwise + new agents.
+Once `brief_type`-driven weight profiles are introduced, re-running an old campaign evaluation set produces different rankings because the weight profile changes the aggregated score even with identical LLM outputs. Users who saved results from before the weight change see different rankings if they re-run the same campaigns. This breaks trust in the system's consistency.
 
 **Why it happens:**
-Each agent type is developed independently and adds its own executor. There is no global concurrency budget across the whole pipeline. Local testing with 1-2 campaigns doesn't hit rate limits; production usage with 5 campaigns does.
+Changing aggregation weights is treated as a bug fix ("the old weights were wrong") rather than a schema change that requires versioning. There is no mechanism to record which weight profile was used when a result was generated.
 
 **How to avoid:**
-- Introduce a single global `LLMSemaphore` at the `LLMClient` level, not per-service. All LLM calls go through `LLMClient`; the semaphore there enforces a global concurrent call ceiling.
-- Set the ceiling based on Bailian's actual RPM limit (check the Alibaba Cloud Model Studio rate limit docs). A safe default is 8-12 concurrent calls for free/trial tiers, 20-40 for paid tiers.
-- Log the semaphore queue depth during evaluations. If it consistently exceeds 10, the pipeline is bottle-necked; this is a signal to implement request batching.
-- Add retry with exponential backoff for 429 responses specifically (the current error handling logs and fails; it should retry up to 3 times with 2s, 4s, 8s delays).
+- Record the `weight_profile_version` (a string like `"v2.1-brief-type-weighted"`) in `EvaluationResult` at the time the result is generated. Old results retain `"v2.0-flat-weights"` (or `null`).
+- Never retroactively re-score stored results. If a user views an old result, show a banner: "This result used v2.0 equal weights. Re-run to apply the current brief-type profile."
+- The `ScoreBoard.to_dict()` method must include `weight_profile_version` in its output so the frontend can display it.
 
 **Warning signs:**
-- Evaluate evaluations that pass for 2 campaigns but fail for 5
-- HTTP 429 errors in LLM client logs during peak usage
-- Evaluation wall-clock time growing super-linearly as campaign count increases
+- Users reporting that re-running the same campaign gives different rankings with no explanation.
+- Historical trend dashboard showing discontinuous jumps in scores across the v2.1 deploy date.
+- `EvaluationResult` JSON files missing any reference to which scoring profile was used.
 
 **Phase to address:**
-Phase M1 (Multi-Agent Foundation) — implement global semaphore before adding any new agent types.
+Phase W1 (Weight Profile) — add versioning before writing the first weight profile. Zero additional cost at implementation time; high cost to add retroactively.
 
 ---
 
-### Pitfall M2: Score Schema Inconsistency Between Old and New Agents
+### Pitfall W3: Image Content Is Counted as a Quantity Bonus, Not Analyzed for Semantic Content
 
 **What goes wrong:**
-The existing `AudiencePanel` returns scores in a specific shape consumed by `CampaignScorer`. New agent types (e.g., a "strategic fit" agent, a "market positioning" agent) return scores in a different schema. `CampaignScorer` aggregates by iterating `panel_scores` and `pairwise_results`; if a new agent type returns a hybrid schema, the scorer silently ignores fields it doesn't recognize and produces rankings that exclude the new agent's signal entirely. The developer sees "it works" because no exception is raised.
+The current `DimensionEvaluator._compute_raw()` does not use `visual_diagnostics` at all. Image analysis results are computed in `EvaluationOrchestrator.run()` and stored in `visual_diagnostics`, but they are passed to `EvaluationResult` as a separate field and never fed into `DimensionEvaluator` or `ProbabilityAggregator`. The practical effect: campaigns with images and campaigns without images receive equivalent dimension scores. If the `ImageAnalyzer` returns a quality signal (e.g., "poor thumbnail clarity" or "visual-brand alignment: low"), that signal is shown only as a diagnostic note in the UI but does not influence ranking.
+
+The milestone context states: "Images only count as quantity bonus, not content analysis (line 264)." This confirms that somewhere in the scoring path, image presence adds a small bonus (likely a count-based multiplier) but image content quality does not.
 
 **Why it happens:**
-Adding an agent type feels like a feature addition, not a schema change. The scorer's aggregation logic is not tested for forward compatibility.
+`visual_diagnostics` was added as a supplementary diagnostic feature. The scoring pipeline was not updated to consume it because the data model for `ImageAnalyzer` output is unstructured (a dict of diagnostics, not a numeric signal). Integrating unstructured diagnostics into a numeric scoring model requires a mapping decision that was deferred.
 
 **How to avoid:**
-- Define a `AgentScore` dataclass or TypedDict with required fields (`campaign_id`, `score: float`, `dimensions: dict[str, float]`, `agent_type: str`) before implementing any new agent. All agents must return this shape.
-- Add a schema validation step in `EvaluationOrchestrator.run()` that raises immediately if any agent returns a result missing required fields. Fail loudly rather than silently skip.
-- Add a unit test for `CampaignScorer` that exercises 3+ agent types simultaneously and asserts all are represented in the final ranking.
+- Extract a numeric `visual_quality_score` from `ImageAnalyzer` output alongside the existing `diagnostics`. This score should represent overall visual clarity + brand alignment on a 0-10 scale.
+- Pass `visual_quality_score` per campaign to `DimensionEvaluator.evaluate()` and let it influence `thumb_stop` (and optionally `brand_alignment`) if the score is present. Default to neutral (5.0) when no images exist.
+- The mapping must be explicit: `thumb_stop += visual_quality_score * 0.3` is a reasonable blend. Document the weight so it can be adjusted independently.
+- If `visual_quality_score` is missing (image analysis failed for a campaign), do not penalize. Log a warning and use the fallback persona-based heuristic.
 
 **Warning signs:**
-- New agent type produces results in logs but the final ranking doesn't reflect the new signal
-- `CampaignScorer` aggregation produces identical rankings before and after adding a new agent
-- `scoreboard.to_dict()` output has no trace of the new agent's dimensions
+- Identical dimension scores for two campaigns where one has high-quality KV images and one has no images.
+- `visual_diagnostics` is populated in the result JSON but the `dimension_scores` for `thumb_stop` are identical across campaigns with and without images.
+- Users uploading images but noticing rankings do not change compared to submissions without images.
 
 **Phase to address:**
-Phase M1 (Multi-Agent Foundation) — define `AgentScore` schema as the first step before implementing any new agent.
+Phase W2 (Image Content Integration) — after `brief_type` weight profiles are stable, add image quality scoring as the second signal. Do not combine both changes in one PR.
 
 ---
 
-### Pitfall M3: Cascade Failure in Sequential Agent Pipeline Silently Degrades Results
+### Pitfall W4: Evaluator Sensitivity to Brief Phrasing Causes Ranking Instability
 
 **What goes wrong:**
-The current pipeline is sequential: Panel → Image Analysis → Pairwise → Scoring → Summary. If the Image Analysis phase fails (e.g., one campaign's images are too large and hit a token limit), the exception is caught, logged, and skipped. The pipeline continues and produces a result. But the Scoring phase now has incomplete input: it aggregates a `visual_diagnostics` dict that's missing entries for some campaigns. A user looking at the result cannot tell which campaigns were analyzed with images and which were not. Rankings that depend on visual analysis are silently based on incomplete data.
+Two campaigns with identical strategy but different wording in their brief/description fields receive significantly different scores. For example:
 
-This is compounded when adding more agent stages: each new "optional" stage that fails silently degrades the result quality without any indication.
+- Campaign A brief: "提升品牌认知，触达18-25岁年轻女性，通过小红书内容种草建立品类教育"
+- Campaign B brief: "小红书内容营销，目标人群18-25女性，核心目标是品牌声量和用户教育"
+
+These briefs express the same intent. But the LLM judges, reading the brief as part of their evaluation prompt, produce different `conversion_potential` and `reach_potential` scores because one brief mentions "内容种草" (implies softer conversion) and the other mentions "声量" (implies reach). The final ranking may differ despite equal strategic merit.
+
+This is not a failure of position bias (which is addressed by swap debiasing) — it is a failure of **wording sensitivity** in the evaluation prompt.
 
 **Why it happens:**
-Silent failure is a common pattern for "nice to have" features — if it fails, continue without it. But when the feature is central to the product's value proposition (visual campaign evaluation), silent failure is a product bug, not graceful degradation.
+The LLM judges receive the raw brief text as part of the campaign description. The LLM is asked to compare campaigns, and phrasing differences activate different evaluation heuristics even when intent is identical.
 
 **How to avoid:**
-- Add a `result_metadata` field to `EvaluationResult` that records which agents ran, how many succeeded, and any failures. Example: `{"image_analysis": {"attempted": 5, "succeeded": 3, "failed_campaigns": ["campaign_b"]}}`.
-- Surface this metadata in the frontend: show a warning banner when any agent partially failed. "Note: image analysis failed for 2 of 5 campaigns — their visual scores are excluded."
-- For new agent types, classify them as either "required" (failure stops the pipeline) or "supplementary" (failure records in metadata, pipeline continues). Pairwise judgment is required; market trend analysis might be supplementary.
+- Structure the campaign submission: require separate fields for `objective` (品牌/种草/转化), `target_audience`, `core_message`, and `channels` rather than a single free-text `description`. The LLM judges receive the structured fields, not free-form prose.
+- Alternatively, add a normalization step: before sending the campaign to judges, run a brief parser (`BriefParser` already exists in the codebase) to extract structured fields and use those for evaluation. Free-text description is for human reference only.
+- Add wording-sensitivity to the regression benchmark: include pairs of semantically equivalent briefs with different wording and assert they receive rankings within the `CONFIDENCE_THRESHOLD` margin.
 
 **Warning signs:**
-- Evaluation results with unexpectedly low confidence scores for some campaigns
-- Missing fields in `visual_diagnostics` without any error in the result
-- Users reporting inconsistent rankings that change when they re-run the same campaigns
+- Users reporting that editing the campaign description text changes the ranking without changing the actual strategy.
+- The benchmark regression test shows high variance when brief wording is changed while keeping all other fields constant.
+- `JudgeCalibration` consistency metrics show inconsistency correlated with brief length or use of specific marketing jargon.
 
 **Phase to address:**
-Phase M1 (Multi-Agent Foundation) — add `result_metadata` to `EvaluationResult` before adding any new agent type.
+Phase W1 (Weight Profile) — structured brief fields and the `brief_type` enum together eliminate most wording sensitivity. The BriefParser is already available for the normalization step.
 
 ---
 
-### Pitfall M4: Position Bias Compounding in Pairwise Ensemble
+### Pitfall W5: Benchmark Dataset Without Brief-Type Labels Produces Misleading Regression Metrics
 
 **What goes wrong:**
-The current `PairwiseJudge` already performs position swapping (A/B and B/A) as a debiasing mechanism. When adding more judges to the ensemble, a naive implementation calls all judges with the same ordering (A first, B second). Position bias — which causes 10-30% verdict flips when order is swapped — is then consistent across all judges. Majority voting across biased judges amplifies the bias rather than canceling it.
-
-Research from ACL 2025 confirms that position bias in pairwise LLM evaluation is systematic, not random: the same model consistently favors the first or second position across runs. Multiple calls to the same model with the same order produce the same biased result, not a distribution.
+The benchmark dataset is built from historical campaign data. If the benchmark includes campaigns from multiple brief types (brand, seeding, conversion) without labels, the regression test computes a single hit-rate metric that mixes all types. A change that improves brand campaign ranking accuracy by 15% but worsens conversion campaign accuracy by 10% produces a net improvement in the aggregate metric, but the regression test passes. Users of conversion briefs experience degraded accuracy that the test does not catch.
 
 **Why it happens:**
-Adding more judges is understood as "reducing variance." It does reduce variance. But if all judges share the same systematic bias, it also reduces the signal that would reveal the bias.
+Building a benchmark feels like a data collection problem (gather enough examples), not a labeling problem (label each example by type). The first version of the benchmark collects whatever historical data is available without adding type labels.
 
 **How to avoid:**
-- When running N judges in parallel on the same pair, alternate presentation order: half receive (A, B), half receive (B, A). Majority vote only counts when there is genuine agreement across orderings.
-- Track per-judge consistency: for each judge, measure what fraction of pairs produce the same verdict when order is swapped. A judge with <70% consistency is unreliable; flag its results.
-- Use the existing `PairwiseJudge` position-swap mechanism as the template for any new judge type. Do not write new judge classes that skip this step.
+- Every benchmark example must have a `brief_type` label (`brand`/`seeding`/`conversion`).
+- Report per-type hit rates separately: `brand_accuracy`, `seeding_accuracy`, `conversion_accuracy`. The aggregate metric is informational only; per-type metrics are the gatekeeping metrics.
+- Minimum benchmark size per type: 5 examples. Do not run regression tests until each type has at least 5 labeled examples. Running tests on 2 examples per type produces hit rates of 0%, 50%, or 100% with no statistical meaning.
 
 **Warning signs:**
-- Adding more judges increases confidence in a ranking that humans disagree with
-- All 3 judges pick the same winner for all pairs, regardless of which campaign seems better
-- Consistency metric (same verdict with swapped order) below 70% for any judge
+- Benchmark JSON contains no `brief_type` field on examples.
+- Regression report shows only a single `hit_rate` number without breakdown by type.
+- The team considers the regression passing when `hit_rate >= 0.7` without knowing the per-type distribution.
 
 **Phase to address:**
-Phase M2 (Multi-Agent Evaluation Enhancement) — enforce position-alternation as a requirement in the judge interface before adding any new judge implementation.
+Phase W3 (Benchmark + Regression) — label the benchmark before running any regression tests. Per-type metrics should be the first output of the benchmark runner.
 
 ---
 
-### Pitfall M5: Calibration System Starvation on New Agent Types
-
-**What goes wrong:**
-`JudgeCalibration` computes per-persona and per-judge weights, but requires 5+ resolved evaluation sets before weights activate. New agent types added in v2.0 start with zero calibration data. The system applies equal weight to all agents (including new untested ones) until enough data accumulates. An unreliable new agent has full voting power in rankings until users manually resolve enough evaluations to teach the system its unreliability. In practice, the calibration data required may never accumulate if users don't systematically mark post-hoc results.
-
-**Why it happens:**
-Calibration systems work well when there is dense labeled data. For internal brand tools with infrequent usage (one campaign evaluation per week), calibration data accumulates slowly. New agent types effectively bypass calibration indefinitely.
-
-**How to avoid:**
-- Set new agent types to a lower default weight (e.g., 0.3x the weight of established agents) until they have 10+ resolved evaluations.
-- Alternatively, exclude new agent types from ranking aggregation entirely for the first month, and use them only to surface supplementary signals (not to influence the final ranking).
-- Document explicitly which agents are "calibrated" vs "provisional" in the UI. Show a badge: "Beta — does not affect ranking."
-
-**Warning signs:**
-- New agent producing wildly different rankings from established agents without explanation
-- Calibration JSON files show 0 predictions for a new agent type after several weeks
-- Users expressing confusion about why rankings changed after adding a new agent
-
-**Phase to address:**
-Phase M2 (Multi-Agent Enhancement) — define default weights for new agents before enabling them in the ranking pipeline.
-
----
-
-## Original Pitfalls (v1.x, still apply in v2.0)
+## Original Pitfalls (v1.x–v2.0, still applicable)
 
 ### Pitfall 1: Silent Image Dropout in LLM Evaluation
 
 **What goes wrong:**
-Images are silently ignored during evaluation. The Evaluate path receives `image_paths` as API URL strings (e.g. `/api/campaign/image-file/...`), but `AudiencePanel` (line 181) and `PairwiseJudge` (line 129) call `os.path.exists()` on these strings. This always returns `False`, so images are quietly skipped. The evaluation completes without error -- users see scores that appear valid but were computed without visual context. For a brand whose core differentiator is visual aesthetics, this makes the entire evaluation meaningless.
+Images are silently ignored during evaluation. The Evaluate path receives `image_paths` as API URL strings (e.g. `/api/campaign/image-file/...`), but `AudiencePanel` and `PairwiseJudge` call `os.path.exists()` on these strings. This always returns `False`, so images are quietly skipped. The evaluation completes without error — users see scores that appear valid but were computed without visual context.
 
 **Why it happens:**
-The Race path was built first with `ImageAnalyzer._resolve_image_url_to_path()`. When the Evaluate path was added, it duplicated the image-handling pattern without importing the resolver. Two different image resolution strategies coexist with no shared abstraction.
+The Race path was built first with `ImageAnalyzer._resolve_image_url_to_path()`. When the Evaluate path was added, it duplicated the image-handling pattern without importing the resolver.
 
 **How to avoid:**
-- Extract a single `resolve_image_path(path_or_url: str) -> Optional[Path]` utility used by all services
-- Add a validation step in `EvaluationOrchestrator.run()` that logs a WARNING and includes it in the result metadata if zero images were successfully resolved
-- Write an integration test that submits a campaign with API URL image_paths to `/api/campaign/evaluate` and asserts that LLM receives `image_url` content parts
+- Use the shared `resolve_image_path` utility from `image_helpers.py` in all services that process images.
+- Add a validation step in `EvaluationOrchestrator.run()` that logs a WARNING if zero images were successfully resolved for a campaign that has `image_paths`.
 
 **Warning signs:**
-- Evaluate results show identical scores for campaigns with wildly different visuals
-- No `image_url` content parts in LLM request logs during Evaluate runs
-- `os.path.exists` calls on strings containing `/api/` or `http`
+- Evaluate results show identical scores for campaigns with wildly different visuals.
+- No `image_url` content parts in LLM request logs during Evaluate runs.
 
 **Phase to address:**
-Phase 1 (Bug Fix) -- this is the highest priority fix because it silently corrupts all Evaluate results.
+Phase 1 (Bug Fix) — already fixed in v1.0 via `resolve_image_path`; do not regress in v2.1.
 
 ---
 
-### Pitfall 2: LLM Judge Bias Producing Confidently Wrong Rankings
+### Pitfall 2: LLM Judge Bias — Position and Single-Model Amplification
 
 **What goes wrong:**
-The pairwise comparison pipeline uses a single LLM model (Qwen via Bailian) as the sole judge. Research shows single-model LLM judges exhibit systematic biases: position bias (favoring the first or second option presented), verbosity bias (favoring longer descriptions), and self-enhancement bias. The Bradley-Terry model then amplifies these biases into confident-looking rankings -- more data makes rankings "more confidently wrong" when judge reliability is not modeled.
-
-**Why it happens:**
-The BT model assumes all pairwise comparisons are independent and equally reliable. When a single biased judge produces all comparisons, systematic errors compound rather than cancel. The system has no mechanism to detect or correct for judge bias.
+Single-model LLM judges exhibit systematic position bias (10-30% verdict flip when order is swapped). Multiple calls to the same model with the same order produce the same biased result. Bradley-Terry then amplifies this into confident-looking rankings.
 
 **How to avoid:**
-- Randomize presentation order in pairwise comparisons (swap A/B positions across runs). Run each pair twice with swapped order; flag inconsistent judgments
-- Add position-swap consistency check: if judge picks A when A is first but picks B when B is first, that pair's result should be marked as uncertain
-- Track judge consistency metrics over time via `JudgeCalibration` -- the calibration system exists but needs 5+ resolved sets to activate, so bootstrap it with synthetic gold-standard pairs
-- Consider ensemble judging (multiple LLM calls with different system prompts or temperatures) for high-stakes Evaluate runs
-
-**Warning signs:**
-- Rankings that change significantly when campaign descriptions are reordered
-- One campaign consistently winning despite human reviewers disagreeing
-- BT model confidence intervals that are suspiciously narrow with few data points
-- Calibration system stuck at <5 resolved sets for extended periods
+- Position-swap already implemented via `PairwiseJudge` and `MultiJudgeEnsemble`. Do not remove this when adding brief-type weight profiles.
+- Track per-judge consistency metric. A judge with less than 70% consistency across swapped pairs should be flagged.
 
 **Phase to address:**
-Phase 2 (Evaluate UI + Persona Config) -- when building the Evaluate frontend, add position-swap as a default behavior in `PairwiseJudge.evaluate_all()`. Calibration bootstrapping can come in Phase 3.
+Already addressed in v2.0. Maintain in v2.1 — do not remove swap debiasing while adding weight profile logic.
 
 ---
 
-### Pitfall 3: God Class Decomposition That Breaks Working Features
+### Pitfall 3: Concurrent Access Corruption on Shared Mutable State
 
 **What goes wrong:**
-`BrandStateEngine` (1319 lines) handles state construction, replay, prediction, scenario simulation, diffusion, and backtesting. The natural instinct is to refactor it into separate classes. But aggressive decomposition without comprehensive tests first will break working Race path functionality. The class has implicit coupling between its methods -- state built by `construct()` is consumed by `predict()` in ways that aren't obvious from method signatures.
-
-**Why it happens:**
-Refactoring feels productive and looks clean in PRs. But forked codebases (MiroFish origin) have undocumented invariants. Breaking a God class is only safe when you have tests that verify the end-to-end behavior, not just unit tests on individual methods.
+`_evaluation_store` is a module-level dict shared across Flask threads. Python's GIL prevents segfaults but does not prevent inconsistent reads of composite structures.
 
 **How to avoid:**
-- Write characterization tests BEFORE refactoring: capture current input/output pairs for `BrandStateEngine` as golden snapshots
-- Refactor incrementally: extract one responsibility at a time (start with `BacktestEngine` which is least coupled), verify all characterization tests pass after each extraction
-- Do NOT refactor in the same phase as feature additions -- refactoring is a separate phase with its own verification
-
-**Warning signs:**
-- Race path results change after refactoring (even slightly different scores indicate broken invariants)
-- Tests that mock internal methods of `BrandStateEngine` -- these tests will pass even when the refactoring breaks real behavior
-- PRs that extract 3+ classes at once
+- `threading.Lock()` on `_evaluation_store` writes — already implemented in v1.1 and audited in v2.0.
+- SQLite WAL mode + `busy_timeout` — already enabled. Do not regress in v2.1 deployment changes.
 
 **Phase to address:**
-Phase 3 or later (Tech Debt) -- only after Evaluate UI and image fix are stable. Must be preceded by characterization test creation.
+Already addressed. Verify it survives the Railway migration (container restart should not lose the WAL journal).
 
 ---
 
-### Pitfall 4: Concurrent Access Corruption on Shared Mutable State
+### Pitfall 4: Base64 Token Overflow
 
 **What goes wrong:**
-`_evaluation_store` is a module-level `dict = {}` (campaign.py line 36) shared across all Flask request threads. When multiple users submit evaluations simultaneously, background threads write nested dicts while request threads read them. Python's GIL prevents segfaults but does NOT prevent inconsistent reads of composite structures. A user could see a partial result (panel scores present, pairwise scores missing) that looks like a completed evaluation.
-
-Additionally, SQLite without WAL mode will throw `OperationalError: database is locked` under concurrent writes. `BrandictionStore` opens a new connection per operation with no pooling or retry logic.
-
-**Why it happens:**
-Single-user development environment hides concurrency bugs. Flask's threaded mode is the default but developers test with one browser tab.
+High-resolution campaign images blow up the LLM token budget, causing silent truncation or API errors.
 
 **How to avoid:**
-- Wrap `_evaluation_store` access with `threading.Lock()` immediately -- this is a 5-line fix
-- Enable SQLite WAL mode (`PRAGMA journal_mode=WAL`) in `BrandictionStore.__init__()` -- another one-liner
-- Add a retry loop with exponential backoff for `OperationalError: database is locked` in `_connect()`
-- Use thread-local connections (`threading.local()`) instead of creating new connections per operation
-- Test concurrent access: write a pytest that spawns 5 threads submitting evaluations simultaneously
-
-**Warning signs:**
-- Users report "evaluation completed" but results are missing fields
-- `OperationalError: database is locked` in server logs
-- Evaluation results that show different data on page refresh vs. initial load
+- Resize to max 1024px before base64 encoding — already implemented. Do not regress.
 
 **Phase to address:**
-Phase 1 (Stability) -- must be fixed before enabling cross-team usage. The lock and WAL fixes are trivial; do them before the Evaluate UI launch.
-
----
-
-### Pitfall 5: Persona Configuration Without Validation Creates Garbage Evaluations
-
-**What goes wrong:**
-The plan includes "configurable personas by category" (different reviewer personas for transparent vs. colored lenses). If persona prompts are user-editable without validation, users can create personas that produce incoherent or contradictory evaluations. A poorly written persona prompt ("be harsh and rate everything 1/10") will produce scores that the BT model treats as equally valid, dragging down all rankings.
-
-**Why it happens:**
-Configurability feels like a feature. But LLM prompt quality directly determines output quality. Treating persona prompts as free-text user input is like letting users write their own SQL queries -- technically powerful, practically dangerous.
-
-**How to avoid:**
-- Provide curated preset persona sets per category (e.g., "transparent lens buyer: female 25-35, comfort-focused, price-sensitive" for moodyPlus). Let users select from presets, not write free-form prompts
-- If custom personas are needed, validate against a schema: require age range, gender, purchase motivation, product experience level
-- Add a "persona dry run" that shows how a persona would evaluate a known-good campaign before using it in a real evaluation
-- Store persona versions: when a persona is changed, old evaluations retain a reference to the persona version used
-
-**Warning signs:**
-- Evaluation scores that are all clustered at extremes (all 9-10 or all 1-2)
-- Persona descriptions that don't mention any product-relevant attributes
-- Different team members getting wildly different rankings for the same campaigns because they configured different personas
-
-**Phase to address:**
-Phase 2 (Persona Config) -- build presets first, custom later. The schema validation should gate any custom persona creation.
-
----
-
-### Pitfall 6: Base64 Image Encoding Blowing Up LLM Token Budget
-
-**What goes wrong:**
-Each image is base64-encoded and sent inline in the LLM request. A single high-resolution campaign KV image (3-5MB) becomes ~4-7MB of base64 text. With 5 images per campaign and 5 personas in the panel, that's 25 image encodings per evaluation. Qwen's vision API has token limits; exceeding them causes silent truncation or API errors. The cost per evaluation also scales linearly with image size.
-
-**Why it happens:**
-Base64 inline is the simplest multimodal integration pattern. It works fine with 1-2 small images but breaks at scale. No image preprocessing exists in the current pipeline.
-
-**How to avoid:**
-- Resize images before encoding: cap at 1024x1024 or 768px longest edge. Campaign KV aesthetics are preserved at this resolution for LLM analysis
-- Cache base64-encoded images per evaluation session (encode once, reuse across 5 persona calls)
-- Add image size validation on upload: reject images >10MB, warn on >5MB
-- Monitor LLM API costs per evaluation and set a budget ceiling with alerting
-- If Qwen supports URL-based image input (some OpenAI-compatible APIs do), use that instead of base64 to reduce payload size
-
-**Warning signs:**
-- LLM API calls timing out or returning truncated responses
-- Evaluation cost per run increasing over time as users upload higher-resolution images
-- `413 Request Entity Too Large` or similar errors in API logs
-
-**Phase to address:**
-Phase 1 (Image Fix) -- when fixing the image path resolution, add resize preprocessing in the same change. Don't fix the path without fixing the payload size.
+Already addressed in v1.0. Regression test: 5MB image is resized to less than 500KB before encoding.
 
 ---
 
@@ -387,119 +288,94 @@ Phase 1 (Image Fix) -- when fixing the image path resolution, add resize preproc
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| In-memory `_evaluation_store` dict | No DB schema needed for results | Memory leak, no thread safety, lost on restart | Never -- disk persistence already exists via JSON files, the dict is redundant |
-| New SQLite connection per operation | No connection management code | Connection overhead, no WAL mode, locked DB under load | MVP with single user only |
-| Plaintext passwords in env var | Quick setup for internal tool | Credential exposure if env vars leak or logs are shared | Never -- bcrypt is a 3-line change |
-| God class `BrandStateEngine` | All prediction logic in one place | Untestable, fragile, blocks parallel development | Only during initial port from MiroFish; must decompose before adding features |
-| Calibration as flat JSON files | Quick to implement | Three persistence layers (SQLite + JSON results + JSON calibration), backup/restore is fragile | Acceptable for MVP if documented |
-| MiroFish code copy-paste | Fast reference implementation | Naming convention drift, ghost assumptions, hidden coupling to different backend | Never for data-flow code; acceptable for pure UI components with no API calls |
-| One global LLM client, no semaphore at call site | Simple | Rate limit breaches when multi-agent adds concurrent calls | Never with more than 2 agent types running in parallel |
+| Flat dimension weights for all brief types | No UX change needed | Conversion briefs win systemically over brand briefs | Never — fix in v2.1 |
+| Free-text brief description as evaluation input | Flexible for users | Wording sensitivity causes ranking instability | MVP only; move to structured fields in v2.1 |
+| `visual_diagnostics` as display-only, not scoring input | Simpler evaluation pipeline | Images have no effect on ranking despite being the core campaign asset | Acceptable until v2.1 |
+| Single `hit_rate` metric in benchmark | Quick to implement | Masks per-type accuracy regressions | Never for a multi-brief-type product |
+| `brief_type` not recorded in stored results | No migration needed | Cannot filter historical results or run per-type analysis | Never — add before first benchmark run |
+| Railway volume path set manually in dashboard | No code change | Mismatch causes silent data loss on restart | Never — document the exact path in DEPLOY.md |
 
 ## Integration Gotchas
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| Qwen Vision API (Bailian) | Sending base64 images without size limits, hitting token ceiling silently | Resize to max 1024px, validate total payload size before API call |
-| Qwen Vision API (Bailian) | Assuming all OpenAI-compatible features work identically | Test `detail` parameter support, max images per request, and token counting behavior specifically with Bailian endpoint |
-| Bailian rate limits (v2.0) | Each new agent type adds its own concurrent call burst; combined load exceeds RPM | Implement global semaphore in `LLMClient`; all agents share one concurrency ceiling |
-| SQLite WAL mode | Enabling WAL but not setting `busy_timeout` | Always pair `PRAGMA journal_mode=WAL` with `PRAGMA busy_timeout=5000` for concurrent access |
-| Flask background threads | Accessing Flask request context (`request`, `g`, `session`) from background thread | Pass all needed data as arguments to the background function; never reference Flask context objects |
-| React rewrite + Flask backend | Renaming fields to match MiroFish naming conventions without updating Flask routes | Lock API contract in `contracts.ts`; `npm run build` catches mismatches with TypeScript strict mode |
+| Railway volume mounts | Set volume mount at `/app/uploads` instead of `/app/backend/uploads` | Use `Config.UPLOAD_FOLDER` as the authoritative path; paste its value directly into Railway's volume config |
+| Flask static file serving in Docker | Relative path for `FRONTEND_DIST` resolves wrong under gunicorn `--chdir` | Always anchor with `os.path.dirname(__file__)`; log resolved absolute path at startup |
+| Gunicorn on Railway | Railway injects `PORT` env var; gunicorn bind is hardcoded to `5001` | Either read `PORT` from env or configure Railway to expose `5001` explicitly |
+| Qwen Vision API (Bailian) | Sending unstructured brief text with visual context makes judge output sensitive to phrasing | Normalize briefs to structured fields before passing to judge prompt |
+| `brief_type` weight profile | Changing aggregation weights retroactively changes stored result rankings | Version the weight profile; stored results are immutable |
 
 ## Performance Traps
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Serial image analysis in Race path | Race evaluation takes 30-60s for 6 campaigns with images | Use `ThreadPoolExecutor` with max 3-4 workers for concurrent image analysis | >3 campaigns with images (noticeable at 6+) |
-| `BaselineRanker` loading all interventions | API response time grows linearly with historical data | Push category/audience filters into SQL WHERE clause | >1000 historical interventions |
-| No pagination on list endpoints | Browser hangs on Dashboard, API timeouts | Add `limit`/`offset` to store queries | >500 rows in any table |
-| 30-75 LLM calls per Evaluate run | Single evaluation takes 90-150 seconds | Parallelize panel calls (already done), add caching for identical campaign-persona pairs | Always noticeable; acceptable with progress UI |
-| Multi-agent burst without global semaphore | 429 errors and evaluation failures at 5 campaigns | Global semaphore at `LLMClient` level, not per-service | >2 agent types running in parallel (v2.0 threshold) |
+| `BaselineRanker` loading all historical data | Slow API response for Race evaluations as history grows | Push category/audience filter into SQL WHERE clause | >1000 historical entries |
+| Benchmark regression running all brief types as one job | Test duration grows with benchmark size; failures not attributable to type | Run per-type regression as separate test cases | >50 benchmark examples total |
+| Image analysis in parallel without semaphore | 429 from Bailian when 5+ campaigns have images | Global LLM semaphore already in place; verify it covers `ImageAnalyzer` calls | >3 campaigns with 5 images each |
 
 ## Security Mistakes
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Plaintext password comparison | Credential theft if env vars leak (logs, process list, container inspection) | Hash with bcrypt on storage, compare with `bcrypt.checkpw()` |
-| `SECRET_KEY` fallback to hardcoded string | Session cookie forgery -- attacker can impersonate any user | Remove default value, crash on startup if `SECRET_KEY` not set |
-| `FLASK_DEBUG=True` as default | Werkzeug debugger exposes arbitrary Python execution if server is network-accessible | Default to `False`, require explicit opt-in |
-| No rate limiting on LLM endpoints | Single user can exhaust entire LLM API quota with one large evaluation batch | Add per-user rate limit (e.g., max 3 concurrent evaluations) and global queue depth limit |
-| `set_id` not scoped to user | Users can read/overwrite each other's uploaded images by guessing `set_id` | Prefix upload directory with authenticated username |
+| Railway environment variables visible in dashboard logs | LLM API key, SECRET_KEY leaked in build logs | Use Railway's secret variables (not plain env vars) for sensitive values |
+| `brief_type` enum not validated on intake | Attacker submits arbitrary string, weight profile lookup fails with unhandled KeyError | Validate enum at the API route layer before passing to orchestrator; return 400 for unknown types |
+| SQLite database file on Railway ephemeral disk (no volume) | All task history lost on every deploy | Verify volume is mounted at `/app/backend/uploads` before accepting v2.1 as done |
 
 ## UX Pitfalls
 
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| Evaluate results shown without indicating image analysis status | Users trust scores that were computed without visual analysis (the current silent dropout bug) | Show explicit "images analyzed: 3/5" or "no images included" badge on each result |
-| No progress indication during 90-150s evaluation | Users think the tool is broken, refresh the page, trigger duplicate evaluations | Show phase-by-phase progress bar (Panel 40%, Pairwise 80%, Scoring 90%) -- the `TaskManager` already supports this |
-| Showing BT model scores as absolute numbers | Users compare scores across different evaluation sessions (scores are relative, not absolute) | Show rankings (1st, 2nd, 3rd) prominently; show scores only as secondary detail with "relative within this evaluation" label |
-| Persona names shown in Chinese jargon | Non-marketing team members (e.g., media buyers) don't understand persona descriptions | Show persona as "25-35 female, comfort-priority" not internal persona IDs |
-| Race and Evaluate results not cross-referenced | Users run both paths but can't see whether they agree or disagree | Add a comparison view: "Race ranked A>B>C, Evaluate ranked B>A>C -- investigate B vs A" |
-| Both mode evaluate failure with no UI feedback | User completes Race, sees no Evaluate tab, doesn't know why | Show "Evaluate not available — submission failed" with retry option instead of silent omission |
+| `brief_type` field not shown in evaluation results | Users cannot tell which weight profile was used | Show "品牌权重模式" / "转化权重模式" badge on the result card |
+| Weight profile change breaks historical trend dashboard | Dashboard shows a scoring discontinuity at the v2.1 deploy date with no explanation | Add an annotation event to the trend dashboard: "权重模式升级至 v2.1" |
+| Image quality score changes ranking but diagnostics panel does not explain why | Users see the ranking change but cannot trace it to the image quality signal | When `visual_quality_score` affects the ranking, show it as a contributing factor in the verdict rationale |
+| Benchmark hit-rate shown as a single number | Brand team cannot tell if their brief type is covered | Show per-type coverage ("品牌命中率 8/10, 转化命中率 7/10") in the benchmark report |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Image path fix:** Often missing -- verify that BOTH `AudiencePanel` AND `PairwiseJudge` use the resolver. Fixing one but not the other will still produce partially blind evaluations
-- [ ] **Evaluate UI:** Often missing image count display -- verify the UI shows how many images were actually analyzed (not just uploaded)
-- [ ] **Persona configuration:** Often missing version tracking -- verify that changing a persona doesn't retroactively change how old evaluations display
-- [ ] **Concurrent access fix:** Often missing the SQLite side -- verify both `_evaluation_store` locking AND SQLite WAL mode are enabled together
-- [ ] **Password hashing:** Often missing migration -- verify existing stored passwords are re-hashed, not just new passwords
-- [ ] **CORS fix:** Often missing production config -- verify the fix works in Docker deployment, not just `localhost:5173`
-- [ ] **Rate limiting:** Often missing the background thread case -- verify that a queued evaluation counts against the limit even after the HTTP response returns
-- [ ] **Frontend rewrite API contract:** Often missing -- verify every field name in new components matches the Flask route exactly (snake_case on backend, checked via `contracts.ts`)
-- [ ] **Both mode race condition:** Often missing -- verify `evaluateTaskId` is stored before navigation in Both mode, not after
-- [ ] **Global LLM semaphore:** Often missing -- verify the semaphore is applied at `LLMClient` level, not independently in each new agent's executor
-- [ ] **New agent score schema:** Often missing -- verify new agents return `AgentScore`-compatible shape before integrating with `CampaignScorer`
-- [ ] **Multi-agent result metadata:** Often missing -- verify `EvaluationResult` records which agents ran and which partially failed
+- [ ] **Static file path fix:** Verify `docker compose logs` shows "前端静态文件托管: /app/frontend/dist" (not "目录不存在"). Verify `curl http://localhost:5001/` returns 200, not 404.
+- [ ] **Railway migration:** Submit a campaign, restart the Railway service, poll the task status — it must still return the result. Verify `/health` shows `uploads_writable: ok` and `db: ok` after restart.
+- [ ] **Brief-type weight profiles:** Verify a brand brief campaign and a conversion brief campaign in the same evaluation set do not produce identical dimension scores. Verify the result JSON includes `weight_profile_version`.
+- [ ] **Image content scoring:** Verify two campaigns — one with high-quality images, one with no images — produce different `thumb_stop` scores. The campaign with no images must not receive a `thumb_stop` score equal to the high-quality campaign.
+- [ ] **Wording sensitivity regression:** Submit two semantically equivalent briefs with different wording in the same evaluation set. Verify their overall scores are within the `CONFIDENCE_THRESHOLD` margin.
+- [ ] **Benchmark per-type metrics:** Verify benchmark report outputs `brand_accuracy`, `seeding_accuracy`, `conversion_accuracy` as separate metrics. Verify each type has at least 5 labeled examples before the first run.
+- [ ] **Weight profile versioning:** Verify old evaluation results stored before v2.1 still load correctly in the UI without re-scoring. Verify they show a "v2.0 weights" indicator rather than showing stale scores as if computed with v2.1 weights.
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Silent image dropout | LOW | Fix resolver, re-run affected evaluations. No data loss since campaigns and images are persisted |
-| Judge bias in rankings | MEDIUM | Add position-swap, re-run evaluations. Old rankings cannot be retroactively corrected but new ones will be more reliable |
-| God class refactoring breaks Race | HIGH | Revert refactoring commit, add characterization tests first, try again. Risk of lost work if changes were interleaved with features |
-| Concurrent state corruption | MEDIUM | Add lock, restart server. In-memory results may be lost but disk JSON files are intact. Re-serve from disk |
-| Persona garbage evaluations | LOW | Delete bad evaluation results, fix persona presets, re-run. Users need to be told which results were affected |
-| Base64 token overflow | LOW | Add resize step, re-run. No permanent damage since images are stored at original resolution |
-| API contract drift in rewrite | MEDIUM | Audit each component's API call against Flask routes, fix mismatches, rebuild. TypeScript will surface most issues at compile time |
-| Multi-agent rate limit failure | LOW | Add global semaphore, reduce default parallelism. No data loss; re-run evaluation. |
-| Both mode evaluate task ID lost | LOW | Fix `Promise.all` ordering in `handleSubmit`, re-run. User must resubmit the evaluate run manually for affected campaigns |
+| Static path 404 | LOW | Add startup log, confirm path, redeploy. No data loss. |
+| Railway data loss (no volume) | HIGH | Re-add volume mount, redeploy. All historical evaluations and uploaded images lost; users must re-submit. |
+| Railway volume path mismatch | MEDIUM | Correct path in Railway dashboard, redeploy. Files written to ephemeral layer are lost; files already on volume are intact. |
+| Flat weights biasing results | MEDIUM | Add `WeightProfile`, redeploy. Old results are not changed (immutable); users must re-run if they want brief-type-corrected scores. |
+| Image quality not affecting scores | LOW | Add `visual_quality_score` extraction and pass to `DimensionEvaluator`, redeploy. Old results are unaffected. New evaluations pick up the signal automatically. |
+| Wording sensitivity causing instability | MEDIUM | Add structured brief fields + `BriefParser` normalization. Users must re-submit campaigns with structured fields. Old free-text submissions remain in the system but are flagged as "legacy format." |
+| Benchmark missing per-type labels | LOW | Add `brief_type` labels to existing benchmark examples before the first regression run. Benchmark data is JSON; label addition is a manual annotation task. |
 
 ## Pitfall-to-Phase Mapping
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Silent image dropout | Phase 1 (Bug Fix) | Integration test: submit campaign with API URL image_paths, assert LLM receives image content |
-| Concurrent state corruption | Phase 1 (Stability) | Concurrent pytest: 5 threads submit evaluations simultaneously, all complete without error |
-| Base64 token overflow | Phase 1 (Image Fix) | Unit test: 5MB image is resized to <500KB before encoding |
-| Security basics (password, SECRET_KEY, DEBUG) | Phase 1 (Security) | Startup test: server crashes if SECRET_KEY not set; password comparison uses bcrypt |
-| LLM judge bias | Phase 2 (Evaluate Enhancement) | Position-swap test: same pair evaluated A/B and B/A, consistency tracked |
-| Persona configuration | Phase 2 (Persona Config) | Schema validation test: reject persona without age/gender/motivation fields |
-| God class decomposition | Phase 3 (Tech Debt) | Characterization tests pass before AND after each extraction |
-| Rate limiting | Phase 2 (Cross-team) | Load test: 4th concurrent evaluation is queued, not started |
-| API contract drift (v2.0 frontend rewrite) | Phase F1 (Frontend Foundation) | `npm run build` passes; `contracts.ts` manually audited against Flask routes |
-| MiroFish assumptions mismatch (v2.0) | Phase F1 (Frontend Foundation) | Each new component's API call traced to a specific Flask route handler |
-| Zustand ghost state (v2.0) | Phase F1 (Frontend Foundation) | Hard-refresh test: store resets cleanly between sessions |
-| Both mode race condition (v2.0) | Phase F2 (Both Mode) | Test: evaluate task ID is non-null in `bothModeState` immediately after navigate('/running') |
-| Global LLM semaphore (v2.0 multi-agent) | Phase M1 (Multi-Agent Foundation) | Stress test: 5-campaign evaluation with 3 agent types completes without 429 errors |
-| Agent score schema inconsistency (v2.0) | Phase M1 (Multi-Agent Foundation) | Unit test: `CampaignScorer` rejects agent result missing required fields |
-| Cascade failure degradation (v2.0) | Phase M1 (Multi-Agent Foundation) | `result_metadata` present in all EvaluationResult outputs; frontend displays warning when agents partially failed |
-| Position bias in ensemble (v2.0) | Phase M2 (Judge Ensemble) | Consistency test: judge verdict match rate >70% across order-swapped pairs |
-| Calibration starvation (v2.0) | Phase M2 (Judge Ensemble) | New agent types start at 0.3x weight; documented in agent config |
+| Static path 404 (D1) | Phase D1 (Deployment Fix) | `curl http://localhost:5001/` returns 200; startup log shows resolved dist path |
+| Serverless incompatibility (D2) | Phase D1 (Deployment Fix) | Restart container, poll existing task — result survives |
+| Railway volume path mismatch (D3) | Phase D1 (Deployment Fix) | `/health` returns `uploads_writable: ok` after container restart |
+| Flat weights bias conversion briefs (W1) | Phase W1 (Weight Profile) | Brand brief campaign does not win on `conversion_potential` dimension |
+| Weight profile backward compatibility (W2) | Phase W1 (Weight Profile) | Old results load without re-scoring; `weight_profile_version` field present in new results |
+| Image content not influencing scores (W3) | Phase W2 (Image Content Integration) | Campaign with high-quality images scores higher on `thumb_stop` than campaign with no images |
+| Wording sensitivity (W4) | Phase W1 (Weight Profile) | Semantically equivalent briefs score within `CONFIDENCE_THRESHOLD` of each other |
+| Benchmark without per-type labels (W5) | Phase W3 (Benchmark + Regression) | Benchmark runner outputs `brand_accuracy`, `seeding_accuracy`, `conversion_accuracy` separately |
 
 ## Sources
 
-- Codebase analysis: `/Users/slr/MiroFishmoody/.planning/codebase/CONCERNS.md`
-- [Why Do Multi-Agent LLM Systems Fail? (arxiv 2503.13657)](https://arxiv.org/abs/2503.13657) — 3-category, 14-failure-mode taxonomy; kappa=0.88 across 150 traces
-- [Judging the Judges: Position Bias in LLM-as-a-Judge (ACL 2025)](https://aclanthology.org/2025.ijcnlp-long.18/) — 10-30% verdict flip rate from order swap; systematic not random
-- [Justice or Prejudice? Quantifying Biases in LLM-as-a-Judge](https://llm-judge-bias.github.io/) — 12 bias types including position, verbosity, self-enhancement
-- [Avoiding Common Pitfalls in LLM Evaluation](https://www.honeyhive.ai/post/avoiding-common-pitfalls-in-llm-evaluation) — rubric consistency, score schema standardization
-- [Alibaba Cloud Model Studio Rate Limits](https://www.alibabacloud.com/help/en/model-studio/rate-limit) — Bailian API RPM/TPM limits
-- [Multi-Agent Evaluation System (Cognizant)](https://www.cognizant.com/us/en/ai-lab/blog/ai-scoring-multi-agent-evaluation-system) — score aggregation and schema normalization patterns
-- [Strangler Fig Pattern pitfalls (AWS)](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/strangler-fig.html) — API contract maintenance during incremental rewrites
-- SQLite analysis: `/Users/slr/MiroFishmoody/backend/app/services/evaluation_orchestrator.py`, `store.ts`, `api.ts`
+- Codebase analysis: `backend/app/__init__.py` (static path logic), `backend/app/services/probability_aggregator.py` (weight structure), `backend/app/services/submarket_evaluator.py` (dimension computation), `backend/app/services/pairwise_judge.py` (dimension list), `backend/app/services/evaluation_orchestrator.py` (visual_diagnostics pipeline), `docker-compose.yml` (volume config), `Dockerfile` (build paths)
+- Known issues from milestone context: `/` returns 404 (server/index.ts line 48 in prior version, now `backend/app/__init__.py` line 117), Vercel `DEPLOYMENT_NOT_FOUND`, `conversionPotential`/`executionReadiness` over-weighting (lines 271-272 of prior evaluator), images as quantity bonus only (line 264), wording sensitivity
+- [Railway persistent volumes documentation](https://docs.railway.com/reference/volumes)
+- [Gunicorn deployment best practices](https://docs.gunicorn.org/en/stable/deploy.html) — `--chdir` interaction with `os.getcwd()`
+- [Flask static file serving in production](https://flask.palletsprojects.com/en/stable/tutorial/deploy/) — `send_from_directory` path resolution
+- [Judging the Judges: Position Bias in LLM-as-a-Judge (ACL 2025)](https://aclanthology.org/2025.ijcnlp-long.18/) — 10-30% verdict flip rate, systematic not random
+- [Why Do Multi-Agent LLM Systems Fail? (arxiv 2503.13657)](https://arxiv.org/abs/2503.13657) — evaluation sensitivity and aggregation failure modes
+- [Avoiding Common Pitfalls in LLM Evaluation](https://www.honeyhive.ai/post/avoiding-common-pitfalls-in-llm-evaluation) — structured input normalization to reduce wording sensitivity
 
 ---
 *Pitfalls research for: Brand campaign simulation with LLM-based multimodal evaluation*
-*Updated: 2026-03-18 (v2.0: frontend rewrite + multi-agent enhancement)*
+*Updated: 2026-03-18 (v2.1: deployment fix + evaluation bias correction)*
