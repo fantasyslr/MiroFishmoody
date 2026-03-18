@@ -414,6 +414,140 @@ def test_calibration_no_history():
         print("  PASS: calibration with no history → empty weights, no error")
 
 
+# ============================================================
+# brief_type dim_boost 混入测试 (Task 1 — 260318-ohu)
+# ============================================================
+
+def make_panel_with_dim(persona_id, campaign_id, score, dimension_scores=None, n_objections=1):
+    """构造带 dimension_scores 的 PanelScore（模拟 LLM 直接输出维度分）"""
+    from app.models.evaluation import PanelScore as PS
+    objs = [f"obj_{i}" for i in range(n_objections)]
+    ps = PS(
+        persona_id=persona_id, persona_name=f"P_{persona_id}",
+        campaign_id=campaign_id, score=score,
+        objections=objs, strengths=["str_1"], reasoning="ok",
+    )
+    if dimension_scores:
+        ps.dimension_scores = dimension_scores
+    return ps
+
+
+def test_brief_type_none_backward_compat():
+    """brief_type=None 时，dim_boost 贡献为 0，行为与修复前完全一致"""
+    campaigns = [make_campaign("a", "A"), make_campaign("b", "B")]
+    panel = [
+        make_panel("p1", "a", 8), make_panel("p2", "a", 8),
+        make_panel("p1", "b", 5), make_panel("p2", "b", 5),
+    ]
+    pairwise = [PairwiseResult("a", "b", "a", [], {})]
+    bt = {"a": 2.0, "b": 0.5}
+
+    # brief_type=None scorer
+    scorer_none = CampaignScorer(brief_type=None)
+    rankings_none, _ = scorer_none.score(campaigns, panel, pairwise, bt)
+
+    # 无 brief_type 时 a 仍然排第一
+    assert rankings_none[0].campaign_id == "a", (
+        f"brief_type=None: expected a first, got {rankings_none[0].campaign_id}"
+    )
+    print("  PASS: brief_type=None → a still ranks #1 (backward compat)")
+
+
+def test_brief_type_brand_emotional_wins():
+    """brief_type=brand 时，高情感共鸣方案 overall_score > 高转化方案"""
+    campaigns = [
+        make_campaign("emotional", "高定情绪大片"),
+        make_campaign("promo", "明星同款快转化"),
+    ]
+    # 情感方案在 emotional_resonance 维度得高分，促销方案在 conversion_readiness 得高分
+    panel = [
+        make_panel_with_dim("p1", "emotional", 7, {
+            "thumb_stop": 7, "clarity": 6, "trust": 6,
+            "conversion_readiness": 4, "claim_risk": 7,
+            "emotional_resonance": 9,  # 情感高分
+        }),
+        make_panel_with_dim("p2", "emotional", 7, {
+            "thumb_stop": 7, "clarity": 6, "trust": 6,
+            "conversion_readiness": 4, "claim_risk": 7,
+            "emotional_resonance": 9,
+        }),
+        make_panel_with_dim("p1", "promo", 7, {
+            "thumb_stop": 6, "clarity": 7, "trust": 5,
+            "conversion_readiness": 9, "claim_risk": 5,  # 转化高分
+            "emotional_resonance": 3,  # 情感低分
+        }),
+        make_panel_with_dim("p2", "promo", 7, {
+            "thumb_stop": 6, "clarity": 7, "trust": 5,
+            "conversion_readiness": 9, "claim_risk": 5,
+            "emotional_resonance": 3,
+        }),
+    ]
+    pairwise = [PairwiseResult("emotional", "promo", None, [], {})]  # 平局（纯依赖维度分）
+    bt = {"emotional": 1.0, "promo": 1.0}  # 相等 BT，排名完全靠维度信号
+
+    from app.models.campaign import BriefType
+    scorer_brand = CampaignScorer(brief_type=BriefType.BRAND)
+    rankings, board = scorer_brand.score(campaigns, panel, pairwise, bt)
+
+    emotional_score = next(c.overall_score for c in board.campaigns if c.campaign_id == "emotional")
+    promo_score = next(c.overall_score for c in board.campaigns if c.campaign_id == "promo")
+
+    assert emotional_score > promo_score, (
+        f"brief_type=brand: emotional_score={emotional_score:.4f} should > promo_score={promo_score:.4f}"
+    )
+    assert rankings[0].campaign_id == "emotional", (
+        f"brief_type=brand: expected emotional first, got {rankings[0].campaign_id}"
+    )
+    print(f"  PASS: brief_type=brand → emotional wins ({emotional_score:.4f} > {promo_score:.4f})")
+
+
+def test_brief_type_conversion_wins():
+    """brief_type=conversion 时，高转化方案 overall_score > 情感化方案"""
+    campaigns = [
+        make_campaign("promo", "高转化促销"),
+        make_campaign("brand_ad", "品牌情感片"),
+    ]
+    panel = [
+        make_panel_with_dim("p1", "promo", 7, {
+            "thumb_stop": 6, "clarity": 8, "trust": 6,
+            "conversion_readiness": 9, "claim_risk": 6,  # 转化高
+            "emotional_resonance": 3,
+        }),
+        make_panel_with_dim("p2", "promo", 7, {
+            "thumb_stop": 6, "clarity": 8, "trust": 6,
+            "conversion_readiness": 9, "claim_risk": 6,
+            "emotional_resonance": 3,
+        }),
+        make_panel_with_dim("p1", "brand_ad", 7, {
+            "thumb_stop": 7, "clarity": 5, "trust": 6,
+            "conversion_readiness": 3, "claim_risk": 7,  # 转化低
+            "emotional_resonance": 9,
+        }),
+        make_panel_with_dim("p2", "brand_ad", 7, {
+            "thumb_stop": 7, "clarity": 5, "trust": 6,
+            "conversion_readiness": 3, "claim_risk": 7,
+            "emotional_resonance": 9,
+        }),
+    ]
+    pairwise = [PairwiseResult("promo", "brand_ad", None, [], {})]
+    bt = {"promo": 1.0, "brand_ad": 1.0}
+
+    from app.models.campaign import BriefType
+    scorer_conv = CampaignScorer(brief_type=BriefType.CONVERSION)
+    rankings, board = scorer_conv.score(campaigns, panel, pairwise, bt)
+
+    promo_score = next(c.overall_score for c in board.campaigns if c.campaign_id == "promo")
+    brand_score = next(c.overall_score for c in board.campaigns if c.campaign_id == "brand_ad")
+
+    assert promo_score > brand_score, (
+        f"brief_type=conversion: promo_score={promo_score:.4f} should > brand_score={brand_score:.4f}"
+    )
+    assert rankings[0].campaign_id == "promo", (
+        f"brief_type=conversion: expected promo first, got {rankings[0].campaign_id}"
+    )
+    print(f"  PASS: brief_type=conversion → promo wins ({promo_score:.4f} > {brand_score:.4f})")
+
+
 if __name__ == "__main__":
     print("=== Scorer Verdict Tests (Phase 4.5) ===")
     test_ship_rank1_dominant()

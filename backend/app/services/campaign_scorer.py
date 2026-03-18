@@ -97,6 +97,48 @@ class CampaignScorer:
             campaigns, panel_scores, pairwise_results, bt_scores,
         )
 
+        # --- Brief-type dimension weight boost ---
+        # DimensionEvaluator 已按 brief_weights 缩放各维度 softmax 概率。
+        # 将加权维度分求和，作为第三路信号按固定权重混入 overall_score。
+        # brief_type=None 时 dim_weights={} → dim_boost 全为 0 → 行为不变。
+        DIM_BOOST_WEIGHT = float(os.environ.get('DIM_BOOST_WEIGHT', '0.15'))
+
+        if self.brief_type is not None:
+            from .brief_weights import BRIEF_DIMENSION_WEIGHTS
+            dim_weights = BRIEF_DIMENSION_WEIGHTS.get(self.brief_type.value, {})
+        else:
+            dim_weights = {}
+
+        if dim_weights:
+            # 提前计算 dimension_results（避免后面重复调用）
+            _early_dim_results = self.dimension_eval.evaluate(
+                campaigns, panel_scores, brief_type=self.brief_type
+            )
+            dim_by_cid_early: Dict[str, Dict[str, float]] = defaultdict(dict)
+            for ds in _early_dim_results:
+                dim_by_cid_early[ds.campaign_id][ds.dimension_key] = ds.score
+            # 各 campaign 的加权维度分之和（已是 softmax×weight，天然可比）
+            dim_weighted_scores = {
+                cid: sum(dim_by_cid_early[cid].values())
+                for cid in all_ids
+            }
+            # 归一化到 sum=1
+            _dws_total = sum(dim_weighted_scores.values())
+            if _dws_total > 0:
+                dim_weighted_probs = {k: v / _dws_total for k, v in dim_weighted_scores.items()}
+            else:
+                dim_weighted_probs = {cid: 1.0 / len(all_ids) for cid in all_ids}
+            # 混入：原始 prob 让步给维度信号
+            scores = {
+                cid: scores[cid] * (1.0 - DIM_BOOST_WEIGHT)
+                      + dim_weighted_probs.get(cid, 0) * DIM_BOOST_WEIGHT
+                for cid in all_ids
+            }
+            # 后续 dimension_results 直接复用，避免重复 evaluate
+            _prefetched_dim_results = _early_dim_results
+        else:
+            _prefetched_dim_results = None
+
         # --- Agent score contribution (optional) ---
         if agent_scores:
             agent_by_campaign: Dict[str, List[AgentScore]] = defaultdict(list)
@@ -115,9 +157,12 @@ class CampaignScorer:
                 )
 
         # --- Dimension scores ---
-        dimension_results = self.dimension_eval.evaluate(
-            campaigns, panel_scores, brief_type=self.brief_type
-        )
+        if _prefetched_dim_results is not None:
+            dimension_results = _prefetched_dim_results
+        else:
+            dimension_results = self.dimension_eval.evaluate(
+                campaigns, panel_scores, brief_type=self.brief_type
+            )
 
         # 按 campaign 分组维度得分
         dim_by_campaign: Dict[str, Dict[str, float]] = defaultdict(dict)
