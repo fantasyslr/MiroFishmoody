@@ -4,7 +4,8 @@
 
 - ✅ **v1.0 Campaign 推演引擎 MVP** - Phases 1-8 (shipped 2026-03-17)
 - ✅ **v1.1 加固与增强** - Phases 9-12 (shipped 2026-03-17)
-- 🚧 **v2.0 大改造** - Phases 13-17 (in progress)
+- ✅ **v2.0 大改造** - Phases 13-17 (shipped 2026-03-18)
+- 🚧 **v2.1 部署修复 + 评审偏差修正** - Phases 18-20 (in progress)
 
 ## Phases
 
@@ -22,19 +23,24 @@ Phases 9-12 delivered: Both-mode cross-path navigation, Evaluate diagnostics pan
 
 </details>
 
-### 🚧 v2.0 大改造 (In Progress)
+<details>
+<summary>✅ v2.0 大改造 (Phases 13-17) - SHIPPED 2026-03-18</summary>
 
-**Milestone Goal:** 前端用 MiroFish 原版逻辑重写修复 buggy 交互，后端增加多 agent 并行推演提升精度。
+Phases 13-17 delivered: critical bug fixes + API contract lock, frontend rewrite (MiroFish pattern), global LLM semaphore + AgentScore schema, expanded persona pool + MultiJudge ensemble + devil's advocate + controversy badges, threading.Lock audit + BacktestEngine extraction.
+
+</details>
+
+### 🚧 v2.1 部署修复 + 评审偏差修正 (In Progress)
+
+**Milestone Goal:** 修复生产入口 404，迁移到有状态部署平台（Railway），评审逻辑按 brief 类型切权重，建 benchmark 数据集 + 回归测试 runner
 
 ---
 
-## Phases (v2.0)
+## Phases (v2.1)
 
-- [x] **Phase 13: Critical Bug Fixes + API Contract Lock** - 修复三个阻断性 bug，锁定 contracts.ts 防止重写期间 API drift (completed 2026-03-18)
-- [x] **Phase 14: Frontend Rewrite — Core Pages** - 用 MiroFish 模式重写全部核心页面交互（7 个 FE 需求） (completed 2026-03-18)
-- [x] **Phase 15: Multi-Agent Foundation** - 全局 LLM Semaphore + AgentScore schema 统一，为新 agent 类型建立并发和数据基础 (completed 2026-03-18)
-- [x] **Phase 16: Multi-Agent Evaluation Enhancement** - 扩展人格池、MultiJudge ensemble、devil's advocate、争议 badge (completed 2026-03-18)
-- [x] **Phase 17: Tech Debt Paydown** - 收窄 threading.Lock 范围，BrandStateEngine 渐进分解 (completed 2026-03-18)
+- [ ] **Phase 18: Deployment Fix** - 修复生产 / 返回 404，迁移 Railway，双重健康检查确认部署正常
+- [ ] **Phase 19: Brief-Type Weight Profiles** - brief_type 字段端到端贯穿，3 种评审权重配置，结果可追溯用了哪套权重
+- [ ] **Phase 20: Benchmark Dataset + Regression Runner** - 10 组已标注 benchmark，回归 runner 按 brief 类型分别报告命中率
 
 ---
 
@@ -68,10 +74,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 14-01-PLAN.md — FE-01 sessionStorage 表单持久化 + FE-03 品类人格预览
-- [ ] 14-02-PLAN.md — FE-02 Winner-first 结果布局 + FE-06 跨路径一致性 badge
-- [ ] 14-03-PLAN.md — FE-05 SplitPanel + LogBuffer 新 UI 组件 + FE-07 Step indicator
-- [ ] 14-04-PLAN.md — FE-04 导出可靠性修复（html2canvas 多页 PDF）
+- [x] 14-01-PLAN.md — FE-01 sessionStorage 表单持久化 + FE-03 品类人格预览
+- [x] 14-02-PLAN.md — FE-02 Winner-first 结果布局 + FE-06 跨路径一致性 badge
+- [x] 14-03-PLAN.md — FE-05 SplitPanel + LogBuffer 新 UI 组件 + FE-07 Step indicator
+- [x] 14-04-PLAN.md — FE-04 导出可靠性修复（html2canvas 多页 PDF）
 
 ### Phase 15: Multi-Agent Foundation
 **Goal**: 全局 LLM 并发上限已建立（防止 Bailian 429），所有 agent 输出共享统一 schema（防止新 agent 信号被 CampaignScorer 静默丢弃）
@@ -83,8 +89,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 15-01-PLAN.md — MA-01 全局 LLMSemaphore 从 ImageAnalyzer 层提升至 LLMClient 层
-- [ ] 15-02-PLAN.md — MA-02 AgentScore schema dataclass + CampaignScorer 统一注册机制
+- [x] 15-01-PLAN.md — MA-01 全局 LLMSemaphore 从 ImageAnalyzer 层提升至 LLMClient 层
+- [x] 15-02-PLAN.md — MA-02 AgentScore schema dataclass + CampaignScorer 统一注册机制
 
 ### Phase 16: Multi-Agent Evaluation Enhancement
 **Goal**: 评审团规模扩大、位置偏差已消除、反面视角已引入、争议分数可见于前端
@@ -99,9 +105,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 16-01-PLAN.md — MA-03 PersonaRegistry 扩展（moodyPlus 6→9, colored_lenses 5→8）+ MA-04 MultiJudge 位置交替 ensemble
-- [ ] 16-02-PLAN.md — MA-07 ConsensusAgent stdev 离群值检测 + EvaluationOrchestrator 接入
-- [ ] 16-03-PLAN.md — MA-05 Devil's advocate judge + MA-06 争议 badge 前端（dissent + suspect 双信号）
+- [x] 16-01-PLAN.md — MA-03 PersonaRegistry 扩展（moodyPlus 6→9, colored_lenses 5→8）+ MA-04 MultiJudge 位置交替 ensemble
+- [x] 16-02-PLAN.md — MA-07 ConsensusAgent stdev 离群值检测 + EvaluationOrchestrator 接入
+- [x] 16-03-PLAN.md — MA-05 Devil's advocate judge + MA-06 争议 badge 前端（dissent + suspect 双信号）
 
 ### Phase 17: Tech Debt Paydown
 **Goal**: threading.Lock 范围精确（I/O 和 LLM 调用不在锁内），BrandStateEngine 有表征测试覆盖且 BacktestEngine 已提取为独立类
@@ -114,21 +120,70 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 17-01-PLAN.md — TD-01 threading.Lock 范围收窄（注释审计 + EvaluationOrchestrator 分步分离）
-- [ ] 17-02-PLAN.md — TD-02 BrandStateEngine characterization tests + BacktestEngine 提取（strangler fig）
+- [x] 17-01-PLAN.md — TD-01 threading.Lock 范围收窄（注释审计 + EvaluationOrchestrator 分步分离）
+- [x] 17-02-PLAN.md — TD-02 BrandStateEngine characterization tests + BacktestEngine 提取（strangler fig）
+
+### Phase 18: Deployment Fix
+**Goal**: 生产环境入口 / 正常返回页面，Railway 部署稳定，SQLite 和上传文件在容器重启后持久化，健康检查双重验证通过
+**Depends on**: Phase 17 (v2.0 shipped)
+**Requirements**: DEPLOY-01, DEPLOY-02, DEPLOY-03, DEPLOY-04
+**Success Criteria** (what must be TRUE):
+  1. 访问 Railway 部署 URL 的 `/` 返回 HTTP 200 并渲染前端页面，不再出现 404
+  2. 发起一次 Evaluate 推演并等待完成，重启 Railway service 后再访问推演结果页，结果仍然可见（SQLite + 上传图片持久化确认）
+  3. Dockerfile 构建阶段若 `frontend/dist/index.html` 不存在则构建失败，不将空白容器推送到生产
+  4. `/api/health` 返回 `uploads_writable: ok` 且 `/` 返回 200，两个检查同时通过
+**Plans**: TBD
+
+Plans:
+- [ ] 18-01-PLAN.md — DEPLOY-01 + DEPLOY-02: Flask 静态路由修复（503 fallback）+ Dockerfile 构建断言
+- [ ] 18-02-PLAN.md — DEPLOY-03 + DEPLOY-04: Railway 部署配置（volume mount + env var 迁移）+ 健康检查双重验证
+
+### Phase 19: Brief-Type Weight Profiles
+**Goal**: 用户在发起推演时必须选择 brief 类型（品牌传播/达人种草/转化拉新），评审引擎按选定类型加载对应维度权重，每条历史结果可追溯当时用了哪套权重
+**Depends on**: Phase 18 (生产部署可用，才能做用户行为验证)
+**Requirements**: EVAL-01, EVAL-02, EVAL-03, EVAL-04, EVAL-05
+**Success Criteria** (what must be TRUE):
+  1. 推演发起表单包含 brief 类型必选字段（品牌传播/达人种草/转化拉新），未选择时提交被阻止并显示提示
+  2. 选择"品牌传播"发起 Evaluate 推演，结果 JSON 中的维度权重与 `brief_weights.py` 的 brand 配置一致（可用日志或结果文件验证）
+  3. 选择"转化拉新"发起推演，`conversion_readiness` 维度权重显著高于"品牌传播"推演的同维度权重（权重差异可测量）
+  4. 每条 EvaluationResult 记录包含 `weight_profile_version` 字段，历史结果重新打开后可看到当时使用的权重版本
+  5. 传入未知 brief_type 字符串时，API 返回 HTTP 400 而非 500 内部错误
+**Plans**: TBD
+
+Plans:
+- [ ] 19-01-PLAN.md — EVAL-01 + EVAL-03: BriefType enum + brief_weights.py 权重配置文件
+- [ ] 19-02-PLAN.md — EVAL-04 + EVAL-05: CampaignScorer 按 brief_type 加载权重 + EvaluationResult 记录 weight_profile_version
+- [ ] 19-03-PLAN.md — EVAL-02: 前端表单 brief_type 选择器 + API 边界 400 校验
+
+### Phase 20: Benchmark Dataset + Regression Runner
+**Goal**: 品牌团队有一套已标注 benchmark 数据集，可用 CLI 命令按 brief 类型分别测量评审引擎命中率，future 权重调整可快速回归验证
+**Depends on**: Phase 19 (权重配置必须先稳定，标注数据才有意义)
+**Requirements**: BENCH-01, BENCH-02, BENCH-03
+**Success Criteria** (what must be TRUE):
+  1. `backend/tests/fixtures/benchmark/` 目录中存在至少 10 组已标注 campaign JSON，每组包含 brief_type 标签、预期冠军和标注理由
+  2. 运行 `python benchmark/run.py` 输出 `brand_accuracy`、`seeding_accuracy`、`conversion_accuracy` 三个独立命中率，不只报告单一聚合数字
+  3. benchmark runner 使用 mock LLMClient（不调用真实 Bailian API），可在 CI 环境中确定性回放
+**Plans**: TBD
+
+Plans:
+- [ ] 20-01-PLAN.md — BENCH-01 + BENCH-02: Benchmark schema 设计 + 10 组种子数据标注
+- [ ] 20-02-PLAN.md — BENCH-03: 回归测试 runner（mock LLMClient + 命中率报告）
 
 ---
 
 ## Progress
 
-**Execution Order:** 13 → 14 → 15 → 16 → 17
+**Execution Order:** 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1-8. MVP | v1.0 | 12/12 | Complete | 2026-03-17 |
 | 9-12. 加固 | v1.1 | 8/8 | Complete | 2026-03-17 |
-| 13. Bug Fixes + Contract Lock | 2/2 | Complete    | 2026-03-18 | - |
-| 14. Frontend Rewrite | 4/4 | Complete    | 2026-03-18 | - |
-| 15. Multi-Agent Foundation | 2/2 | Complete    | 2026-03-18 | - |
-| 16. Multi-Agent Enhancement | 3/3 | Complete    | 2026-03-18 | - |
-| 17. Tech Debt | 2/2 | Complete    | 2026-03-18 | - |
+| 13. Bug Fixes + Contract Lock | v2.0 | 2/2 | Complete | 2026-03-18 |
+| 14. Frontend Rewrite | v2.0 | 4/4 | Complete | 2026-03-18 |
+| 15. Multi-Agent Foundation | v2.0 | 2/2 | Complete | 2026-03-18 |
+| 16. Multi-Agent Enhancement | v2.0 | 3/3 | Complete | 2026-03-18 |
+| 17. Tech Debt | v2.0 | 2/2 | Complete | 2026-03-18 |
+| 18. Deployment Fix | v2.1 | 0/2 | Not started | - |
+| 19. Brief-Type Weight Profiles | v2.1 | 0/3 | Not started | - |
+| 20. Benchmark Dataset + Runner | v2.1 | 0/2 | Not started | - |
