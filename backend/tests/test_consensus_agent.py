@@ -22,9 +22,13 @@ def _make_score(persona_id: str, campaign_id: str, score: float) -> PanelScore:
 class TestConsensusAgent:
 
     def test_suspect_flagged(self):
-        """Persona with score=2 among [9, 8, 8, 2] should be flagged suspect."""
+        """Persona with score=2 among [8, 8, 8, 2] should be flagged suspect.
+
+        mean=6.5, stdev≈2.65, deviation(2)=4.5 > threshold=2.0 → p4 flagged
+        deviation(8)=1.5 < threshold=2.0 → p1/p2/p3 not flagged
+        """
         scores = [
-            _make_score("p1", "c1", 9),
+            _make_score("p1", "c1", 8),
             _make_score("p2", "c1", 8),
             _make_score("p3", "c1", 8),
             _make_score("p4", "c1", 2),
@@ -76,8 +80,9 @@ class TestConsensusAgent:
             _make_score("p1", "c1", 8),
             _make_score("p2", "c1", 8),
             _make_score("p3", "c1", 7),
-            # campaign c2: one outlier
-            _make_score("p1", "c2", 9),
+            # campaign c2: one outlier — [8, 8, 2] mean=6.0, stdev≈3.46
+            # deviation(8)=2.0 (not strictly greater), deviation(2)=4.0 → only p3 flagged
+            _make_score("p1", "c2", 8),
             _make_score("p2", "c2", 8),
             _make_score("p3", "c2", 2),
         ]
