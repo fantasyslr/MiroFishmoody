@@ -48,6 +48,12 @@ class EvaluationOrchestrator:
             self.task_manager.update_task(task_id, progress=10, message="Audience Panel 评审中...")
             panel = AudiencePanel(llm_client=llm, category=category)
             panel_scores = panel.evaluate_all(campaigns)
+
+            # ConsensusAgent: detect outlier persona scores, mark suspect=True
+            from ..services.consensus_agent import ConsensusAgent
+            consensus = ConsensusAgent()
+            panel_scores = consensus.detect(panel_scores)
+
             if not panel_scores:
                 raise RuntimeError(
                     "Audience Panel 评审全部失败（0 个 persona 返回有效结果），"
