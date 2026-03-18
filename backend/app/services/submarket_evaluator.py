@@ -10,13 +10,14 @@ Dimension Evaluator — 从 panel scores 提取 5 个维度得分
 """
 
 import math
-from typing import List, Dict
+from typing import List, Dict, Optional
 from collections import defaultdict
 
 from ..utils.logger import get_logger
-from ..models.campaign import Campaign
+from ..models.campaign import Campaign, BriefType
 from ..models.evaluation import PanelScore
 from ..models.scoreboard import DimensionScore, DIMENSION_KEYS, DIMENSION_LABELS
+from .brief_weights import BRIEF_DIMENSION_WEIGHTS
 
 logger = get_logger('ranker.dimension')
 
@@ -65,6 +66,7 @@ class DimensionEvaluator:
         self,
         campaigns: List[Campaign],
         panel_scores: List[PanelScore],
+        brief_type: Optional[BriefType] = None,
     ) -> List[DimensionScore]:
         """
         计算每个维度中每个 campaign 的得分。
@@ -92,6 +94,12 @@ class DimensionEvaluator:
 
         results = []
 
+        # 按 brief_type 加载维度权重，None → 等权重
+        if brief_type is not None:
+            dim_weights = BRIEF_DIMENSION_WEIGHTS.get(brief_type.value, {})
+        else:
+            dim_weights = {}
+
         for dimension_key in DIMENSION_KEYS:
             raw_scores = {}
             for cid in all_ids:
@@ -105,6 +113,12 @@ class DimensionEvaluator:
                     )
 
             probs = _softmax_probs(raw_scores, temperature=1.5)
+
+            # 如有权重配置，按维度权重缩放 softmax 概率
+            dim_weight = dim_weights.get(dimension_key, None)
+            if dim_weight is not None:
+                # 缩放后不再归一化（各维度独立，weight 仅影响跨维度比较时的贡献）
+                probs = {k: v * dim_weight for k, v in probs.items()}
 
             for cid in all_ids:
                 results.append(DimensionScore(
