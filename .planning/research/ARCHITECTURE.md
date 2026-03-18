@@ -1,415 +1,431 @@
-# Architecture Patterns
+# Architecture Research
 
-**Domain:** Brand campaign simulation/evaluation platform (Moody Lenses)
-**Researched:** 2026-03-17
+**Domain:** AI campaign evaluation engine — Flask + React SPA, multi-agent backend
+**Researched:** 2026-03-18
 **Confidence:** HIGH (based on direct codebase analysis)
 
-## Current Architecture (As-Is)
+## Standard Architecture
+
+### System Overview (Current v1.1)
 
 ```
-                    React SPA (Vite + React 19)
-                    ├── HomePage (Race form)
-                    ├── RunningPage (Race execution)
-                    ├── ResultPage (Race results)
-                    └── [No Evaluate UI yet]
-                              │
-                              │ fetch via lib/api.ts
-                              ▼
-                    Flask Monolith (create_app factory)
-                    ├── /api/auth      (session auth)
-                    ├── /api/campaign   (evaluate pipeline)
-                    └── /api/brandiction (race pipeline)
-                              │
-              ┌───────────────┼───────────────┐
-              ▼               ▼               ▼
-     EvaluationOrchestrator  BaselineRanker  BrandStateEngine
-     (async daemon thread)   (sync)          (sync)
-              │               │               │
-              ▼               ▼               ▼
-         LLMClient      BrandictionStore    BrandictionStore
-         (Qwen/Bailian)  (SQLite)           (SQLite)
+┌─────────────────────────────────────────────────────────────────┐
+│                    React SPA (frontend/src/)                     │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐    │
+│  │ HomePage │  │ResultPage│  │EvaluateRe│  │TrendDashboard│    │
+│  │ (form)   │  │ (race)   │  │sultPage  │  │ Page         │    │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └──────┬───────┘    │
+│       │             │             │               │             │
+│  ┌────┴─────────────┴─────────────┴───────────────┴───────┐     │
+│  │           lib/api.ts (all fetch calls here)             │     │
+│  └────────────────────────┬────────────────────────────────┘     │
+└───────────────────────────┼─────────────────────────────────────┘
+                            │ HTTP / JSON
+┌───────────────────────────┼─────────────────────────────────────┐
+│                    Flask API Layer (api/)                        │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐   │
+│  │ brandiction  │  │  campaign    │  │  auth                │   │
+│  │ .py          │  │  .py         │  │  .py                 │   │
+│  └──────┬───────┘  └──────┬───────┘  └──────────────────────┘   │
+│         │                 │                                      │
+├─────────┼─────────────────┼──────────────────────────────────────┤
+│         │    Services Layer (services/)                          │
+│  ┌──────┴───────┐  ┌──────┴────────────────────────────────┐    │
+│  │  Race path   │  │  Evaluate path                         │    │
+│  │  ─────────── │  │  ─────────────────────────────────────│    │
+│  │  BaselineRan-│  │  EvaluationOrchestrator               │    │
+│  │  ker         │  │    Phase 1: AudiencePanel (parallel)  │    │
+│  │  ImageAnalyz-│  │    Phase 1.5: ImageAnalyzer           │    │
+│  │  er          │  │    Phase 2: PairwiseJudge / Market-   │    │
+│  │  BrandState- │  │             Judge                     │    │
+│  │  Engine      │  │    Phase 3: CampaignScorer (BT model) │    │
+│  └──────────────┘  │    Phase 4: SummaryGenerator          │    │
+│                    └───────────────────────────────────────┘    │
+│  Shared: PersonaRegistry, LLMClient, TaskManager, ImageHelpers   │
+├─────────────────────────────────────────────────────────────────┤
+│                         Storage                                  │
+│  ┌───────────────────┐   ┌──────────────────────────────────┐    │
+│  │  tasks.db (SQLite)│   │  brandiction.db (SQLite)         │    │
+│  │  WAL mode         │   │  WAL mode                        │    │
+│  └───────────────────┘   └──────────────────────────────────┘    │
+│  ┌────────────────────────────────────────────────────────── ┐   │
+│  │  uploads/results/<set_id>.json (flat file evaluation store)│   │
+│  └────────────────────────────────────────────────────────── ┘   │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-**Two distinct execution models coexist:**
-
-| Path | Trigger | Execution | Duration | Frontend |
-|------|---------|-----------|----------|----------|
-| Race | `/api/brandiction/race` | Synchronous in request | 5-30s | Full UI flow |
-| Evaluate | `/api/campaign/evaluate` | Async daemon thread | 2-10min | API only, no UI |
-
-## Recommended Architecture (To-Be)
-
-### Target: Unified Simulation Entry with Dual Paths
-
-```
-                    React SPA
-                    ├── HomePage (unified entry)
-                    │   ├── Mode selector: Race / Evaluate / Both
-                    │   ├── Plan builder (shared)
-                    │   ├── Category selector → persona config
-                    │   └── Image uploader (shared)
-                    ├── RunningPage (supports both paths)
-                    ├── EvaluatePage (NEW: async progress + results)
-                    └── ResultPage (enhanced: Race + Evaluate combined)
-                              │
-                              │ lib/api.ts (extended)
-                              ▼
-                    Flask Monolith
-                    ├── /api/auth
-                    ├── /api/campaign
-                    │   └── /evaluate (fix image handling)
-                    ├── /api/brandiction
-                    │   └── /race (add concurrent image analysis)
-                    └── /api/persona (NEW: category-based persona config)
-                              │
-              ┌───────────────┼───────────────┐
-              ▼               ▼               ▼
-     EvaluationOrchestrator  BaselineRanker  PersonaRegistry
-     (async, fixed images)   (concurrent IA) (NEW)
-              │               │
-              ▼               ▼
-         LLMClient      ImageAnalyzer
-         (shared)        (concurrent via ThreadPool)
-```
-
-## Component Boundaries
-
-### Existing Components (Modify)
-
-| Component | Responsibility | Changes Needed | Communicates With |
-|-----------|---------------|----------------|-------------------|
-| `HomePage` | Plan input + race config | Add mode selector (Race/Evaluate/Both), category-based persona preview | `lib/api.ts`, `RunningPage` |
-| `RunningPage` | Race execution display | Support Evaluate async polling alongside Race sync | `lib/api.ts`, `ResultPage`/`EvaluatePage` |
-| `ResultPage` | Race results display | Add Evaluate results tab when both modes run | `localStorage` + API |
-| `AudiencePanel` | 5-persona LLM jury | Accept persona list as parameter (not hardcoded), fix `image_paths` bug | `EvaluationOrchestrator`, `LLMClient` |
-| `ImageAnalyzer` | Per-image LLM vision | Change from serial to `ThreadPoolExecutor` | `BaselineRanker`, `LLMClient` |
-| `EvaluationOrchestrator` | 4-phase async pipeline | Pass persona config through, fix image URL resolution | `AudiencePanel`, `PairwiseJudge`, `CampaignScorer`, `SummaryGenerator` |
-| `_evaluation_store` | In-memory result cache | Add `threading.Lock`, add LRU eviction (max 100 entries) | `campaign.py` API handlers |
-
-### New Components (Build)
-
-| Component | Responsibility | Communicates With |
-|-----------|---------------|-------------------|
-| `PersonaRegistry` (backend service) | Maps category -> persona list; admin CRUD | `AudiencePanel`, `EvaluationOrchestrator`, API layer |
-| `EvaluatePage` (frontend page) | Evaluate mode UI: submit, poll progress, display jury results | `lib/api.ts`, `useReviewStore` |
-| Unified entry UI (within `HomePage`) | Mode selector + shared plan builder that feeds both paths | `RunningPage`, `EvaluatePage` |
-
-### Component Dependency Graph
-
-```
-PersonaRegistry ← (no deps, leaf service)
-     ↑
-AudiencePanel ← LLMClient, PersonaRegistry
-     ↑
-EvaluationOrchestrator ← AudiencePanel, PairwiseJudge, CampaignScorer, SummaryGenerator
-     ↑
-campaign.py (API) ← EvaluationOrchestrator, TaskManager
-
-ImageAnalyzer ← LLMClient (concurrent)
-     ↑
-BaselineRanker ← BrandictionStore, ImageAnalyzer
-     ↑
-brandiction.py (API) ← BaselineRanker, BrandStateEngine
-```
-
-## Data Flow
-
-### Flow 1: Unified Entry -> Race Path (Enhanced)
-
-```
-1. User fills plans in HomePage (shared plan builder)
-2. Selects mode = "Race" (or "Both")
-3. Selects category (moodyPlus / colored_lenses)
-4. Uploads images per plan (existing flow, max 5 per plan)
-5. Submit → saveRaceState() to localStorage
-6. Navigate to /running
-7. RunningPage calls POST /api/brandiction/race
-8. Backend:
-   a. BaselineRanker.rank_campaigns() — historical baseline
-   b. ImageAnalyzer.analyze_plan_images() — NOW CONCURRENT via ThreadPoolExecutor
-   c. apply_visual_adjustment() — merge visual scores
-   d. BrandStateEngine.predict_impact() — optional cognitive model
-9. Return RaceResult JSON → localStorage → /result
-```
-
-**Change from current:** Step 8b switches from serial to concurrent image analysis.
-
-### Flow 2: Unified Entry -> Evaluate Path (New Frontend)
-
-```
-1. User fills plans in HomePage (shared plan builder)
-2. Selects mode = "Evaluate" (or "Both")
-3. Selects category → PersonaRegistry returns matching persona set
-4. User reviews persona panel (can see who will judge)
-5. Submit → POST /api/campaign/evaluate
-6. Backend spawns daemon thread:
-   a. EvaluationOrchestrator.run()
-   b. AudiencePanel uses category-specific personas (not hardcoded)
-   c. image_paths resolved via _resolve_image_url_to_path() (BUG FIX)
-   d. Images sent as base64 to LLM
-   e. PairwiseJudge → CampaignScorer → SummaryGenerator
-7. Navigate to /evaluate/:taskId (NEW page)
-8. EvaluatePage polls GET /api/campaign/evaluate/status/:taskId
-9. On completion, displays jury results inline
-```
-
-**Critical changes:**
-- Personas loaded from `PersonaRegistry` by category, not hardcoded in `audience_panel.py`
-- `image_paths` bug fixed: URL strings resolved to local file paths before `os.path.exists()`
-- Frontend page added to visualize the async evaluation
-
-### Flow 3: "Both" Mode
-
-```
-1. User selects "Both" → system runs Race sync + Evaluate async in parallel
-2. Race result available in seconds → show immediately on /result
-3. Evaluate result arrives minutes later → notification or tab update on /result
-4. Combined view: Race ranking (evidence-based) + Evaluate jury (perception-based)
-```
-
-**Implementation approach:** Fire Race synchronously first (fast), then fire Evaluate async. ResultPage shows Race immediately with an "Evaluate pending" indicator that updates via polling.
-
-### State Management Strategy
-
-| Data | Current | Proposed | Rationale |
-|------|---------|----------|-----------|
-| Plan form state | `useState` in HomePage | Keep as-is | No cross-page sharing needed during input |
-| Race payload/result | `localStorage` | Keep as-is | Works for single-user flow |
-| Evaluate task tracking | None (API only) | `localStorage` (taskId) + API polling | Consistent with Race pattern |
-| Persona config | Hardcoded in `audience_panel.py` | `PersonaRegistry` service + JSON config file | Decouples personas from code |
-| Mode selection | N/A | `localStorage` via `saveRaceState()` extended | Survives navigation |
-
-## Patterns to Follow
-
-### Pattern 1: Image Path Resolution (Bug Fix Pattern)
-
-**What:** Centralize all image path resolution through a single helper that handles both local paths and API URLs.
-
-**When:** Any service that reads `campaign.image_paths` for LLM vision calls.
-
-**Example:**
-```python
-# backend/app/utils/image_resolver.py
-def resolve_to_local_path(image_ref: str) -> Optional[str]:
-    """Resolve image reference to local filesystem path.
-
-    Handles:
-    - Local path: /uploads/images/set_id/file.jpg → return as-is
-    - API URL: /api/campaign/image-file/set_id/file.jpg → map to local path
-    - Full URL: http://host/api/campaign/image-file/... → extract and map
-    """
-    if os.path.exists(image_ref):
-        return image_ref
-    # Extract from URL pattern
-    match = re.search(r'/api/campaign/image-file/([^/]+)/(.+)$', image_ref)
-    if match:
-        local = os.path.join(UPLOAD_FOLDER, 'images', match.group(1), match.group(2))
-        return local if os.path.exists(local) else None
-    return None
-```
-
-**Apply to:** `AudiencePanel._evaluate_single()`, `PairwiseJudge` (same bug), `ImageAnalyzer`
-
-### Pattern 2: Concurrent Image Analysis
-
-**What:** Use `ThreadPoolExecutor` for parallel LLM vision calls on multiple images.
-
-**When:** `ImageAnalyzer.analyze_plan_images()` processes 2+ images per plan.
-
-**Example:**
-```python
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
-def analyze_plan_images(self, plans: list) -> dict:
-    results = {}
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        futures = {
-            executor.submit(self._analyze_single_image, img): (plan_id, img)
-            for plan_id, images in plan_images.items()
-            for img in images
-        }
-        for future in as_completed(futures):
-            plan_id, img = futures[future]
-            try:
-                results.setdefault(plan_id, []).append(future.result())
-            except Exception as e:
-                logger.warning(f"Image analysis failed for {img}: {e}")
-    return results
-```
-
-**Max workers = 3:** Bailian API has rate limits; 3 concurrent vision calls is safe.
-
-### Pattern 3: Category-Based Persona Registry
-
-**What:** Decouple persona definitions from code. Load from a JSON config file, keyed by category.
-
-**When:** `AudiencePanel` needs personas for evaluation.
-
-**Example:**
-```python
-# backend/app/services/persona_registry.py
-class PersonaRegistry:
-    DEFAULT_CONFIG = "backend/persona_config.json"
-
-    def get_personas(self, category: str) -> list[dict]:
-        """Return persona list for given category.
-        Falls back to 'default' if category not found."""
-        config = self._load_config()
-        return config.get(category, config.get('default', []))
-```
-
-**Config structure:**
-```json
-{
-  "moodyplus": [
-    {"id": "daily_wearer", "name": "...", "description": "...", "evaluation_focus": "..."},
-    {"id": "acuvue_switcher", ...},
-    {"id": "eye_health", ...}
-  ],
-  "colored_lenses": [
-    {"id": "beauty_first", ...},
-    {"id": "trend_follower", ...},
-    {"id": "kol_influenced", ...}
-  ],
-  "default": [/* current 5 personas as fallback */]
-}
-```
-
-### Pattern 4: Async Task Polling on Frontend
-
-**What:** Standard polling pattern for long-running Evaluate tasks.
-
-**When:** EvaluatePage waits for jury results.
-
-**Example:**
-```typescript
-// EvaluatePage.tsx
-useEffect(() => {
-  if (!taskId || status === 'completed') return
-  const interval = setInterval(async () => {
-    const res = await getEvaluateStatus(taskId)
-    setProgress(res.progress)
-    setMessage(res.message)
-    if (res.status === 'completed' || res.status === 'failed') {
-      clearInterval(interval)
-      setStatus(res.status)
-      if (res.status === 'completed') setResult(res.result)
-    }
-  }, 3000) // Poll every 3s
-  return () => clearInterval(interval)
-}, [taskId, status])
-```
-
-## Anti-Patterns to Avoid
-
-### Anti-Pattern 1: Dual Plan Builders
-
-**What:** Building a separate plan input form for Evaluate mode (like `useReviewStore` already does separately from `HomePage`).
-
-**Why bad:** Two diverging plan schemas, duplicated validation, confused users. `useReviewStore` already exists as an alternative builder -- having three would be worse.
-
-**Instead:** Unify into one plan builder in `HomePage`. The existing `useReviewStore` can be retired or repurposed as the backing store for the unified builder. Mode selection (Race/Evaluate/Both) should be a toggle, not a different page.
-
-### Anti-Pattern 2: Hardcoded Persona Arrays in Service Code
-
-**What:** The current `PERSONAS` list is defined as a module-level constant in `audience_panel.py`.
-
-**Why bad:** Adding personas for `colored_lenses` means editing Python code, redeploying, and risking merge conflicts. Business users cannot configure this.
-
-**Instead:** `PersonaRegistry` loads from JSON config. `AudiencePanel.__init__()` receives persona list as a parameter.
-
-### Anti-Pattern 3: In-Memory Dict Without Bounds
-
-**What:** `_evaluation_store: dict = {}` in `campaign.py` grows without limit, no thread safety.
-
-**Why bad:** Memory leak over time. Race condition when two evaluations write simultaneously.
-
-**Instead:** Add `threading.Lock` for all reads/writes. Add LRU eviction (keep last 100 results). Results already persist to disk via `_save_result()`, so eviction is safe.
-
-### Anti-Pattern 4: God Class BrandStateEngine
-
-**What:** 1319-line class doing perception modeling, replay, backtest, and simulation.
-
-**Why bad:** Hard to test, hard to modify, merge conflict magnet.
-
-**Instead:** Not in scope for this milestone, but flag for future refactoring. Do not add more methods to it.
-
-## Scalability Considerations
-
-| Concern | Current (5 users) | Target (15 users) | Notes |
-|---------|-------------------|--------------------|-------|
-| Concurrent evaluations | 1 at a time (daemon thread, no queue) | 3-5 concurrent (ThreadPool) | SQLite WAL handles concurrent reads; writes serialized |
-| Image analysis speed | Serial (N images = N * 5s) | Concurrent (N images in ~5s) | ThreadPoolExecutor, max_workers=3 |
-| LLM rate limits | Not enforced | Should add semaphore | Bailian has per-minute token limits |
-| Memory (_evaluation_store) | Unbounded dict | LRU cache, max 100 | Disk persistence already exists as backup |
-| SQLite contention | No WAL mode | Enable WAL mode | `PRAGMA journal_mode=WAL` on both databases |
-
-## Suggested Build Order
-
-Based on dependency analysis, the components should be built in this order:
-
-### Phase 1: Fix Foundation (No New Features)
-
-**Build:** Image path resolution utility, `_evaluation_store` thread safety, SQLite WAL mode
-
-**Rationale:** These are bugs/risks that must be fixed before building new features on top. The image path bug would silently break any new Evaluate UI. The thread safety issue would cause data corruption under concurrent use.
-
-**Dependencies:** None -- these are leaf-level fixes.
-
-### Phase 2: PersonaRegistry + AudiencePanel Refactor
-
-**Build:** `PersonaRegistry` service, persona JSON config for both categories, modify `AudiencePanel` to accept injected personas.
-
-**Rationale:** This decouples persona config from code and is required before the Evaluate frontend can offer category-based persona selection.
-
-**Dependencies:** Phase 1 (image resolution fix feeds into AudiencePanel).
-
-### Phase 3: Concurrent Image Analysis
-
-**Build:** `ThreadPoolExecutor` in `ImageAnalyzer`, rate-limit-aware semaphore for LLM calls.
-
-**Rationale:** Performance improvement that's independent of UI work. Can be built and tested in isolation.
-
-**Dependencies:** Phase 1 (image resolution utility).
-
-### Phase 4: Evaluate Frontend + Unified Entry
-
-**Build:** `EvaluatePage` component, mode selector in `HomePage`, unified plan builder, API client extensions in `lib/api.ts`.
-
-**Rationale:** This is the largest surface area change. Depends on backend fixes (Phase 1-2) being stable. The unified entry design prevents the anti-pattern of dual plan builders.
-
-**Dependencies:** Phase 1 (working image pipeline), Phase 2 (persona config for category selector).
-
-### Phase 5: Combined Results View
-
-**Build:** Enhanced `ResultPage` showing Race + Evaluate results together when "Both" mode is used.
-
-**Dependencies:** Phase 4 (both paths must work end-to-end).
-
-### Dependency Graph
-
-```
-Phase 1 (Foundation Fixes)
-   ├──→ Phase 2 (PersonaRegistry)
-   │        └──→ Phase 4 (Evaluate UI + Unified Entry)
-   │                  └──→ Phase 5 (Combined Results)
-   └──→ Phase 3 (Concurrent Image Analysis)
-```
-
-Phases 2 and 3 can be built in parallel after Phase 1.
-
-## Sources
-
-- Direct codebase analysis of `/Users/slr/MiroFishmoody/` (PRIMARY)
-- `backend/app/services/audience_panel.py` — hardcoded personas, image bug at line 181
-- `backend/app/services/evaluation_orchestrator.py` — 4-phase pipeline structure
-- `backend/app/api/campaign.py` — `_evaluation_store` dict, daemon thread pattern
-- `backend/app/services/image_analyzer.py` — serial image analysis
-- `frontend/src/App.tsx` — route structure, no evaluate route
-- `frontend/src/store.ts` — `useReviewStore` (separate from HomePage state)
-- `.planning/PROJECT.md` — requirements and constraints
-- `.planning/codebase/ARCHITECTURE.md` — current architecture documentation
+### Component Responsibilities
+
+| Component | Responsibility | Location |
+|-----------|---------------|----------|
+| `HomePage` | Mode selector, plan form, image upload, submit | `pages/HomePage.tsx` |
+| `RunningPage` | Polls Race (sync) or Evaluate (async) progress | `pages/RunningPage.tsx` |
+| `ResultPage` | Renders Race result (baseline + visual) | `pages/ResultPage.tsx` |
+| `EvaluateResultPage` | Renders Evaluate result (3-tab scoreboard) | `pages/EvaluateResultPage.tsx` |
+| `TrendDashboardPage` | Campaign trend aggregation over time | `pages/TrendDashboardPage.tsx` |
+| `CompareVersionPage` | Side-by-side iteration version compare | `pages/CompareVersionPage.tsx` |
+| `lib/api.ts` | All HTTP calls, localStorage cross-page state | `lib/api.ts` |
+| `EvaluationOrchestrator` | Sequences Phase 1-4 async evaluate pipeline | `services/evaluation_orchestrator.py` |
+| `AudiencePanel` | Parallel persona LLM scoring per campaign | `services/audience_panel.py` |
+| `PairwiseJudge` | All-pairs LLM tournament, position-swap debias | `services/pairwise_judge.py` |
+| `CampaignScorer` | Bradley-Terry model combining panel + pairwise | `services/campaign_scorer.py` |
+| `BaselineRanker` | Historical evidence-based ranking | `services/baseline_ranker.py` |
+| `ImageAnalyzer` | Multimodal visual profile + diagnostics | `services/image_analyzer.py` |
+| `BrandStateEngine` | Cognitive brand state prediction (God class) | `services/brand_state_engine.py` |
+| `PersonaRegistry` | DI-injected persona config by category | `services/persona_registry.py` |
+| `TaskManager` | SQLite-backed singleton async task tracking | `models/task.py` |
+| `AgentDiffusion` | Consumer agent simulation (social diffusion) | `services/agent_diffusion.py` |
+| `SubmarketEvaluator` | Dimension extraction from panel scores | `services/submarket_evaluator.py` |
 
 ---
 
-*Architecture research: 2026-03-17*
+## v2.0 Integration Architecture
+
+### Frontend Rewrite: Replace-in-Place Strategy
+
+**Recommendation: Replace in-place, page by page — not gradual migration.**
+
+Rationale: The existing pages are small (all < 500 lines), self-contained, and use a shared `lib/api.ts` client. The API contracts are stable. The MiroFish reference provides complete interaction logic. A gradual migration would require maintaining two routing trees simultaneously with no benefit for a codebase of this size.
+
+**Rewrite order** (bottom-up, unblock dependencies first):
+
+```
+Phase A (no page dependencies):
+  LoginPage.tsx          — standalone, simple
+  components/layout/     — Layout, AppShell — affects all pages
+
+Phase B (depends on layout):
+  HomePage.tsx           — plan form + mode selector (most complex, known bugs)
+  RunningPage.tsx        — polling logic
+
+Phase C (depends on HomePage data contract):
+  ResultPage.tsx         — Race result display
+  EvaluateResultPage.tsx — Evaluate 3-tab display (most render logic)
+
+Phase D (standalone reads):
+  TrendDashboardPage.tsx
+  CompareVersionPage.tsx
+  HistoryPage.tsx
+  DashboardPage.tsx
+```
+
+**What stays unchanged during rewrite:**
+- `lib/api.ts` — zero changes. All API types, fetch helpers, localStorage helpers are stable and correct.
+- `store.ts` (Zustand) — keep as-is; only used by EvaluatePage flow.
+- `components/` (RadarScoreChart, DiagnosticsPanel, PercentileBar) — keep; these are rendering-only utilities.
+- All backend routes and response shapes.
+
+**What gets rewritten:**
+- Every page component in `pages/` — new interaction logic from MiroFish reference.
+- `components/layout/AppShell.tsx` and `Layout.tsx` — new shell from MiroFish.
+
+### Multi-Agent Backend: Extend EvaluationOrchestrator
+
+**Pattern: Parallel agent pool inside existing orchestrator phases.**
+
+The existing orchestrator runs phases sequentially. Multi-agent enhancement means:
+1. Within Phase 1 (AudiencePanel): expand from 5-6 fixed personas to a larger pool with cross-persona debate rounds.
+2. Add a new Phase 1.75: cross-agent validation — agents challenge each other's top objections, producing a reconciled consensus score per campaign.
+3. `AgentDiffusion` (already exists as `services/agent_diffusion.py`) plugs in as an optional Phase 0 — social diffusion simulation that pre-weights persona sensitivities before scoring begins.
+
+**Orchestrator extension (additive, no breaking changes):**
+
+```python
+# Extended EvaluationOrchestrator.run() — new phases shown
+
+# Phase 0 (NEW): Agent diffusion pre-weighting
+if Config.USE_AGENT_DIFFUSION:
+    diffusion = AgentDiffusion(brand_state=current_brand_state)
+    agent_weights = diffusion.run(campaign_set)   # -> persona sensitivity map
+
+# Phase 1: AudiencePanel (EXTEND — more agents, pass agent_weights)
+panel = AudiencePanel(llm_client=llm, category=category, agent_weights=agent_weights)
+panel_scores = panel.evaluate_all(campaigns)  # internally fans out to 24-36 agents
+
+# Phase 1.75 (NEW): Cross-agent consensus validation
+if Config.USE_CROSS_AGENT_VALIDATION:
+    validator = CrossAgentValidator(llm_client=llm)
+    panel_scores = validator.reconcile(panel_scores, campaigns)
+
+# Phase 2-4: unchanged
+```
+
+**Agent coordination pattern:**
+
+```
+AudiencePanel.evaluate_all()
+  ├── ThreadPoolExecutor (max_workers = len(personas) * len(campaigns))
+  ├── Semaphore controls LLM concurrency (Config.MAX_LLM_CONCURRENCY)
+  ├── Each worker: persona_i x campaign_j -> PanelScore
+  └── Result: List[PanelScore]   (N_personas x N_campaigns entries)
+
+CrossAgentValidator.reconcile()  [NEW]
+  ├── Group scores by campaign_id
+  ├── Find high-variance campaigns (std_dev > threshold)
+  ├── For high-variance only: spawn debate round
+  │     - Agents with minority opinion see majority reasoning
+  │     - Single LLM call per debating agent: "revise or hold?"
+  └── Return revised PanelScore list
+```
+
+**Key constraint:** Debate round only fires on high-variance campaigns. Cost scales with disagreement, not with total campaign count. Keeps LLM call budget bounded.
+
+---
+
+## Data Flow Changes (v2.0)
+
+### Race Path — unchanged
+
+```
+HomePage (new UI) -> lib/api.ts (saveRaceState) -> RunningPage
+  -> POST /api/brandiction/race (sync)
+  -> BaselineRanker + ImageAnalyzer + BrandStateEngine
+  -> RaceResult JSON -> localStorage -> ResultPage (new UI)
+```
+
+### Evaluate Path — orchestrator extended
+
+```
+HomePage (new UI) -> lib/api.ts (saveEvaluateState) -> RunningPage
+  -> POST /api/campaign/evaluate (async, returns task_id)
+  -> EvaluationOrchestrator.run() [extended with agent pool phases]
+      Phase 0: AgentDiffusion (optional, flag-gated)
+      Phase 1: AudiencePanel (24-36 agents via ThreadPoolExecutor + Semaphore)
+      Phase 1.5: ImageAnalyzer (parallel per campaign)
+      Phase 1.75: CrossAgentValidator (only for high-variance campaigns) [NEW]
+      Phase 2: PairwiseJudge / MarketJudge
+      Phase 3: CampaignScorer (Bradley-Terry)
+      Phase 4: SummaryGenerator
+  -> Result JSON -> memory store + uploads/results/<set_id>.json
+  -> GET /api/campaign/evaluate/status/<task_id> polling
+  -> EvaluateResultPage (new UI, 3-tab scoreboard)
+```
+
+### State Management (Frontend) — v2.0 unchanged
+
+The localStorage cross-page state pattern is intentional and correct. No change.
+
+```
+lib/api.ts
+  saveRaceState() / getRaceState()         -- Race payload + result
+  saveEvaluateState() / getEvaluateState() -- Evaluate task + result
+  saveBothModeState() / getBothModeState() -- Both mode coordination
+  saveIterateState() / getIterateState()   -- Version iteration context
+```
+
+Zustand (`store.ts`) remains scoped to the in-page plan builder in EvaluatePage. Do not expand its scope.
+
+---
+
+## Component Boundaries
+
+### Integration Points: Frontend Rewrite
+
+| Boundary | v1.1 State | v2.0 Action |
+|----------|-----------|-------------|
+| `HomePage` <-> `lib/api.ts` | Uses `saveRaceState`, `evaluateCampaigns`, `uploadCampaignImage` | Keep all imports, rewrite JSX and state management logic |
+| `ResultPage` <-> `lib/api.ts` | Reads `getRaceState()` | No change to data contract |
+| `EvaluateResultPage` <-> API | Reads `getEvaluateResult(setId)` | No change to response shape |
+| `RunningPage` <-> `getEvaluateStatus` | Polls task status | Keep polling interval and error handling, rewrite UI |
+| `components/RadarScoreChart` | Used in EvaluateResultPage | Keep as-is, only change import in parent |
+| `components/DiagnosticsPanel` | Used in ResultPage + EvaluateResultPage | Keep as-is |
+
+### Integration Points: Multi-Agent Backend
+
+| Boundary | v1.1 State | v2.0 Action |
+|----------|-----------|-------------|
+| `EvaluationOrchestrator` <-> `AudiencePanel` | Fixed 5-6 personas, direct call | Inject `agent_weights` param; AudiencePanel expands agent pool internally |
+| `EvaluationOrchestrator` <-> new `CrossAgentValidator` | Does not exist | New class, injected via DI same as other services |
+| `EvaluationOrchestrator` <-> `AgentDiffusion` | Exists but not wired into orchestrator | Add Phase 0 call behind `Config.USE_AGENT_DIFFUSION` flag |
+| `TaskManager` <-> orchestrator | Progress updates at fixed points | Add milestones for new phases (Phase 0: 5%, Phase 1.75: 55%) |
+| `JudgeCalibration` <-> new agents | Saves per-persona predictions | Extend schema to store per-archetype predictions from expanded pool |
+| Flask `/api/campaign/evaluate` <-> orchestrator | Passes `category` | No change needed; new phases are internal to orchestrator |
+
+---
+
+## Recommended Project Structure (v2.0 additions)
+
+```
+backend/app/services/
+├── evaluation_orchestrator.py     # MODIFY: wire Phase 0 + Phase 1.75
+├── audience_panel.py              # MODIFY: support agent_weights param + larger pool
+├── agent_diffusion.py             # EXISTS: wire into orchestrator
+├── cross_agent_validator.py       # NEW: debate-round reconciliation
+├── submarket_evaluator.py         # EXISTS: unchanged
+├── pairwise_judge.py              # unchanged
+├── campaign_scorer.py             # unchanged
+└── ...
+
+frontend/src/pages/
+├── HomePage.tsx                   # REWRITE (MiroFish interaction logic)
+├── RunningPage.tsx                # REWRITE
+├── ResultPage.tsx                 # REWRITE
+├── EvaluateResultPage.tsx         # REWRITE
+├── TrendDashboardPage.tsx         # REWRITE (if buggy)
+├── CompareVersionPage.tsx         # REWRITE (if buggy)
+├── HistoryPage.tsx                # REWRITE (if buggy)
+├── DashboardPage.tsx              # REWRITE (if buggy)
+└── LoginPage.tsx                  # REWRITE (if buggy)
+
+frontend/src/
+├── lib/api.ts                     # DO NOT TOUCH
+├── store.ts                       # DO NOT TOUCH
+├── components/                    # DO NOT TOUCH (RadarScoreChart, DiagnosticsPanel, etc.)
+└── components/layout/             # REWRITE (AppShell, Layout from MiroFish)
+```
+
+---
+
+## Architectural Patterns
+
+### Pattern 1: Feature-Flag Gating for New Agent Phases
+
+**What:** Each new agent phase is controlled by a `Config` boolean flag. Phases default to `False` and are enabled in staging before production.
+
+**When to use:** Every new LLM call path in v2.0. Prevents runaway cost if a new phase has bugs.
+
+**Example:**
+```python
+# config.py
+USE_AGENT_DIFFUSION: bool = os.getenv('USE_AGENT_DIFFUSION', 'false').lower() == 'true'
+USE_CROSS_AGENT_VALIDATION: bool = os.getenv('USE_CROSS_AGENT_VALIDATION', 'false').lower() == 'true'
+CROSS_AGENT_VARIANCE_THRESHOLD: float = float(os.getenv('CROSS_AGENT_VARIANCE_THRESHOLD', '2.0'))
+```
+
+### Pattern 2: Semaphore-Bounded Parallel Agent Calls
+
+**What:** All LLM calls within a phase share a `threading.BoundedSemaphore` that caps concurrent inflight calls regardless of agent pool size.
+
+**When to use:** Phase 1 (AudiencePanel). The expanded 24-36 agent pool must not flood the Bailian API. The existing `MAX_LLM_CONCURRENCY` env var already controls this — preserve it.
+
+**Example:**
+```python
+# audience_panel.py (existing pattern, preserve it)
+semaphore = threading.BoundedSemaphore(Config.MAX_LLM_CONCURRENCY)
+with ThreadPoolExecutor(max_workers=len(all_agents)) as executor:
+    futures = [executor.submit(_score_with_semaphore, agent, campaign, semaphore)
+               for agent in all_agents for campaign in campaigns]
+```
+
+### Pattern 3: Additive Result Schema for Multi-Agent Output
+
+**What:** New agent phases append optional fields to `EvaluationResult`. Never remove or rename existing fields — the result JSON is persisted to flat files and the frontend reads it directly.
+
+**When to use:** Any time multi-agent produces new data (debate transcripts, consensus scores, diffusion deltas).
+
+**Example:**
+```python
+# models/evaluation.py — add optional fields only
+@dataclass
+class EvaluationResult:
+    # ... existing fields unchanged ...
+    agent_consensus_scores: Optional[Dict[str, float]] = None   # NEW
+    diffusion_deltas: Optional[Dict[str, Dict[str, float]]] = None  # NEW
+    debate_rounds: Optional[Dict[str, List[dict]]] = None           # NEW
+```
+
+---
+
+## Anti-Patterns
+
+### Anti-Pattern 1: Changing `lib/api.ts` Response Types During Frontend Rewrite
+
+**What people do:** Refactor TypeScript types in `lib/api.ts` to match new component needs.
+
+**Why it's wrong:** `lib/api.ts` types are 1:1 mirrors of backend Python models. If they diverge, silent runtime failures occur — TypeScript won't catch missing JSON fields at runtime. These types are also the ground truth documentation for the backend contract.
+
+**Do this instead:** If a new backend field is added, extend the type with optional fields. Never remove existing fields even if the new UI does not use them.
+
+### Anti-Pattern 2: Synchronous Multi-Agent Evaluation
+
+**What people do:** Run 24-36 agents sequentially inside a daemon thread to "keep things simple."
+
+**Why it's wrong:** Sequential 36-agent execution at ~2s per LLM call = 72+ seconds minimum. Frontend polls on a 3-second interval — users will think the task hung.
+
+**Do this instead:** `ThreadPoolExecutor` with `Semaphore` (existing pattern in `AudiencePanel`). 36 agents x 3 campaigns at `MAX_LLM_CONCURRENCY=6` runs in ~4 parallel batches = ~8s for panel phase.
+
+### Anti-Pattern 3: Expanding Zustand Store for Cross-Page State
+
+**What people do:** Extend `store.ts` to hold Race + Evaluate state during the frontend rewrite because it seems cleaner than localStorage.
+
+**Why it's wrong:** Zustand state is in-memory and lost on hard refresh. Race and Evaluate paths use `localStorage` deliberately so a user can refresh `RunningPage` mid-evaluation and still recover their session.
+
+**Do this instead:** Keep all cross-page state in `lib/api.ts` localStorage helpers. Zustand stays scoped to the in-page plan builder only.
+
+### Anti-Pattern 4: Adding Multi-Agent Logic to BrandStateEngine
+
+**What people do:** Add agent diffusion coordination to `brand_state_engine.py` since it already handles brand state cognition.
+
+**Why it's wrong:** `BrandStateEngine` is already 1319 lines (known tech debt per PROJECT.md). Adding more to it creates a 2000+ line unmaintainable God class.
+
+**Do this instead:** `AgentDiffusion` is already its own service at `services/agent_diffusion.py`. Wire it through `EvaluationOrchestrator` as a peer service, not through `BrandStateEngine`.
+
+---
+
+## Build Order (Dependency Graph)
+
+```
+1. Backend: feature flags in Config
+   (gate all new phases — enables safe deployment of multi-agent code)
+
+2. Backend: wire AgentDiffusion into EvaluationOrchestrator Phase 0
+   (self-contained, no new APIs, flag off by default)
+
+3. Backend: extend AudiencePanel for larger agent pool
+   (touches existing service — existing tests must still pass)
+
+4. Backend: CrossAgentValidator new service
+   (depends on AudiencePanel output shape being finalized)
+
+5. Frontend: Layout + AppShell rewrite
+   (blocks all page rewrites — must land first)
+
+6. Frontend: LoginPage rewrite
+   (no page dependencies beyond Layout)
+
+7. Frontend: HomePage rewrite
+   (highest bug count, most complex — do early to unblock RunningPage)
+
+8. Frontend: RunningPage rewrite
+   (depends on HomePage form submission contract remaining stable)
+
+9. Frontend: ResultPage rewrite
+   (depends on Race result shape in lib/api.ts — stable, no changes)
+
+10. Frontend: EvaluateResultPage rewrite
+    (most render logic; depends on Evaluate result shape — stable)
+
+11. Frontend: Remaining pages (Trend, Compare, History, Dashboard)
+    (independent, lower priority)
+
+12. Backend: JudgeCalibration schema extension for archetype predictions
+    (last — not blocking any user-visible feature)
+```
+
+---
+
+## Scaling Considerations
+
+This is an internal tool. Current load is < 10 concurrent users. SQLite WAL + daemon threads is the correct architecture.
+
+| Scale | Architecture Notes |
+|-------|-------------------|
+| Current (< 10 users) | SQLite WAL + daemon threads — no changes needed |
+| If evaluate concurrency > 3 simultaneous | Add queue depth limit on TaskManager; reject 4th concurrent evaluate with 429 |
+| If LLM costs spike with 36-agent pool | Tune `CROSS_AGENT_VARIANCE_THRESHOLD` to reduce debate rounds; lower `clone_count` in AgentDiffusion archetypes |
+| Never | PostgreSQL migration, Redis, separate worker process — internal tool, not justified by user scale |
+
+---
+
+## Sources
+
+- Direct codebase analysis: `/Users/slr/MiroFishmoody/backend/app/services/` (all service files)
+- Direct codebase analysis: `/Users/slr/MiroFishmoody/frontend/src/` (all pages + lib/api.ts)
+- `.planning/codebase/ARCHITECTURE.md` — existing architecture documentation (2026-03-17)
+- `.planning/PROJECT.md` — v2.0 requirements and constraints
+- MiroFish reference: https://github.com/666ghj/MiroFish (target interaction patterns for frontend rewrite)
+
+---
+
+*Architecture research for: MiroFishmoody v2.0 — frontend rewrite + multi-agent backend*
+*Researched: 2026-03-18*

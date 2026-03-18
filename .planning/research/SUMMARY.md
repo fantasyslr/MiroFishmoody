@@ -1,175 +1,173 @@
 # Project Research Summary
 
-**Project:** MiroFishmoody -- Brand Campaign Simulation Engine Enhancement
-**Domain:** Brand campaign pre-testing / AI synthetic audience evaluation (internal tool for beauty/contact lens brand)
-**Researched:** 2026-03-17
+**Project:** MiroFishmoody v2.0 — Frontend Rewrite + Multi-Agent Backend Enhancement
+**Domain:** Brand campaign pre-testing / 推演 engine (internal tool, LLM-based multimodal evaluation)
+**Researched:** 2026-03-18
 **Confidence:** HIGH
 
 ## Executive Summary
 
-MiroFishmoody is an internal brand campaign pre-testing tool for Moody Lenses that uses LLM-based synthetic audience panels to evaluate and rank campaign creatives. The product already has a working Race path (quick ranking) and a backend-only Evaluate path (deep AI jury analysis with Bradley-Terry scoring). The core architecture -- Flask monolith, React SPA, Qwen/Bailian LLM, SQLite persistence -- is sound and should be kept. The project is not greenfield; the primary work is completing the Evaluate path frontend, fixing critical bugs, and enhancing the evaluation pipeline's reliability.
+MiroFishmoody is a mature internal tool (v1.1 already ships race ranking, persona panel scoring, pairwise comparison, BT-model ranking, export, versioning, and trends) that needs two targeted upgrades: (1) a frontend interaction rewrite to fix known UX bugs and adopt cleaner patterns from the MiroFish reference codebase, and (2) a multi-agent backend enhancement that increases evaluation signal quality. This is not a greenfield build — the Flask + React + SQLite architecture is correct for the scale, and no new dependencies are needed. The rewrite is entirely additive: `lib/api.ts` and all backend route contracts remain frozen; only page components and orchestrator internals change.
 
-The recommended approach is a 5-phase build: (1) fix the silent image dropout bug and concurrent access issues that would corrupt all downstream work, (2) build the PersonaRegistry and category-based persona configuration that Moody's dual-category business demands, (3) parallelize image analysis for performance, (4) build the Evaluate frontend and unified entry UI, (5) combine Race + Evaluate results into a single view. This order is driven by hard dependencies: the image bug silently invalidates all Evaluate results, persona config must exist before the frontend can offer category selection, and concurrent image analysis is an independent performance win.
+The recommended approach is strictly sequential and dependency-aware. Frontend interaction bugs (form state loss, fake polling progress, Both mode race condition) must be fixed first because they block real usage without touching the backend. Multi-agent enhancements (expanded persona pool, devil's advocate judge, cross-persona disagreement surfacing) layer on top of a stable frontend. The architecture research confirms that EvaluationOrchestrator already accepts the new phases as additive inserts, AgentDiffusion already exists as a service, and MultiJudge / CrossAgentValidator can be written as standalone classes wired in through existing DI patterns.
 
-The top risks are: silent image dropout producing confidently wrong scores (critical -- fix first), LLM judge position bias amplified by Bradley-Terry into misleadingly confident rankings (mitigate with position-swap in pairwise comparisons), and the temptation to refactor the 1319-line BrandStateEngine God class before stabilizing the Evaluate path (defer refactoring until characterization tests exist). The existing stack needs only 3 new backend dependencies (bcrypt, langfuse, structlog) and 2 frontend additions (react-query, recharts) -- no infrastructure changes required.
+The top risks are: (a) silent image dropout in AudiencePanel and PairwiseJudge — images are not currently resolved from API URL paths, making all visual evaluation effectively blind; this must be fixed before any other backend work; (b) API contract drift during the frontend rewrite, where MiroFish naming conventions get copied verbatim instead of mapped to Flask's snake_case contracts; and (c) missing global LLM semaphore in the multi-agent backend, where each new agent type spawns its own executor without a shared concurrency ceiling, causing 429 rate-limit failures at production campaign counts.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The existing stack (Python 3.11/Flask 3.0/SQLite/React 19/Vite/Zustand) is kept entirely. No migrations. New additions are minimal and low-risk.
+The existing stack requires zero new dependencies for v2.0. All MiroFish frontend UX patterns (step indicator, split-panel animation, polling, log buffer) are achievable with already-installed React 19 + Tailwind + motion 12.x. Multi-agent backend patterns use Python stdlib only (ThreadPoolExecutor, threading.Semaphore, statistics.stdev). The only config file changes needed are: font family additions to `tailwind.config.js`, Google Fonts link tags in `index.html`, and `MAX_LLM_CONCURRENT` added to `backend/app/config.py`.
 
-**Core additions:**
-- `AsyncOpenAI` / `ThreadPoolExecutor`: Concurrent LLM image analysis -- directly fixes the documented P0 performance bottleneck. Zero new dependencies (uses existing openai SDK + stdlib)
-- `threading.Lock` for `_evaluation_store`: Fixes correctness bug in shared mutable state. Stdlib only
-- `bcrypt`: Replace plaintext password storage. Security table stakes
-- `@tanstack/react-query v5`: Async polling for Evaluate task completion, cache invalidation. Required for Evaluate frontend
-- `recharts v2`: Multi-dimensional score visualization (radar charts, bar comparisons). Lightweight, SVG-based, React-native
+**Core technologies:**
+- React 19 + TypeScript 5.9 + Tailwind 3.4 + Vite 8: frontend — stable, no changes
+- motion 12.x: split-panel animations — use `animate={{ width }}` with cubic-bezier `[0.4, 0, 0.2, 1]` matching MiroFish reference
+- Flask 3.0 + SQLite WAL + ThreadPoolExecutor: backend — correct for internal tool at <10 concurrent users; never justify Celery/Redis
+- Python `statistics` stdlib: ConsensusAgent outlier detection — `statistics.stdev` sufficient for ≤9 persona values; no scipy needed
+- openai SDK (Bailian endpoint): all LLM calls — single provider; LiteLLM adds zero value here
 
-**Explicitly rejected:** Celery/Redis (overkill), PostgreSQL (unnecessary migration), LangChain (abstraction without benefit), FastAPI (migration cost exceeds benefit), LiteLLM (single provider), DeepEval/RAGAS (wrong problem domain).
+**Explicitly do NOT add:** Vue.js, D3.js, WebSocket/Flask-SocketIO, Celery+Redis, LangChain/LangGraph, Zep Cloud, scipy/numpy, axios (frontend), LiteLLM.
 
 ### Expected Features
 
-**Must have (table stakes):**
-- Side-by-side campaign comparison UI -- the entire purpose of the tool
-- Multi-dimensional scoring with composite score -- already implemented, needs UI polish
-- Visual creative analysis -- already implemented via ImageAnalyzer + LLM vision
-- Category-specific evaluation personas -- transparent vs. colored lenses have completely different buyer profiles
-- Results in under 5 minutes -- current serial pipeline is too slow
-- Evaluate path frontend -- backend exists, no UI
-- Historical baseline comparison -- BaselineRanker exists, needs prominent display
+**Must have (table stakes — Phase 1, frontend-only, no backend deps):**
+- Form state persistence across navigation — sessionStorage save/restore; current `useState` initializes fresh on every mount, causing data loss on navigation
+- Honest polling progress on Evaluate path — add timeout + error recovery; RunningPage currently uses fake step animation with no real backend signal
+- Both mode cross-path consistency badge — zero backend work; Race result and Evaluate result are both already stored, just need frontend comparison UI
+- Winner-first result layout — restructure EvaluateResultPage so top campaign is visible without tab navigation
+- Export reliability — test and fix html2canvas PDF generation on full 5-plan result sets
+- Both mode race condition fix — `Promise.all` for Race + Evaluate POST before navigating; `evaluateTaskId` must be stored before navigation
+- Category selector shows persona preview — display persona names/count in sidebar before submission
 
-**Should have (differentiators):**
-- AI synthetic audience panel (already built, deepen persona accuracy)
-- Dual-path simulation (Race + Evaluate, already built as backends)
-- Actionable visual diagnostics ("why it scored low, how to fix")
-- Exportable results (PDF/image for meetings)
-- Customizable audience personas (after preset system stabilizes)
+**Should have (Phase 2, multi-agent signal quality):**
+- Cross-persona disagreement score — std dev of persona scores surfaced as "争议" badge (backend already has per-persona scores)
+- Devil's advocate judge perspective — add to `JUDGE_PERSPECTIVES` in `pairwise_judge.py`, mark dissenting votes separately
+- Expanded pairwise perspectives (+1 竞品视角) — brand differentiation signal, minimal code change
 
-**Defer (v2+):**
-- Trend dashboard (needs data accumulation)
-- BrandStateEngine refactoring (works today, risky to touch)
-- Video/GIF analysis, AI creative generation, eye tracking -- anti-features
+**Defer to v2.x (HIGH cost, needs validation first):**
+- Persona confidence flagging — secondary LLM call per persona score doubles LLM cost; only build if users report score-reasoning contradictions
+- Calibrated scoring against historical winners — requires historical outcome data pipeline not yet in place
 
 ### Architecture Approach
 
-The system is a Flask monolith with two coexisting execution models: Race (synchronous, 5-30s) and Evaluate (async daemon thread, 2-10min). The target architecture adds a unified entry point in the React SPA that lets users choose Race, Evaluate, or Both modes from a single plan builder. A new `PersonaRegistry` service decouples persona configuration from code. `ImageAnalyzer` switches from serial to concurrent execution via `ThreadPoolExecutor`. The `EvaluatePage` frontend component handles async task polling.
+The existing Flask/React architecture is correct and stable. The frontend rewrite uses a replace-in-place strategy (not gradual migration): rewrite each page component in dependency order while keeping `lib/api.ts`, `store.ts`, and all `components/` render utilities frozen. The multi-agent backend enhancement inserts new phases (Phase 0: AgentDiffusion, Phase 1.75: CrossAgentValidator) into the existing EvaluationOrchestrator sequence behind feature flags, without changing any existing phase or API endpoint.
 
 **Major components:**
-1. `PersonaRegistry` (NEW) -- Maps category to persona list; replaces hardcoded persona arrays
-2. `EvaluatePage` (NEW) -- Frontend for async Evaluate path with progress polling and jury result display
-3. `ImageAnalyzer` (MODIFIED) -- Concurrent image analysis via ThreadPoolExecutor, max 3 workers
-4. `EvaluationOrchestrator` (MODIFIED) -- Fixed image path resolution, accepts injected persona config
-5. `_evaluation_store` (MODIFIED) -- Thread-safe with Lock + LRU eviction (max 100 entries)
+1. `EvaluationOrchestrator` — sequences Phase 0-4 async pipeline; extend with AgentDiffusion (Phase 0) and CrossAgentValidator (Phase 1.75), both flag-gated
+2. `AudiencePanel` — parallel persona LLM scoring; expand from 5-6 to 8-9 personas via config-only change to `PersonaRegistry`
+3. `MultiJudge` / `CrossAgentValidator` — new services (~80 lines each), wired as peer services through EvaluationOrchestrator, NOT through BrandStateEngine
+4. `lib/api.ts` (frontend) — frozen; the authoritative API contract; all new page components import from it, never duplicate call logic
+5. `TaskManager` — add progress milestones for new phases (Phase 0: 5%, Phase 1.75: 55%)
+
+**Key patterns:**
+- Feature-flag gating for all new agent phases (`USE_AGENT_DIFFUSION`, `USE_CROSS_AGENT_VALIDATION` in config.py)
+- Global `LLMSemaphore` at `LLMClient` level, not per-service (critical for multi-agent concurrency budget)
+- Additive result schema: new fields in `EvaluationResult` are `Optional` with defaults; never remove/rename existing fields
+- localStorage for cross-page state (not Zustand); Zustand scoped to in-page plan builder only
 
 ### Critical Pitfalls
 
-1. **Silent image dropout** -- `AudiencePanel` and `PairwiseJudge` call `os.path.exists()` on API URL strings, silently skipping all images. Every Evaluate result is computed without visual context. Fix: centralized `resolve_image_path()` utility used by all services
-2. **LLM judge position bias** -- Single-model judge + Bradley-Terry amplifies systematic bias into confident-looking rankings. Fix: randomize A/B presentation order, run each pair twice with swapped positions, flag inconsistent judgments
-3. **Concurrent state corruption** -- `_evaluation_store` dict has no thread safety, SQLite has no WAL mode. Multi-user access will produce partial results and database locks. Fix: `threading.Lock` + `PRAGMA journal_mode=WAL` + `busy_timeout`
-4. **Base64 image token overflow** -- High-res images (3-5MB) become 4-7MB base64, hitting LLM token limits silently. Fix: resize to max 1024px before encoding, validate payload size
-5. **Persona config without validation** -- Free-text persona prompts can produce garbage evaluations that BT treats as valid. Fix: curated presets first, schema validation for any custom personas
+1. **Silent image dropout (Pitfall 1, CRITICAL)** — `AudiencePanel` and `PairwiseJudge` call `os.path.exists()` on API URL strings, which always returns False; images silently skipped. Fix: extract single `resolve_image_path()` utility used by all services. Must fix before any other backend work — all current Evaluate results are computed without visual context.
+
+2. **API contract drift during rewrite (Pitfall F1)** — MiroFish uses different naming conventions; developers copy field names from wrong source. Fix: create `contracts.ts` mirroring each Flask route's exact shape before writing any component; run `npm run build` after every component.
+
+3. **Global LLM semaphore missing for multi-agent (Pitfall M1)** — each new agent type adds its own executor without a shared concurrency ceiling; 5-campaign evaluation with 3 agent types hits Bailian 429 limits. Fix: implement single `LLMSemaphore` at `LLMClient` level before adding any new agent type.
+
+4. **Both mode race condition (Pitfall F4)** — `evaluateTaskId` may not be stored before navigation when Evaluate POST fails silently. Fix: `Promise.all` both Race and Evaluate POSTs; navigate only after both task IDs confirmed. Known debt explicitly flagged in PROJECT.md.
+
+5. **Position bias compounding in judge ensemble (Pitfall M4)** — adding more judges with same ordering amplifies systematic bias (ACL 2025: 10-30% verdict flip rate from order swap). Fix: half of judge ensemble receives (A,B), half receives (B,A); majority vote only counts across orderings.
 
 ## Implications for Roadmap
 
 Based on research, suggested phase structure:
 
-### Phase 1: Foundation Fixes (Bug Fix + Stability + Security)
-**Rationale:** Every downstream feature depends on correct image handling and safe concurrent access. Building UI on a broken image pipeline means users see confidently wrong scores. This phase has zero feature value but prevents all subsequent work from being wasted.
-**Delivers:** Working image path resolution across all services, thread-safe evaluation store, SQLite WAL mode, bcrypt password hashing, image resize preprocessing, SECRET_KEY enforcement
-**Addresses:** Fix Evaluate image bug (P1), concurrent access safety, security basics
-**Avoids:** Silent image dropout (Pitfall 1), concurrent state corruption (Pitfall 4), base64 token overflow (Pitfall 6)
-**Stack:** `threading.Lock` (stdlib), `bcrypt`, SQLite WAL pragma, image resize via Pillow (already installed)
-**Effort:** 2-3 days
+### Phase 1: Critical Bug Fixes + Frontend Foundation
+**Rationale:** Silent image dropout corrupts all Evaluate results; Both mode race condition loses task IDs; form state loss blocks multi-plan workflows. These are pre-conditions for everything else. Frontend foundation (contracts.ts, AppShell rewrite) must land before any page rewrites begin.
+**Delivers:** Trustworthy Evaluate results with visual analysis; stable Both mode; contracts.ts API lock preventing future drift.
+**Addresses:** Form state persistence, polling timeout/recovery, Both mode race condition fix, image path resolution, SQLite WAL + threading.Lock.
+**Avoids:** Pitfall 1 (silent image dropout), Pitfall F1 (API contract drift), Pitfall F4 (Both mode race condition), Pitfall 4 (concurrent state corruption).
 
-### Phase 2: Persona Configuration + Evaluate Pipeline Enhancement
-**Rationale:** Category-based personas must exist before the Evaluate frontend can offer category selection. Position-swap debiasing should ship with the first usable Evaluate experience.
-**Delivers:** `PersonaRegistry` service, JSON persona config for moodyPlus and colored_lenses categories, `AudiencePanel` refactored to accept injected personas, position-swap in `PairwiseJudge`
-**Addresses:** Category-specific evaluation (P1 feature), LLM judge bias mitigation
-**Avoids:** Persona config without validation (Pitfall 5), judge bias (Pitfall 2)
-**Stack:** No new dependencies. JSON config file + service class
-**Effort:** 2-3 days
+### Phase 2: Frontend Rewrite — Core Pages
+**Rationale:** Once foundation is locked and critical bugs fixed, core page rewrites can proceed in dependency order. Layout/AppShell must land first. HomePage has highest bug count and is most complex — do early to unblock RunningPage.
+**Delivers:** Complete frontend interaction rewrite: Layout + AppShell → LoginPage → HomePage → RunningPage → ResultPage → EvaluateResultPage.
+**Uses:** motion `animate={{ width }}` for split-panel, `useReducer` log buffer (max 200 entries), step workflow indicators, real task status polling in RunningPage replacing fake animation.
+**Addresses:** Winner-first result layout, category → persona preview, export reliability, cross-path (Race vs Evaluate) consistency badge.
+**Avoids:** Pitfall F2 (MiroFish assumptions mismatch — treat as UX reference only, not code reference), Pitfall F3 (Zustand ghost state).
 
-### Phase 3: Concurrent Image Analysis
-**Rationale:** Independent of UI work, can be built and tested in isolation. Directly fixes the documented performance bottleneck. Should land before the Evaluate frontend so users experience fast evaluations from day one.
-**Delivers:** `ThreadPoolExecutor` in `ImageAnalyzer` (max 3 workers), rate-limit-aware semaphore for LLM calls, per-user evaluation concurrency limit
-**Addresses:** Evaluation speed < 5 minutes (P1 feature)
-**Avoids:** Serial image analysis performance trap
-**Stack:** `AsyncOpenAI` or `ThreadPoolExecutor` (stdlib), semaphore for rate limiting
-**Effort:** 1-2 days
+### Phase 3: Multi-Agent Foundation
+**Rationale:** Backend enhancements require stable frontend first. Global LLM semaphore and AgentScore schema must be established before adding any new agent type — these are the pre-conditions that prevent M1-M3 pitfalls.
+**Delivers:** Global LLM semaphore at LLMClient level; AgentScore dataclass schema; result_metadata in EvaluationResult; AgentDiffusion wired into orchestrator Phase 0 (flag-off by default); MAX_LLM_CONCURRENT config var.
+**Avoids:** Pitfall M1 (agent count without concurrency budget), Pitfall M2 (score schema inconsistency), Pitfall M3 (cascade failure silent degradation).
 
-### Phase 4: Evaluate Frontend + Unified Entry
-**Rationale:** Largest surface area change. Depends on Phases 1-2 being stable (working images + persona config). The unified entry design prevents the anti-pattern of dual plan builders.
-**Delivers:** `EvaluatePage` component with progress polling, mode selector in `HomePage` (Race/Evaluate/Both), unified plan builder, category-based persona preview, `@tanstack/react-query` for async state
-**Addresses:** Evaluate frontend (P1), unified entry (P1), side-by-side comparison UI (P1)
-**Avoids:** Dual plan builder anti-pattern, missing progress indication UX pitfall
-**Stack:** `@tanstack/react-query v5`, `recharts v2`
-**Effort:** 4-5 days
+### Phase 4: Multi-Agent Evaluation Enhancement
+**Rationale:** With semaphore and schema in place, expand agent pool and add new judge types safely. Position-alternated ensemble must be enforced before any new judge implementations.
+**Delivers:** Expanded PersonaRegistry (6→9 moodyPlus, 5→8 colored_lenses); MultiJudge with position-alternated ensemble; devil's advocate judge perspective; cross-persona disagreement score ("争议" badge); CrossAgentValidator (Phase 1.75) for debate-round reconciliation on high-variance campaigns.
+**Addresses:** Cross-persona disagreement surfacing, devil's advocate judge, expanded pairwise perspectives (+竞品视角).
+**Avoids:** Pitfall M4 (position bias compounding — alternate A/B order across judges), Pitfall M5 (calibration starvation — new agents start at 0.3x weight).
 
-### Phase 5: Combined Results + Export
-**Rationale:** Only possible after both paths work end-to-end. Cross-references Race (evidence-based) and Evaluate (perception-based) rankings for richer insight.
-**Delivers:** Enhanced `ResultPage` showing Race + Evaluate results together, comparison view ("Race ranked A>B, Evaluate ranked B>A -- investigate"), PDF/image export
-**Addresses:** Result export (P2), Race+Evaluate cross-reference
-**Stack:** `recharts` (already added in Phase 4), PDF generation (html-to-image or similar)
-**Effort:** 2-3 days
+### Phase 5: Secondary Pages + Tech Debt
+**Rationale:** TrendDashboard, CompareVersion, History, Dashboard pages are lower priority and independent. BrandStateEngine decomposition (1319-line God class) is tech debt that requires characterization tests first — never in same phase as feature additions.
+**Delivers:** Remaining page rewrites (TrendDashboardPage, CompareVersionPage, HistoryPage, DashboardPage); BrandStateEngine incremental decomposition (BacktestEngine first, least coupled); JudgeCalibration schema extension for archetype predictions.
+**Avoids:** Pitfall 3 (God class decomposition breaking Race path — characterization tests required before any extraction).
 
 ### Phase Ordering Rationale
 
-- **Phase 1 before everything:** The image dropout bug silently invalidates all Evaluate results. Building UI on broken data is worse than having no UI
-- **Phase 2 before Phase 4:** The Evaluate frontend needs persona config to offer category selection. Without it, the UI has nothing to configure
-- **Phase 3 parallel with Phase 2:** Concurrent image analysis is an independent backend change with no UI dependency. Can be developed alongside persona work
-- **Phase 4 after 1-3:** All backend prerequisites must be stable before investing in frontend. Otherwise the UI ships over broken foundations
-- **Phase 5 last:** Combined view requires both paths working, which is only guaranteed after Phase 4
+- Image resolution fix (Phase 1) cannot be deferred — it silently corrupts product value proposition; all Evaluate results are currently partially blind.
+- `contracts.ts` (Phase 1 frontend foundation) must precede all page rewrites — prevents API contract drift that TypeScript alone cannot catch at runtime.
+- AppShell/Layout rewrite (Phase 2 start) blocks all other page rewrites — correct dependency order per ARCHITECTURE.md build graph.
+- Global LLM semaphore (Phase 3) must precede all new agent types — without it, adding agents causes 429 failures at production scale (5 campaigns x 9 personas = 45 concurrent LLM calls without ceiling).
+- AgentScore schema (Phase 3) must precede MultiJudge/CrossAgentValidator — without it, new agents are silently excluded from CampaignScorer aggregation.
+- BrandStateEngine decomposition (Phase 5) must not happen concurrently with any feature phase — refactoring + features in same phase breaks characterization test coverage and is flagged as high recovery cost in PITFALLS.md.
 
 ### Research Flags
 
 Phases likely needing deeper research during planning:
-- **Phase 2:** LLM judge debiasing strategies need experimentation -- position-swap is well-documented but optimal temperature/prompt variations for ensemble judging are not. Run controlled experiments with known-good campaign pairs
-- **Phase 4:** Unified plan builder UX needs design research -- how to present Race vs. Evaluate vs. Both modes without confusing non-technical brand team users. Consider user interview or prototype testing
+- **Phase 3 (Multi-Agent Foundation):** Bailian API rate limits for expanded concurrency — verify actual RPM/TPM for current account tier before setting `MAX_LLM_CONCURRENT` default. The conservative default of 8-12 may be too low or too high depending on account tier.
+- **Phase 4 (Multi-Agent Enhancement):** CrossAgentValidator debate-round cost modeling — high-variance campaigns trigger expensive secondary LLM calls; validate variance threshold tuning against real campaign data before production enable.
 
 Phases with standard patterns (skip research-phase):
-- **Phase 1:** Bug fixes and thread safety are straightforward engineering with clear solutions documented in PITFALLS.md
-- **Phase 3:** ThreadPoolExecutor for concurrent I/O is a well-documented Python pattern. Bailian rate limits need empirical testing but the pattern itself is standard
-- **Phase 5:** Result visualization and PDF export are standard frontend patterns
+- **Phase 1 (Bug Fixes):** All fixes are mechanically straightforward with clear solutions documented in PITFALLS.md — path resolver extraction, Promise.all, threading.Lock, SQLite WAL pragma.
+- **Phase 2 (Frontend Rewrite):** MiroFish reference patterns are fully documented in STACK.md with exact implementation details (cubic-bezier values, polling intervals, log buffer size).
+- **Phase 5 (Tech Debt):** Strangler Fig pattern for BrandStateEngine decomposition is well-documented; BacktestEngine is confirmed as least coupled starting point.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Existing stack is proven. Additions are conservative (3 backend, 2 frontend packages). All verified against current codebase compatibility |
-| Features | MEDIUM | Competitive landscape well-researched (Kantar, Zappi, System1, Behavio). Internal user needs inferred from PROJECT.md and codebase analysis -- no direct user interview data |
-| Architecture | HIGH | Based on direct codebase analysis. Component boundaries, data flows, and dependency graphs verified against actual code |
-| Pitfalls | HIGH | Critical pitfalls verified with line-number-level codebase evidence. LLM judge bias supported by NAACL 2025 research. Concurrent access issues confirmed by code inspection |
+| Stack | HIGH | Verified from actual codebase files; no new deps needed means no version compatibility guesswork |
+| Features | HIGH | Based on direct codebase analysis (all 10 pages + 20 backend services) + 2025 multi-agent research literature |
+| Architecture | HIGH | Based on direct reading of all service files and frontend pages; integration points verified against actual code |
+| Pitfalls | HIGH | Image dropout and contract drift verified at specific code locations; multi-agent pitfalls grounded in ACL/arXiv 2025 research |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **User validation of feature priorities:** Feature research used competitive analysis and codebase inference, not direct user feedback. Validate with brand/creative team that the priority order matches their actual workflow pain points
-- **Bailian API rate limits:** Exact per-minute token/request limits not documented. Need empirical testing to determine safe `max_workers` for concurrent image analysis (assumed 3, may be higher or lower)
-- **Evaluate path end-to-end timing:** The 2-10 minute estimate for Evaluate path is from code analysis. Actual timing with concurrent image analysis and 5+ campaigns needs measurement to validate the "<5 minutes" target
-- **BrandStateEngine usage in Evaluate path:** It's unclear how much the Evaluate path depends on BrandStateEngine vs. using it only in Race. This affects whether Phase 2-4 changes could accidentally break BrandStateEngine's behavior
-- **Persona effectiveness:** No data on whether the current 5 hardcoded personas produce evaluations that correlate with actual campaign performance. Calibration system exists but needs 5+ resolved sets. Bootstrap with historical campaign data if available
+- **Bailian account tier rate limits:** The global semaphore ceiling depends on actual RPM quota for this Alibaba Cloud account. Default of 8-12 concurrent calls is conservative but should be validated against actual account limits before Phase 4 enables expanded agent pool.
+- **JudgeCalibration bootstrap data:** Calibration system requires 5+ resolved evaluation sets to activate weights. New agent types run uncalibrated indefinitely unless historical evaluation data is manually resolved. The 0.3x provisional weight for new agents mitigates this, but the calibration starvation timeline is unknown.
+- **html2canvas export reliability on large result sets:** Failure condition not precisely documented. Needs real 5-plan result set testing in Phase 1/2 to determine whether scroll-capture or page-break logic is required.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- Direct codebase analysis of `/Users/slr/MiroFishmoody/` -- architecture, bugs, component boundaries
-- `.planning/PROJECT.md` -- requirements, constraints, active backlog
-- `.planning/codebase/ARCHITECTURE.md` -- current architecture documentation
-- `.planning/codebase/CONCERNS.md` -- known issues and tech debt
+- `/Users/slr/MiroFishmoody/frontend/src/` (all pages + lib/api.ts) — direct codebase analysis
+- `/Users/slr/MiroFishmoody/backend/app/services/` (all 20 services) — direct codebase analysis
+- `https://github.com/666ghj/MiroFish` — MiroFish upstream: frontend patterns, polling intervals, log buffer (200 entries), cubic-bezier values
+- `.planning/codebase/STACK.md`, `.planning/codebase/ARCHITECTURE.md` — verified existing stack (2026-03-17)
+- `.planning/PROJECT.md` — v2.0 requirements and constraints
 
 ### Secondary (MEDIUM confidence)
-- [Re-evaluating Automatic LLM System Ranking (NAACL 2025)](https://aclanthology.org/2025.findings-naacl.260.pdf) -- BT model bias amplification
-- [Justice or Prejudice? Quantifying Biases in LLM-as-a-Judge](https://arxiv.org/html/2410.02736v1) -- judge bias taxonomy
-- [Behavio: Ad Testing Software Guide 2026](https://www.behaviolabs.com/blog/ad-testing-software-what-it-is-how-it-works-the-best-platforms-in-2026) -- competitive landscape
-- [Langfuse Python SDK v3](https://langfuse.com/docs/observability/get-started) -- LLM observability integration
-- [TanStack React Query v5](https://tanstack.com/query/latest) -- async state management
+- [Multi-LLM-Agents Debate — Performance, Efficiency, and Scaling Challenges (ICLR 2025)](https://d2jud02ci9yv69.cloudfront.net/2025-04-28-mad-159/blog/mad/) — debate scaling: gains plateau after 3-5 diverse agents
+- [Judging the Judges: Position Bias in LLM-as-a-Judge (ACL 2025)](https://aclanthology.org/2025.ijcnlp-long.18/) — 10-30% verdict flip rate from order swap, systematic not random
+- [Beyond Consensus: Mitigating Agreeableness Bias in LLM Judge Evaluations (NUS 2025)](https://aicet.comp.nus.edu.sg/wp-content/uploads/2025/10/Beyond-Consensus-Mitigating-the-agreeableness-bias-in-LLM-judge-evaluations.pdf) — agreeableness bias mitigation
+- [Why Do Multi-Agent LLM Systems Fail? (arxiv 2503.13657)](https://arxiv.org/abs/2503.13657) — 3-category, 14-failure-mode taxonomy; kappa=0.88 across 150 traces
+- [Adversarial Multi-Agent Evaluation through Iterative Debates (arXiv 2410.04663)](https://arxiv.org/html/2410.04663v1) — devil's advocate patterns
+- [Alibaba Cloud Model Studio Rate Limits](https://www.alibabacloud.com/help/en/model-studio/rate-limit) — Bailian API RPM/TPM limits
+- [Strangler Fig Pattern pitfalls (AWS)](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/strangler-fig.html) — API contract maintenance during incremental rewrites
 
 ### Tertiary (LOW confidence)
-- [Altair Media: Synthetic Audiences 2026](https://altair-media.com/posts/synthetic-audiences-in-market-research-hype-reality-and-outlook-for-2026) -- market direction for AI synthetic audiences (single source)
-- Bailian API rate limits -- inferred from general OpenAI-compatible API behavior, not verified against Bailian docs
+- html2canvas PDF export behavior on large result sets — anecdotal; needs validation with actual 5-plan data in Phase 1/2
 
 ---
-*Research completed: 2026-03-17*
+*Research completed: 2026-03-18*
 *Ready for roadmap: yes*

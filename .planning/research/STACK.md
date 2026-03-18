@@ -1,221 +1,310 @@
-# Technology Stack
+# Stack Research
 
-**Project:** MiroFishmoody -- Brand Campaign Simulation Engine Enhancement
-**Researched:** 2026-03-17
-**Mode:** Subsequent (enhancing existing codebase, not greenfield)
+**Domain:** Campaign evaluation engine — v2.0 frontend rewrite + multi-agent backend enhancement
+**Researched:** 2026-03-18
+**Confidence:** HIGH (existing stack verified from codebase; MiroFish patterns verified from source; new additions rely on stdlib only)
 
-## Current Stack (Keep As-Is)
+---
 
-These are already in place and working. No migration needed.
+## Scope
 
-| Technology | Version | Purpose | Status |
-|------------|---------|---------|--------|
-| Python | 3.11+ | Backend runtime | Keep |
-| Flask | 3.0+ | HTTP server | Keep |
-| SQLite | built-in | Persistence | Keep (WAL mode needed) |
-| OpenAI SDK | >=1.0.0 | LLM client (Qwen via Bailian) | Keep |
-| Pydantic | >=2.0.0 | Data validation | Keep |
-| Pillow | >=10.0.0 | Image preprocessing | Keep |
-| React | 19.x | Frontend UI | Keep |
-| TypeScript | 5.9 | Frontend language | Keep |
-| Tailwind CSS | 3.4 | Styling | Keep |
-| Vite | 8.x | Frontend build | Keep |
-| Zustand | 5.x | Client state | Keep |
+This document covers ONLY what is new or changed for v2.0. The previous milestone (v1.x) STACK.md entries (bcrypt, structlog, @tanstack/react-query, recharts, asyncio) are already implemented or superseded.
 
-## Recommended Additions
+**v2.0 goals:**
+1. Frontend rewrite — translate MiroFish original Vue UX patterns into existing React/TypeScript stack
+2. Multi-agent parallel evaluation backend — increase agent count, add cross-validation, improve accuracy
 
-### 1. Concurrent LLM Calls -- `asyncio` + `openai.AsyncOpenAI`
+---
 
-**Version:** Built-in (Python 3.11) + openai SDK (already installed)
-**Purpose:** Parallel image analysis and pairwise judging
-**Confidence:** HIGH
+## What MiroFish Original Uses (Reference Architecture)
 
-**Why:** The #1 performance bottleneck is serial image analysis (documented in PROJECT.md Active items). The project already uses `openai>=1.0.0` which ships `AsyncOpenAI` client. Flask 3.0 supports `async def` views. No new dependency needed -- just use what's already installed.
+MiroFish frontend: Vue 3 + Vue Router 4 + D3.js (force-directed graph) + axios + Vite. No component library. Minimal CSS reset.
 
-**Pattern:**
+**Key UX patterns MiroFishmoody v2.0 should adopt:**
+
+| Pattern | MiroFish Implementation | MiroFishmoody Translation |
+|---------|------------------------|--------------------------|
+| Step workflow indicator | 5-step numbered header, status dot (orange/green/red) | React component, existing Tailwind + lucide-react |
+| Dual-panel split layout | CSS transitions `width 0.4s cubic-bezier`, view mode toggle | `motion.div animate={{ width }}` (motion 12.x already installed) |
+| Task status polling | `setInterval` every 2s calling `getTaskStatus()` | Already in `EvaluatePage.tsx`, extend to `RunningPage.tsx` |
+| Graph/data refresh polling | Separate `setInterval` every 10-30s | Separate interval per concern |
+| Rolling log buffer | Array capped at 200 entries, `{ time, msg }` objects | `useReducer` with APPEND action, max 200 |
+| Maximize/restore panel | Header click toggles between split and full-width | Zustand local state or `useState` |
+| Font stack | JetBrains Mono + Space Grotesk + Noto Sans SC | Add to `tailwind.config.js` fontFamily, load via Google Fonts CDN |
+
+Since MiroFishmoody already uses React 19 + TypeScript + Tailwind + motion, these patterns translate directly. No stack changes required.
+
+---
+
+## Recommended Stack
+
+### Core Technologies — NO CHANGES
+
+| Technology | Current Version | Status |
+|------------|----------------|--------|
+| React | 19.x | Keep as-is |
+| TypeScript | 5.9 | Keep as-is |
+| Tailwind CSS | 3.4 | Keep as-is (add font families) |
+| Vite | 8.x | Keep as-is |
+| React Router DOM | 7.x | Keep as-is |
+| Zustand | 5.x | Keep as-is |
+| motion (Framer fork) | 12.x | Keep as-is |
+| Flask | 3.0+ | Keep as-is |
+| SQLite WAL | — | Keep as-is |
+| ThreadPoolExecutor | stdlib | Keep as-is, extend |
+| openai SDK | >=1.0.0 | Keep as-is |
+
+### New Frontend Libraries — NONE
+
+No new npm packages are needed. All MiroFish UX patterns are achievable with the existing stack:
+
+- Split-panel animations → `motion.div` (already installed)
+- Step indicators + status dots → Tailwind + lucide-react (already installed)
+- Polling → `setInterval` + `useEffect` (React stdlib)
+- Log buffer → `useReducer` (React stdlib)
+- Font additions → `tailwind.config.js` config change, no package
+
+**Rationale:** Adding new libraries for UI patterns achievable with installed tools increases bundle size, adds upgrade surface, and creates inconsistency in animation/styling approach.
+
+### New Backend Libraries — NONE
+
+Multi-agent enhancement uses only Python stdlib:
+
+- `concurrent.futures.ThreadPoolExecutor` — already in use
+- `threading.Semaphore` — already in use (ImageAnalyzer pattern)
+- `statistics.mean`, `statistics.stdev` — stdlib, for ConsensusAgent outlier detection
+- `threading.Lock` — already in use (_evaluation_store)
+
+**Rationale:** The multi-agent expansion is a structural change (more agents, cross-validation), not a dependency change.
+
+---
+
+## Supporting Libraries (Existing — Confirmed Adequate for v2.0)
+
+### Frontend
+
+| Library | Version | v2.0 Usage |
+|---------|---------|------------|
+| lucide-react | 0.577 | Status dot icons, workflow step icons |
+| tailwind-merge + clsx | 3.5 + 2.1 | Panel mode toggle classes, agent status badges |
+| motion | 12.x | Panel width transitions, step entry animations |
+| recharts | existing | Radar charts (no change) |
+| @tanstack/react-query | 5.x | Task polling (already in use in EvaluatePage) |
+
+### Backend
+
+| Library | Version | v2.0 Usage |
+|---------|---------|------------|
+| concurrent.futures | stdlib | Extend max_workers for multi-judge |
+| threading | stdlib | Lock for ConsensusAgent result aggregation |
+| statistics | stdlib | Mean/stdev for outlier detection in ConsensusAgent |
+| openai | >=1.0.0 | No change (all LLM calls go through LLMClient) |
+
+---
+
+## Frontend Rewrite: Specific Implementation Decisions
+
+### 1. Polling Parity (RunningPage fix)
+
+Current `RunningPage.tsx` fakes progress with a `setInterval` visual animation. The actual API call result is the only real signal. MiroFish uses 2 separate intervals: 2s for task status, 10-30s for graph data.
+
+**Decision:** Add real task status polling to `RunningPage.tsx` matching the pattern already in `EvaluatePage.tsx`. The visual step animation stays (good UX), but completion detection must come from the backend, not a timer.
+
+**Implementation:** One `setInterval` at 2s calling `/api/tasks/{task_id}/status`, cleared on completion or error. Existing `getRaceState` / `saveRaceState` pattern handles state handoff.
+
+### 2. Log Buffer Component
+
+New component `LogBuffer` with:
+- `useReducer` state: `{ entries: Array<{ time: string; msg: string }>, maxEntries: 200 }`
+- Action `APPEND` prepends new entry, slices to maxEntries
+- Renders as `font-mono text-xs` scrollable div
+- No external dependency
+
+### 3. Split Panel Layout
+
+New component `SplitPanel` using `motion.div`:
+- `viewMode: 'left' | 'split' | 'right'`
+- Left panel width: `viewMode === 'left' ? '100%' : viewMode === 'split' ? '50%' : '0%'`
+- `motion.div animate={{ width: panelWidth }} transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}`
+- The cubic-bezier `[0.4, 0, 0.2, 1]` matches MiroFish's CSS `cubic-bezier(0.4, 0, 0.2, 1)` (Tailwind's default ease-in-out)
+
+### 4. Font Stack Addition
+
+Add to `frontend/tailwind.config.js`:
+
+```js
+fontFamily: {
+  mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+  display: ['Space Grotesk', 'system-ui', 'sans-serif'],
+  sans: ['Space Grotesk', 'Noto Sans SC', 'system-ui', 'sans-serif'],
+}
+```
+
+Load in `frontend/index.html`:
+
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+```
+
+No npm package required.
+
+---
+
+## Backend Multi-Agent: Specific Implementation Decisions
+
+### Current State
+
+| Service | Agents | Concurrency |
+|---------|--------|-------------|
+| AudiencePanel | 6 personas (moodyPlus) / 5 (colored_lenses) | ThreadPoolExecutor(max_workers=4) |
+| PairwiseJudge | 1 judge per pair | ThreadPoolExecutor(max_workers=4) |
+| ImageAnalyzer | 1 analyzer | ThreadPoolExecutor + Semaphore(3) |
+
+### Multi-Agent Enhancement Plan
+
+**1. Expand PersonaRegistry (config-only change)**
+
+Add 3-4 new personas per category in `PersonaRegistry`:
+- moodyPlus: 6 → 9 personas
+- colored_lenses: 5 → 8 personas
+
+This is pure configuration. No code change in `AudiencePanel.evaluate_all()`. The ThreadPoolExecutor scales automatically to the persona count.
+
+**2. MultiJudge Wrapper (new service, ~80 lines)**
+
+New `MultiJudge` wraps `PairwiseJudge` to run each campaign pair through N independent judges:
+
 ```python
-from openai import AsyncOpenAI
-import asyncio
+class MultiJudge:
+    def __init__(self, llm_client, n_judges: int = 3):
+        self.judges = [PairwiseJudge(llm_client) for _ in range(n_judges)]
+        self._sem = threading.Semaphore(Config.MAX_LLM_CONCURRENT)
 
-async def analyze_images_concurrent(image_paths: list[str]) -> list[dict]:
-    client = AsyncOpenAI(api_key=Config.LLM_API_KEY, base_url=Config.LLM_BASE_URL)
-    tasks = [analyze_single(client, path) for path in image_paths]
-    return await asyncio.gather(*tasks, return_exceptions=True)
+    def judge_pair(self, a, b):
+        # Run n_judges in parallel, take majority vote
+        with ThreadPoolExecutor(max_workers=self.n_judges) as ex:
+            futures = [ex.submit(j.judge_pair, a, b) for j in self.judges]
+            results = [f.result() for f in as_completed(futures)]
+        return self._majority_vote(results)
 ```
 
-**What NOT to do:** Don't add Celery or Redis for this. The workload is I/O-bound (waiting for LLM API responses), not CPU-bound. asyncio.gather() with 3-5 concurrent calls is sufficient for the scale (internal tool, <10 concurrent users). Celery adds operational complexity (broker, worker processes, monitoring) that this project doesn't need.
+Majority vote reduces single-LLM variance. With 3 judges, one outlier doesn't change the result.
 
-### 2. LLM Observability -- `langfuse` SDK
+**3. ConsensusAgent (new service, ~60 lines)**
 
-**Version:** 3.x (Python SDK v3, released June 2025)
-**Purpose:** Trace LLM calls, track token costs, debug evaluation quality
-**Confidence:** MEDIUM
+After AudiencePanel completes, ConsensusAgent detects outlier persona scores:
 
-**Why:** The platform makes 10-30+ LLM calls per evaluation (5 persona panels x N pairwise comparisons). Without observability, debugging "why did persona X score this campaign low?" is guesswork. Langfuse captures prompt/completion pairs, token usage, latency, and supports custom evaluation scores -- all critical for tuning the evaluation pipeline.
-
-**Installation:**
-```bash
-pip install langfuse>=3.0.0
-```
-
-**Integration:** Uses `@observe()` decorator + automatic OpenAI SDK wrapping. Minimal code changes. Self-hosted option available (important since this is an internal tool with potentially sensitive campaign data). Cloud tier has a free plan for low volume.
-
-**Alternative considered:** OpenTelemetry raw -- too generic, doesn't understand LLM-specific concepts (token usage, prompt/completion pairs). Langfuse is purpose-built for LLM apps and integrates with OpenAI SDK directly.
-
-**What NOT to do:** Don't use DeepEval or RAGAS. Those are for evaluating RAG pipelines and LLM output quality at scale. This project's evaluation is the product itself (campaign scoring), not a meta-evaluation of LLM correctness.
-
-### 3. Thread Safety for In-Memory State -- `threading.Lock`
-
-**Version:** Built-in (Python stdlib)
-**Purpose:** Fix `_evaluation_store` race conditions
-**Confidence:** HIGH
-
-**Why:** PROJECT.md documents `_evaluation_store` is an in-memory dict with no thread locks. Gunicorn runs 2 workers x 4 threads = 8 potential concurrent threads. This is a correctness bug, not a performance optimization.
-
-**Pattern:**
 ```python
-import threading
-from collections import OrderedDict
-
-class EvaluationStore:
-    def __init__(self, max_size: int = 100):
-        self._store: OrderedDict[str, dict] = OrderedDict()
-        self._lock = threading.Lock()
-        self._max_size = max_size
-
-    def set(self, key: str, value: dict):
-        with self._lock:
-            self._store[key] = value
-            while len(self._store) > self._max_size:
-                self._store.popitem(last=False)  # LRU eviction
+class ConsensusAgent:
+    def flag_outliers(self, panel_scores: List[PanelScore]) -> dict:
+        per_campaign_scores = defaultdict(list)
+        for ps in panel_scores:
+            per_campaign_scores[ps.campaign_id].append(ps.score)
+        outliers = {}
+        for cid, scores in per_campaign_scores.items():
+            if len(scores) < 3:
+                continue
+            mean = statistics.mean(scores)
+            stdev = statistics.stdev(scores)
+            outliers[cid] = [s for s in scores if abs(s - mean) > 2 * stdev]
+        return outliers
 ```
 
-**What NOT to do:** Don't add Redis for this. The store is session-scoped evaluation state, not shared cache. An in-process lock + LRU eviction is the right fix for the current scale.
+Outlier flags surface in the result UI (DiagnosticsPanel) as "评审意见分歧明显" warnings. They do NOT exclude persona scores from ranking — they inform the human reviewer.
 
-### 4. Password Hashing -- `bcrypt`
+**4. `max_workers` Scaling**
 
-**Version:** 4.x
-**Purpose:** Replace plaintext password storage (documented in PROJECT.md Active items)
-**Confidence:** HIGH
+Increase from `max_workers=4` to `max_workers=min(agent_count, 8)` in both AudiencePanel and MultiJudge. The Semaphore pattern from ImageAnalyzer (currently `Semaphore(3)`) should be applied to MultiJudge too, controlled by `Config.MAX_LLM_CONCURRENT` (new config var, default 5).
 
-**Why:** `MOODY_USERS` env var currently stores plaintext passwords. bcrypt is the standard choice for password hashing in Python -- it's battle-tested, has built-in salt generation, and configurable work factor.
+### Pipeline Integration
 
-**Installation:**
-```bash
-pip install bcrypt>=4.0.0
+Multi-agent changes slot into `EvaluationOrchestrator.run()`:
+
+```
+Phase 1: AudiencePanel (9 personas → parallel)
+Phase 1.5: ConsensusAgent flags outliers (sync, ~1ms)
+Phase 1.5b: ImageAnalysis (unchanged)
+Phase 2: MultiJudge (3 judges per pair → parallel)
+Phase 3: CampaignScorer (unchanged)
+Phase 4: SummaryGenerator (unchanged)
 ```
 
-**Alternative considered:** `passlib` -- heavier dependency, more features than needed. `argon2-cffi` -- technically superior algorithm but bcrypt has broader ecosystem support and the security difference is negligible for an internal tool with <50 users.
+No new API endpoints needed. Existing `/api/evaluate/start` and `/api/tasks/{id}/status` cover the flow.
 
-### 5. Structured Logging -- `structlog`
+---
 
-**Version:** 24.x+
-**Purpose:** Replace ad-hoc logger with structured JSON logging for LLM call debugging
-**Confidence:** MEDIUM
+## What NOT to Add
 
-**Why:** The codebase already has a logger utility (`get_logger`), but debugging multi-step evaluation chains (persona panel -> pairwise judge -> Bradley-Terry scoring) requires structured context (evaluation_id, persona_name, campaign_pair) that string formatting handles poorly. structlog adds context binding without changing call sites.
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| Vue.js / vue-router | MiroFish uses Vue but MiroFishmoody is React — translating UX patterns is the goal, not migrating frameworks | React + motion for animations |
+| D3.js | MiroFish uses D3 for knowledge graphs — MiroFishmoody has no graph visualization need | recharts covers existing radar/bar needs |
+| WebSocket / Flask-SocketIO | 3-minute evaluation tasks don't need sub-second push — 2s polling is adequate | `setInterval` polling (existing) |
+| Celery + Redis | Internal tool, <10 concurrent users — distributed task queue is operational overhead without benefit | Extend existing TaskManager |
+| LangGraph / LangChain | Adds abstraction over direct LLM calls that are already well-structured; multi-agent here is simple parallel fan-out, not a stateful graph | ThreadPoolExecutor directly |
+| Zep Cloud | MiroFish uses Zep for session memory across agent conversations — campaign evaluation is stateless per run | SQLite result storage sufficient |
+| GraphRAG | MiroFish builds knowledge graphs from documents — not applicable to image/text campaign evaluation | N/A |
+| scipy / numpy | `statistics.stdev` (stdlib) is sufficient for 1D outlier detection on ≤9 values | Python stdlib `statistics` module |
+| LiteLLM | Single LLM provider (Qwen via Bailian) — routing/fallback abstraction has no value here | openai SDK directly |
+| axios (frontend) | MiroFish uses axios but MiroFishmoody already has a well-structured `lib/api.ts` using fetch — adding axios creates two HTTP layers | Keep existing fetch-based api.ts |
 
-**Installation:**
-```bash
-pip install structlog>=24.0.0
-```
+---
 
-**What NOT to do:** Don't add a full ELK stack or log aggregation service. structlog outputs JSON to stdout, Docker captures it, that's sufficient for an internal tool.
+## Alternatives Considered
 
-## Recommended Frontend Additions
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| Translate MiroFish UX patterns to React | Migrate frontend to Vue 3 | Full framework migration for existing 10-page React app — zero user-visible difference, 2-3 weeks of work |
+| `statistics.stdev` for outlier detection | scipy stats | Stdlib avoids a heavy scientific computing dependency for a 5-line calculation |
+| ThreadPoolExecutor for multi-judge | asyncio + async LLM calls | Flask is sync; asyncio in Flask 3.0 requires `async def` views throughout — partial async adoption creates bugs; ThreadPoolExecutor already proven in this codebase |
+| Extend PersonaRegistry config | Separate MultiAgent orchestration framework | Persona expansion is configuration, not architecture — adding 3 personas is a `personas.yaml` edit |
+| motion `animate={{ width }}` for panels | CSS transition classes in Tailwind | motion provides better control over cubic-bezier and play/stop; Tailwind transitions can't be driven by dynamic JS state as cleanly |
 
-### 6. Server State Management -- `@tanstack/react-query`
+---
 
-**Version:** 5.x
-**Purpose:** Async evaluation polling, cache invalidation, optimistic updates
-**Confidence:** HIGH
+## Version Compatibility
 
-**Why:** The Evaluate path runs async tasks (TaskManager + SQLite persistence). The frontend needs to poll for completion, handle loading/error states, and cache results. React Query provides this out of the box with configurable polling intervals, automatic retries, and cache invalidation. Currently the frontend likely uses raw `fetch` + `useEffect` which doesn't handle race conditions or stale data well.
+| Package | Compatible With | Notes |
+|---------|-----------------|-------|
+| React 19.x | React Router DOM 7.x | Confirmed compatible |
+| motion 12.x | React 19 | Confirmed — Framer Motion fork explicitly supports React 19 |
+| Tailwind CSS 3.4 | Vite 8.x | Confirmed — postcss pipeline |
+| Python 3.11+ | statistics module | stdlib, no version concern |
+| ThreadPoolExecutor | Python 3.11+ | stdlib, no version concern |
 
-**Installation:**
-```bash
-npm install @tanstack/react-query@^5
-```
+---
 
-**What NOT to do:** Don't use SWR. React Query has better DevTools, more granular cache control, and built-in mutation support. SWR is simpler but lacks features needed for long-running async task polling.
+## Installation
 
-### 7. Data Visualization -- `recharts`
-
-**Version:** 2.x
-**Purpose:** Render evaluation score comparisons, radar charts for dimension analysis, Bradley-Terry rankings
-**Confidence:** MEDIUM
-
-**Why:** The evaluation results have multi-dimensional scores (creative_style, product_visibility, aesthetic_tone, etc.) that need visual comparison across campaigns. Recharts is React-native, composable, and handles radar/bar/line charts well. Lightweight compared to D3 (which requires imperative DOM manipulation that fights React).
-
-**Installation:**
-```bash
-npm install recharts@^2
-```
-
-**Alternative considered:** `nivo` -- more beautiful defaults but heavier bundle. `victory` -- good but less active maintenance. `chart.js` via react-chartjs-2 -- works but Canvas-based (harder to style with Tailwind). Recharts uses SVG, plays well with React's rendering model.
-
-## Explicitly NOT Recommended
-
-| Technology | Why Not |
-|------------|---------|
-| **Celery + Redis** | Overkill for <10 concurrent users. asyncio handles the I/O-bound LLM fan-out. Adds broker dependency to Docker compose. |
-| **PostgreSQL** | PROJECT.md constraint: SQLite + WAL is sufficient for internal tool scale. Migration cost > benefit. |
-| **LangChain** | The project has clean, direct OpenAI SDK usage. LangChain adds abstraction layers and dependency bloat for no clear benefit. The evaluation chain logic is domain-specific (persona panels, Bradley-Terry) and doesn't map to LangChain's generic chain/agent patterns. |
-| **FastAPI migration** | Flask 3.0 async support is sufficient. The codebase has 20+ Flask routes and middleware. Migration cost is high, benefit is marginal for this use case. |
-| **NIMA / image-quality-assessment** | The project uses LLM multimodal vision for image analysis, which provides richer, domain-specific insights (creative style, brand tone, trust signals) than generic IQA scores. NIMA gives a single aesthetic score -- useless for campaign comparison. |
-| **DeepEval / RAGAS** | These evaluate LLM output quality. This project IS the evaluation product -- the LLM evaluates campaigns, not itself. Meta-evaluation frameworks don't apply here. |
-| **choix library** | The hand-rolled Bradley-Terry implementation (20 iterations MM algorithm in `pairwise_judge.py`) works correctly and is well-tested (`test_bradley_terry.py`). choix adds a dependency for ~40 lines of code that's already battle-tested in this codebase. |
-| **LiteLLM** | Only one LLM provider (Qwen via Bailian). LiteLLM's value is multi-provider routing/fallback. Single-provider + OpenAI SDK is simpler. |
-
-## Updated Dependencies Summary
-
-### Backend additions to `pyproject.toml`:
-
-```toml
-dependencies = [
-    # ... existing ...
-
-    # Security
-    "bcrypt>=4.0.0",
-
-    # Observability (optional, enable when needed)
-    "langfuse>=3.0.0",
-
-    # Structured logging
-    "structlog>=24.0.0",
-]
-```
-
-### Frontend additions:
+No new packages required for v2.0. All new capabilities use already-installed libraries or Python stdlib.
 
 ```bash
-npm install @tanstack/react-query@^5 recharts@^2
+# Verify deps are current — both commands should be no-ops
+cd /Users/slr/MiroFishmoody/frontend && npm install
+cd /Users/slr/MiroFishmoody/backend && uv sync
 ```
 
-### No new infrastructure dependencies
+The only file changes needed before coding:
+1. `frontend/tailwind.config.js` — add fontFamily entries
+2. `frontend/index.html` — add Google Fonts `<link>` tags
+3. `backend/app/config.py` — add `MAX_LLM_CONCURRENT` config var (default: 5)
+4. `.env.example` — document `MAX_LLM_CONCURRENT`
 
-The Docker single-container deployment model is preserved. No Redis, no message broker, no external services required (Langfuse cloud is optional; self-hosted is a separate container if needed later).
-
-## Migration Notes
-
-| Addition | Effort | Risk | Priority |
-|----------|--------|------|----------|
-| AsyncOpenAI for parallel image analysis | 1-2 days | Low (same SDK, just async client) | P0 -- directly fixes documented performance issue |
-| threading.Lock for _evaluation_store | 0.5 day | Low (stdlib, isolated change) | P0 -- correctness bug |
-| bcrypt password hashing | 0.5 day | Low (env var migration needed) | P1 -- security issue |
-| @tanstack/react-query | 1-2 days | Low (additive, doesn't replace existing) | P1 -- needed for Evaluate UI |
-| structlog | 1 day | Low (wraps existing logger) | P2 -- nice-to-have for debugging |
-| Langfuse | 1 day | Low (decorator-based, opt-in) | P2 -- valuable after evaluation pipeline stabilizes |
-| recharts | 1-2 days | Low (additive UI components) | P2 -- enhances result visualization |
+---
 
 ## Sources
 
-- [Flask async/await docs](https://flask.palletsprojects.com/en/stable/async-await/) -- Flask 3.x async view support
-- [OpenAI Python SDK](https://github.com/openai/openai-python) -- AsyncOpenAI client documentation
-- [Langfuse Python SDK](https://langfuse.com/docs/observability/get-started) -- v3 SDK with @observe() decorator
-- [Langfuse overview](https://langfuse.com/docs/observability/overview) -- LLM observability architecture
-- [choix PyPI](https://pypi.org/project/choix/) -- v0.4.1, Bradley-Terry library (evaluated but not recommended)
-- [TanStack React Query](https://tanstack.com/query/latest) -- v5 server state management
-- [Recharts](https://recharts.org/) -- React composable charting library
-- [LLM Evaluation best practices](https://langfuse.com/blog/2025-03-04-llm-evaluation-101-best-practices-and-challenges) -- evaluation framework landscape
-- [LiteLLM](https://docs.litellm.ai/docs/) -- multi-provider gateway (evaluated but not recommended)
+- MiroFish source: https://github.com/666ghj/MiroFish — frontend patterns (polling intervals, log buffer size 200, cubic-bezier values, step workflow)
+- MiroFish `frontend/package.json` (verified): vue@^3.5.24, vue-router@^4.6.3, d3@^7.9.0, axios@^1.13.2
+- `/Users/slr/MiroFishmoody/.planning/codebase/STACK.md` — verified existing stack (2026-03-17)
+- `/Users/slr/MiroFishmoody/backend/app/services/audience_panel.py` — ThreadPoolExecutor(max_workers=4), 6/5 persona counts
+- `/Users/slr/MiroFishmoody/backend/app/services/pairwise_judge.py` — single judge pattern, max_workers=4
+- `/Users/slr/MiroFishmoody/backend/app/services/evaluation_orchestrator.py` — full pipeline structure
+- `/Users/slr/MiroFishmoody/frontend/src/pages/RunningPage.tsx` — confirmed fake-step animation pattern (no real polling)
+- `/Users/slr/MiroFishmoody/frontend/src/pages/EvaluatePage.tsx` — confirmed real polling pattern (2s setInterval)
+
+---
+
+*Stack research for: MiroFishmoody v2.0 — frontend rewrite + multi-agent backend*
+*Researched: 2026-03-18*

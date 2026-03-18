@@ -1,183 +1,199 @@
 # Feature Research
 
-**Domain:** Brand Campaign Pre-testing / 推演 (Internal Tool for Beauty/Contact Lens Brand)
-**Researched:** 2026-03-17
-**Confidence:** MEDIUM — based on competitive landscape analysis of Kantar, Zappi, System1, Behavio, and emerging AI synthetic audience tools; contextualized for internal brand tool (not SaaS product)
+**Domain:** Brand Campaign Pre-testing / 推演 (Internal Tool) — v2.0 Frontend Rewrite + Multi-Agent Backend
+**Researched:** 2026-03-18
+**Confidence:** HIGH — based on direct reading of existing codebase (all 10 frontend pages + 20 backend services), MiroFish upstream repo analysis, and peer-reviewed 2025 research on multi-agent LLM evaluation
+
+---
+
+## Context: What v1.1 Already Ships
+
+Before mapping new features, the baseline matters. All items below are **already built and working**:
+
+| Capability | Status |
+|-----------|--------|
+| Race path: baseline ranking + visual analysis + quick ranking | Done |
+| Evaluate path: persona panel scoring + pairwise comparison + BT ranking | Done |
+| Both mode (Race + Evaluate combined, async) | Done |
+| Per-category personas (moodyPlus 6, colored_lenses 5) | Done |
+| Image upload + multimodal analysis (parallel, Semaphore-controlled) | Done |
+| PairwiseJudge with 3 judge perspectives (策略/用户/品牌) + position-swap debiasing | Done |
+| PDF/image export (html2canvas + jsPDF) | Done |
+| Version iteration + comparison | Done |
+| Trends dashboard (recharts, by category) | Done |
+| Auth (login/logout/role) | Done |
+
+v2.0 is **not a greenfield build**. It is a targeted rewrite of the frontend interaction layer and a precision enhancement of the multi-agent evaluation engine.
+
+---
 
 ## Feature Landscape
 
-### Table Stakes (Users Expect These)
+### Table Stakes (Must Have for v2.0)
 
-Features that brand/creative/media teams assume a campaign pre-testing tool has. Missing any of these makes the tool feel broken or useless.
+Features where the current implementation has known bugs, interaction logic failures, or UX gaps that block real usage. These are the reasons v2.0 exists.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **多方案并排对比** (Side-by-side comparison) | 推演的核心目的就是对比方案优劣，没有对比等于没有推演 | MEDIUM | Race 路径已有排名输出，但缺少直观的视觉并排对比 UI。Evaluate 路径无前端。这是最高优先级 gap |
-| **多维度评分 + 总分** (Multi-dimensional scoring with composite) | 品牌/创意/媒介各关注不同维度（视觉吸引力、品牌契合度、受众共鸣），只给一个总分不够 | LOW | 已有视觉分析多维度评分 + Bradley-Terry 总分。需要让维度在 UI 上清晰可读、可展开 |
-| **视觉素材分析** (Visual creative analysis) | 隐形眼镜 campaign 以 KV/模特图/产品图为核心，不分析视觉就等于没分析 | LOW | 已实现（ImageAnalyzer + LLM vision）。属于已有能力，继续打磨 |
-| **历史基线对比** (Historical benchmark) | "这个方案比以前的好还是差？" 是最自然的问题 | LOW | BaselineRanker 已有。需要在结果页面清晰展示 percentile 和历史分位 |
-| **结果可导出** (Exportable results) | 推演结果需要带进会议、汇报给老板。PDF/截图/PPT 是刚需 | MEDIUM | 当前无导出功能。至少需要 PDF 或可截图的结果卡片式布局 |
-| **推演速度 < 5 分钟** (Results in under 5 minutes) | Kantar LINK AI 15 分钟出结果已成行业标杆。内部工具必须更快 | MEDIUM | 当前串行分析慢。并行图片分析 + 缓存已在 Active backlog |
-| **按品类区分推演逻辑** (Category-specific evaluation) | 透明片和彩片的用户画像、审美偏好、购买动机完全不同 | MEDIUM | 已在 Active backlog（按品类配置评审人格）。这是 Moody 场景下的 table stakes |
+| **Form state persists through navigation** | Users fill in 5 plans with images, click submit, something fails, they navigate back — they expect the form to still be there | MEDIUM | Current: `useState` initializes fresh on every mount. Fix: sessionStorage or React context persistence across navigation |
+| **Image upload status is honest** | Users need to know if images are "ready" before submitting. Current status indicators have race conditions with React StrictMode double-fire | MEDIUM | `startedRef` guard already in RunningPage for StrictMode — same pattern needed everywhere image state is mutated async |
+| **Progress page does not poll blindly** | Evaluate path shows static step animation while polling every 3s. If network drops, user sees spinner forever | LOW | Add timeout + visible error recovery. RunningPage already shows error state for Race; EvaluatePage needs same treatment |
+| **Both mode: evaluate link is clickable only when ready** | In Both mode, ResultPage shows "查看深度评审" button that appears when polling completes. If eval fails, this link should show failure — not just disappear | LOW | Current code already handles `evalStatus: 'failed'` but UI text and visibility need clarity |
+| **Version iterate flow is complete end-to-end** | "基于上一版本迭代" banner appears on HomePage when iterateState exists. But Race→Evaluate cross-mode parentSetId is not passed (known debt: `parent_set_id` empty in Race-then-Evaluate flow) | MEDIUM | Fix: when Both mode completes, capture the eval setId and surface it for next iteration |
+| **Result page does not require manual tab switching** | Current EvaluateResultPage has 3 tabs (排名/人格/对比). Users may miss the 人格 tab details. The most important finding (winner + reasons) must be visible without clicking | LOW | Restructure: show winner prominently, collapse others behind toggle |
+| **Export works on all result types** | Export buttons exist on both ResultPage and EvaluateResultPage. html2canvas sometimes clips content or produces blank PDFs on large result sets | MEDIUM | Test with real 5-plan result sets. May need scroll-capture or page-break logic |
+| **Category selector drives visible persona list** | Users select "彩片" but have no confirmation which personas will evaluate them. They should see the persona set before submitting | LOW | Add persona preview in the right-panel "评估矩阵" sidebar before submission |
 
-### Differentiators (Competitive Advantage)
+### Differentiators (Multi-Agent Accuracy Enhancement)
 
-Features that让 MiroFishmoody 超越 "把结果贴进 PPT" 的手动流程，且是 Kantar/Zappi 这类 SaaS 不会为单个品牌定制的能力。
+Features that move the evaluation engine from "one LLM pretending to be 5 different people" to "genuinely independent signal sources that catch each other's errors."
+
+Research basis: 2025 literature consistently shows multi-agent debate and panel approaches improve accuracy 8-20 percentage points over single-judge evaluation, with the largest gains in domains requiring nuanced judgment (exactly our case — brand aesthetics, audience resonance).
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **AI 合成受众评审团** (Synthetic audience panel) | 业界 2025-2026 热点方向。用 LLM 模拟目标消费者人格做推演，无需招募真人 panel，成本从万元级降到接近零 | MEDIUM | 已有 5-persona AudiencePanel + PairwiseJudge。这是核心差异化能力，继续深化人格精准度和品类适配 |
-| **双路径推演** (Dual-path: Race + Evaluate) | 快速筛选 vs 深度分析两种模式，匹配不同决策场景。竞品通常只提供单一流程 | LOW | 已有双路径后端。需要统一入口 UI 让用户自然选择 |
-| **品牌认知状态模型** (Brand state cognitive model) | 将品牌当前认知状态（awareness/consideration/purchase stage）纳入推演，不只看素材好不好，还看是否匹配品牌当前阶段需求 | HIGH | BrandStateEngine 已有但是 God class。这个能力在竞品中极少见，是真正的壁垒 |
-| **推演结果趋势追踪** (Campaign simulation history & trends) | 跨 campaign 追踪推演分数变化，让团队看到创意水平是否在提升 | MEDIUM | 当前每次推演独立，无跨 campaign 趋势视图。需要 dashboard |
-| **视觉诊断建议** (Actionable visual diagnostics) | 不只是打分，还要给出"为什么扣分、怎么改"的建议。Kantar 和 System1 都强调 actionable recommendations | MEDIUM | ImageAnalyzer 已输出文本分析，但需要结构化诊断建议（如"模特表情不够自然，建议..."） |
-| **受众人格自定义** (Customizable audience personas) | 让品牌团队根据具体 campaign 目标自定义评审人格（如"Z 世代彩妆重度用户" vs "30+ 职场女性"） | HIGH | 当前人格写死在代码里。开放配置 = 更多场景适用性 |
-| **方案迭代推演** (Iterative refinement tracking) | 同一 campaign 多次推演（修改素材后重新推演），自动对比版本间改善 | MEDIUM | 当前无版本概念。需要 campaign revision tracking |
+| **Cross-persona disagreement surfacing** | When personas disagree strongly (e.g., moodyPlus "科学派" loves a rational claim, "美感派" rejects the same visual), this disagreement is more informative than the averaged score. Currently averaged away silently. | MEDIUM | Backend already has per-persona scores. Add disagreement_score = std dev of persona scores. Surface in UI as "争议方案" badge when std dev > threshold |
+| **Devil's advocate judge in pairwise** | Current 3-judge pairwise (策略/用户/品牌) votes by majority. Add a 4th judge with explicit adversarial role: "你的工作是找到多数评委忽略的风险或被高估的优点" — prevents groupthink convergence | MEDIUM | Add `devil_advocate` perspective to JUDGE_PERSPECTIVES in pairwise_judge.py. Mark its dissenting votes separately so UI can show "少数意见" |
+| **Inconsistency detection between Race and Evaluate** | When Both mode runs, Race ranks plan A first, Evaluate ranks plan B first. This contradiction is currently invisible. It is actually the most valuable signal ("your historical data says A, but independent judges say B — investigate why"). | MEDIUM | In ResultPage Both mode: add cross-path consistency badge. Show explicitly when Race winner != Evaluate winner and flag for review |
+| **Persona confidence flagging** | LLM outputs a score of 7/10 but its reasoning text contradicts the score ("this would not resonate with me... 7/10"). Current code trusts the JSON number. Add a pass checking score vs reasoning semantic alignment. | HIGH | Use a second LLM call (cheaper/faster model) to verify score-reasoning alignment. Flag low-confidence evaluations in UI. This is the "meta-judge" pattern from 2025 literature |
+| **Expanded pairwise judge perspectives** | Current 3 judges (strategist, consumer, brand guardian) all evaluate from Moody's existing brand frame. Add: "竞品视角" — assumes the evaluator is a Acuvue/Bausch&Lomb brand manager assessing threat level. This surfaces competitive differentiation gaps. | LOW | Add 1-2 more JUDGE_PERSPECTIVES entries. Minimal code change, high signal value for brand team |
+| **Calibrated scoring against historical winners** | All persona scores are relative to each other, not anchored to real-world outcomes. If campaign X was a historical top performer (high ROAS), and current personas gave it 6/10, there's a calibration gap. Use JudgeCalibration service (already exists) to apply learned weights. | HIGH | JudgeCalibration.get_weights() already called in orchestrator but weights are likely not trained on real data yet. Needs historical outcome data pipeline |
 
-### Anti-Features (Deliberately NOT Build)
+### Anti-Features (Deliberately NOT Build in v2.0)
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| **真人消费者 panel 调研** | "AI 打分不够真实，要真人投票" | 成本高、速度慢、招募难。内部工具不是调研平台。Moody 已有独立调研流程 | 持续优化 AI 合成人格的精准度，用历史 campaign 数据校准 |
-| **实时 A/B 投放测试** | "直接连广告平台跑 A/B test" | 超出推演工具范畴，涉及广告账户、预算、投放优化等完全不同的领域 | 推演结果导出为决策报告，投放由媒介团队在广告平台执行 |
-| **视频/GIF 素材分析** | "我们也有视频素材要测" | 视频分析成本高（LLM vision 按帧计费）、技术复杂度指数级增长 | 先用静态帧截图做推演，未来 v2+ 再考虑视频 |
-| **AI 自动生成创意素材** | "既然有 AI 评分，不如让 AI 直接生成更好的" | 与推演工具定位不同（评估 vs 生成）。生成质量不可控，品牌调性难保证 | 聚焦推演 + 诊断建议，让设计师基于反馈人工迭代 |
-| **眼动追踪/注意力热力图** | "Brainsight 和 Neurons 都有热力图" | 需要专门的注意力预测模型（非通用 LLM 能力），训练成本和数据依赖极高 | 用 LLM vision 的视觉分析（构图、色彩、焦点）作为近似替代 |
-| **跨渠道投放效果预测** | "预测在小红书 vs 抖音 vs 微博的效果差异" | 需要各平台历史投放数据和算法模型，远超当前数据基础 | 推演聚焦素材本身的品牌力/吸引力，平台效果差异由媒介团队基于经验判断 |
+| **Full Vue.js → React rewrite mirroring MiroFish exactly** | "MiroFish frontend patterns" sounds like "copy their code" | MiroFish is a Vue.js simulation platform for thousands of agents. Its UI patterns (knowledge graph visualization, real-time agent chat, simulation state) are completely inapplicable to a 5-plan campaign evaluation tool. Taking UI patterns from MiroFish means misreading the task. | Rewrite React frontend to fix current bugs and improve interaction clarity. MiroFish's value is its multi-agent backend architecture concept, not its Vue components. |
+| **Full LLM orchestration rewrite (LangChain/LangGraph)** | "Add more agents = need orchestration framework" | Current ThreadPoolExecutor + custom services works and is debuggable. LangChain adds abstraction overhead, version churn, and debugging difficulty for marginal gains. The team already knows Flask services. | Add agents by extending existing service classes. EvaluationOrchestrator already coordinates phases correctly — extend it, don't replace it. |
+| **Thousands of agents (MiroFish simulation scale)** | "More agents = better accuracy" is a common extrapolation | 2025 research shows gains plateau after 3-5 diverse agents. Beyond that, cost and latency grow linearly while accuracy gains are marginal. MiroFish's "thousands of agents" is designed for macro social simulation, not per-campaign evaluation. | 5-7 well-differentiated agents (current 6 personas + 3 judges + 1 devil's advocate = already near optimal). Focus on quality of disagreement, not quantity. |
+| **Real-time agent chat interface** | MiroFish has interactive "chat with agents" feature — seems valuable | Campaign evaluation is async batch, not interactive. Adding chat would require stateful agent sessions, session storage, and a fundamentally different UX model. The brand team wants a result PDF, not a conversation. | After evaluation completes, show "follow-up questions" as expandable pre-baked responses from each persona (e.g., "竹竹的具体担忧是什么?" → shows stored objections). Zero added complexity. |
+| **GraphRAG knowledge graph visualization** | MiroFish shows entity relationship graphs — looks impressive | This is for exploring multi-agent simulation state. For campaign evaluation, the "knowledge graph" would be personas knowing each other... which adds nothing actionable. | Clean tabular persona scores + radar chart is clearer and faster to interpret than a graph visualization. |
+| **Realtime collaboration / multi-user editing** | "Multiple team members should work on the same campaign" | Internal tool with sequential workflow. simultaneous editing creates race conditions in evaluation state (already managed with threading.Lock). | One user submits evaluation, shares exported PDF in meeting. If needed, add read-only result sharing link (trivial to implement) as v2.x. |
 
 ## Feature Dependencies
 
 ```
-[按品类配置评审人格]
-    └──requires──> [品类选择 UI]（已有）
-                       └──enables──> [受众人格自定义]
+[Frontend interaction fixes] — no backend deps, can ship independently
+    └──enables──> [Stable form state]
+    └──enables──> [Honest async feedback]
+    └──enables──> [Both-mode cross-path surfacing]
 
-[Evaluate 路径前端]
-    └──requires──> [修复图片静默失效 bug]
-    └──enables──> [多方案并排对比 UI]
+[Cross-persona disagreement surfacing]
+    └──requires──> [per-persona scores in API response] (already in backend)
+    └──enables──> [Calibrated scoring]
 
-[多方案并排对比 UI]
-    └──requires──> [Race 结果展示]（已有）
-    └──requires──> [Evaluate 前端]
-    └──enables──> [方案迭代推演]
+[Devil's advocate judge]
+    └──requires──> [pairwise_judge.py JUDGE_PERSPECTIVES extension]
+    └──independent──> (no frontend changes needed for backend addition)
+    └──enables──> [UI: 少数意见 badge] (optional frontend)
 
-[结果可导出]
-    └──requires──> [多方案并排对比 UI]（需要有东西可导）
+[Race + Evaluate cross-path inconsistency detection]
+    └──requires──> [Both mode result storage] (already exists)
+    └──requires──> [Frontend ResultPage change only]
 
-[推演结果趋势追踪]
-    └──requires──> [方案迭代推演]
-    └──requires──> [历史数据持久化]（部分已有）
+[Persona confidence flagging]
+    └──requires──> [Secondary LLM verification call]
+    └──requires──> [Score-reasoning extraction from panel output]
+    └──HIGH COST — defer unless accuracy gap proven
 
-[统一推演入口]
-    └──requires──> [Race 路径]（已有）
-    └──requires──> [Evaluate 路径前端]
-
-[并行图片分析]
-    └──enhances──> [推演速度]
-    └──independent──（无前置依赖）
-
-[视觉诊断建议]
-    └──enhances──> [多方案并排对比 UI]
-    └──requires──> [ImageAnalyzer 结构化输出改造]
+[Calibrated scoring against historical winners]
+    └──requires──> [JudgeCalibration training data pipeline]
+    └──requires──> [Historical outcome → score mapping]
+    └──HIGH COST — long-term only
 ```
 
 ### Dependency Notes
 
-- **Evaluate 前端 requires 图片 bug 修复**: 不修 bug 就做前端，用户会看到"图片分析成功"但实际没分析，体验灾难性
-- **并排对比 requires 两条路径都有 UI**: Race 已有，Evaluate 前端是 blocker
-- **导出 requires 并排对比**: 导出的前提是有结构化的结果展示，否则导出的是什么？
-- **趋势追踪 requires 迭代推演**: 没有版本概念就无法追踪趋势
+- **Frontend fixes are independent of backend**: All frontend table stakes can be shipped without touching any backend service. This is a clean separation.
+- **Devil's advocate is backend-only first**: Add the judge perspective in pairwise_judge.py. The frontend can display it without code changes (votes already shown per-judge). Frontend badge is an enhancement, not a requirement.
+- **Cross-path inconsistency requires zero backend changes**: Both-mode already stores Race result AND Evaluate result. This is purely a ResultPage UI computation.
+- **Confidence flagging is the most expensive feature**: Requires a second LLM call per persona score. At 6 personas × N campaigns × secondary call, this doubles LLM cost. Only do this if users report trusting wrong scores.
 
-## MVP Definition
+## MVP Definition for v2.0
 
-### Launch With (v1) — 当前 Active Backlog
+### Ship in v2.0 Phase 1: Frontend Rewrite
 
-已有后端能力的前端补全 + 关键 bug 修复。
+These are interaction fixes with no backend dependency. Can be developed, tested, and shipped independently.
 
-- [x] Race 推演路径（已有）
-- [x] 视觉分析引擎（已有）
-- [x] 历史基线匹配（已有）
-- [ ] **修复 Evaluate 图片 bug** — 不修复则 Evaluate 路径不可信
-- [ ] **Evaluate 路径前端** — 让非技术用户也能发起深度推演
-- [ ] **按品类配置评审人格** — 透明片/彩片不同评审团是 Moody 场景刚需
-- [ ] **统一推演入口** — 用户不该需要知道该调哪个 API
-- [ ] **并行图片分析** — 3+ 张图串行太慢，影响使用意愿
-- [ ] **多方案并排对比 UI** — 推演结果的核心展示形式
+- [ ] **Form state persistence across navigation** — sessionStorage save/restore of HomePage state
+- [ ] **Timeout + recovery on Evaluate polling** — prevents infinite spinner
+- [ ] **Both mode: cross-path consistency badge** — zero backend work, high signal value
+- [ ] **Category selector shows persona preview** — add persona names/count to sidebar before submit
+- [ ] **Result page: winner-first layout** — restructure EvaluateResultPage to show top campaign without requiring tab navigation
+- [ ] **Export reliability** — test + fix html2canvas PDF generation on full result sets
+- [ ] **Race→Evaluate parentSetId fix** — pass setId correctly in Both mode for version chain
 
-### Add After Validation (v1.x)
+### Ship in v2.0 Phase 2: Multi-Agent Enhancement
 
-核心路径跑通后，增强结果的可用性和团队协作体验。
+Backend extensions that increase evaluation signal quality.
 
-- [ ] **结果导出 PDF/Image** — 第一次有人要把结果带进会议时加
-- [ ] **视觉诊断建议结构化** — 从"一段话分析"升级为"问题 → 建议"结构
-- [ ] **方案迭代推演（版本对比）** — 当团队开始迭代素材并想看改善时加
-- [ ] **受众人格自定义** — 当固定人格不能覆盖新品类或特殊 campaign 时加
-- [ ] **密码哈希 + 线程安全** — 多用户同时使用前必须做
+- [ ] **Cross-persona disagreement score** — std dev of persona scores, surfaced as "争议" badge
+- [ ] **Devil's advocate judge perspective** — add to JUDGE_PERSPECTIVES, mark dissenting votes
+- [ ] **Expanded pairwise perspectives (+1 竞品视角)** — extend judge set for brand differentiation signal
 
-### Future Consideration (v2+)
+### Defer to v2.x: High-Cost Features
 
-产品验证后的深化方向。
+Only build if specific need is validated.
 
-- [ ] **推演趋势 Dashboard** — 需要积累足够多次推演数据后才有意义
-- [ ] **品牌认知状态模型重构** — BrandStateEngine 需要从 God class 拆分，但当前能用
-- [ ] **跨品类基线对比** — 透明片 campaign 和彩片 campaign 的横向比较
-- [ ] **推演模板** — 常用 campaign 类型（新品上市、节日促销、日常种草）的预设配置
+- [ ] **Persona confidence flagging** — defer until users report score-reasoning contradictions
+- [ ] **Calibrated scoring against historical winners** — defer until historical outcome data is systematically captured and linked to evaluation results
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| 修复 Evaluate 图片 bug | HIGH | LOW | **P1** |
-| Evaluate 路径前端 | HIGH | MEDIUM | **P1** |
-| 按品类配置评审人格 | HIGH | MEDIUM | **P1** |
-| 统一推演入口 | HIGH | LOW | **P1** |
-| 并行图片分析 | MEDIUM | LOW | **P1** |
-| 多方案并排对比 UI | HIGH | MEDIUM | **P1** |
-| 结果导出 PDF/Image | MEDIUM | MEDIUM | **P2** |
-| 视觉诊断建议结构化 | MEDIUM | MEDIUM | **P2** |
-| 方案迭代推演 | MEDIUM | HIGH | **P2** |
-| 受众人格自定义 | MEDIUM | HIGH | **P2** |
-| 密码哈希 + 线程安全 | LOW (内部工具) | LOW | **P2** |
-| 推演趋势 Dashboard | MEDIUM | HIGH | **P3** |
-| 品牌状态模型重构 | LOW (当前能用) | HIGH | **P3** |
+| Form state persistence | HIGH (prevents lost work) | LOW | **P1** |
+| Evaluate polling timeout/recovery | HIGH (prevents stuck UI) | LOW | **P1** |
+| Both mode cross-path inconsistency badge | HIGH (new insight) | LOW (frontend only) | **P1** |
+| Winner-first result layout | MEDIUM | LOW | **P1** |
+| Export reliability fix | MEDIUM | MEDIUM | **P1** |
+| Category → persona preview | MEDIUM | LOW | **P2** |
+| Race→Evaluate parentSetId fix | MEDIUM | LOW | **P2** |
+| Cross-persona disagreement score | HIGH (new signal) | MEDIUM | **P2** |
+| Devil's advocate judge | HIGH (reduces groupthink) | LOW (backend only) | **P2** |
+| Expanded pairwise perspectives | MEDIUM | LOW | **P2** |
+| Persona confidence flagging | MEDIUM | HIGH (2x LLM cost) | **P3** |
+| Calibrated scoring (historical) | HIGH (long-term) | HIGH | **P3** |
 
 **Priority key:**
-- P1: Must have — 不做则推演工具不完整，用户无法完成核心流程
-- P2: Should have — 提升体验和协作效率，在核心流程稳定后加
-- P3: Nice to have — 长期价值，需要数据积累或架构重构
+- P1: Ship in v2.0 Phase 1 (frontend rewrite)
+- P2: Ship in v2.0 Phase 2 (multi-agent enhancement)
+- P3: Validated need required before building
 
-## Competitor Feature Analysis
+## What "MiroFish Frontend Patterns" Actually Means for This Project
 
-| Feature | Kantar LINK AI | Zappi | System1 | Behavio | MiroFishmoody 策略 |
-|---------|---------------|-------|---------|---------|-------------------|
-| 速度 | 15min (AI) / 6hr (panel) | 数小时 | 数天 | 数天 | **< 5 min**（AI 合成人格，零招募成本）|
-| 真人 panel | 有（全球 60+ 市场） | 有（自有 panel） | 有（~150 人） | 有（500+ 人） | **无** — 用 AI 合成受众替代 |
-| 情绪分析 | 有 | 有 | 核心能力（FaceTrace） | 有（行为科学） | 通过 LLM persona 模拟情绪反应 |
-| 视觉热力图 | 无 | 无 | 无 | 无 | **不做** — 用 LLM vision 替代 |
-| 品牌契合度 | 有（Brand Linkage） | 有（Brand Fluency） | 有（Fluency Score） | 有 | 通过 BrandStateEngine 评估 |
-| 历史基线 | 有（Kantar DB） | 有（Zappi norms） | 有 | 有 | 有（BaselineRanker + 自有历史数据）|
-| 定价 | $$$$ (企业级) | $$$ (SaaS) | $$$ (SaaS) | $$ (SaaS) | **内部工具，零边际成本** |
-| 定制化 | 低（标准化产品） | 中 | 低 | 低 | **高**（为 Moody 品类深度定制）|
+The MiroFish upstream repo (https://github.com/666ghj/MiroFish) is a **Vue.js multi-agent simulation platform** for macro social simulation (policy testing, financial forecasting, public opinion modeling via thousands of agents with emergent behavior). Its frontend interaction patterns are:
 
-### MiroFishmoody 的核心竞争叙事
+1. Upload seed materials (documents, narratives)
+2. Query in natural language
+3. Watch real-time simulation unfold (knowledge graph, agent interactions)
+4. Chat with individual simulated agents
+5. Read ReportAgent synthesis
 
-> 我们不是在做一个 Kantar 替代品。我们是在用 AI 合成受众 + 品牌深度定制，让每一次 campaign 决策都有数据支撑，而不是花几万块买一次调研报告。速度快（分钟级）、成本低（接近零）、深度定制（按品类配置人格）是我们相对于外部工具的核心优势。
+**None of these patterns map directly to campaign evaluation.** The "MiroFish frontend rewrite" in PROJECT.md means: use MiroFish's multi-agent evaluation *philosophy* (diverse agent perspectives, emergent disagreement as signal, structured consensus) to redesign the frontend to correctly surface what the backend already produces.
+
+The valuable translation is:
+
+| MiroFish concept | MiroFishmoody v2.0 equivalent |
+|------------------|-------------------------------|
+| Thousands of agents with distinct personalities | 6 personas (moodyPlus) / 5 personas (colored_lenses) with brand-specific evaluation focus |
+| Emergent disagreement as signal | Cross-persona std dev surfaced as "争议" badge |
+| ReportAgent synthesis | SummaryGenerator structured output |
+| Agent chat for verification | Pre-baked persona objections expandable in result view |
+| Real-time simulation progress | Async task polling with honest stage display |
 
 ## Sources
 
-- [Behavio: Ad Testing Software Guide 2026](https://www.behaviolabs.com/blog/ad-testing-software-what-it-is-how-it-works-the-best-platforms-in-2026)
-- [Kantar: Ad Screening, Creative Testing & Effectiveness](https://www.kantar.com/Solutions/Creative)
-- [Zappi: Digital Ad Testing](https://www.zappi.io/web/creative-digital/)
-- [System1: Test Your Ad Platform](https://system1group.com/test-your-ad)
-- [Sovran: 12 Best Creative Testing Tools 2026](https://sovran.ai/blog/creative-testing-software)
-- [SuperAds: 6 Best Ad Testing Tools 2026](https://www.superads.ai/blog/best-ad-testing-tools)
-- [Neurons: Ad Testing Methods](https://www.neuronsinc.com/ad-testing/methods)
-- [Human Made Machine: Guide to Creative Pre-Testing](https://www.humanmademachine.com/insights/the-comprehensive-guide-to-creative-pre-testing-maximizing-campaign-performance)
-- [Altair Media: Synthetic Audiences 2026](https://altair-media.com/posts/synthetic-audiences-in-market-research-hype-reality-and-outlook-for-2026)
-- [Four Agency: AI-Assisted Creative Testing Synthetic Focus Groups](https://www.four.agency/news-insights/ai-assisted-creative-testing-synthetic-focus-groups)
-- [Influencers Time: AI-Driven Synthetic Audiences 2025](https://www.influencers-time.com/ai-driven-synthetic-audiences-revolutionizing-marketing-2025/)
-- [Pixis: How to Use Ad Pre-Testing](https://pixis.ai/blog/how-to-use-ad-pre-testing-in-your-campaigns/)
+- Direct codebase analysis: `/Users/slr/MiroFishmoody/frontend/src/pages/` (all 10 pages)
+- Direct codebase analysis: `/Users/slr/MiroFishmoody/backend/app/services/` (all 20 services)
+- [MiroFish upstream README-EN](https://github.com/666ghj/MiroFish/blob/main/README-EN.md) — multi-agent architecture description
+- [Multi-LLM-Agents Debate — Performance, Efficiency, and Scaling Challenges (ICLR 2025)](https://d2jud02ci9yv69.cloudfront.net/2025-04-28-mad-159/blog/mad/) — debate scaling results
+- [Judging the Judges: A Systematic Study of Position Bias in LLM-as-a-Judge (ACL 2025)](https://aclanthology.org/2025.ijcnlp-long.18/) — position bias mechanics and majority vote mitigation
+- [ChatEval: Towards Better LLM-based Evaluators through Multi-Agent Debate (Semantic Scholar)](https://www.semanticscholar.org/paper/ChatEval:-Towards-Better-LLM-based-Evaluators-Chan-Chen/ec58a564fdda29e6a9a0a7bab5eeb4c290f716d7) — multi-agent debate evaluation framework
+- [Adversarial Multi-Agent Evaluation of LLMs through Iterative Debates (arXiv 2410.04663)](https://arxiv.org/html/2410.04663v1) — devil's advocate patterns
+- [Orq.ai: Comprehensive Guide to Evaluating Multi-Agent LLM Systems](https://orq.ai/blog/multi-agent-llm-eval-system) — ensemble patterns
+- [Beyond Consensus: Mitigating Agreeableness Bias in LLM Judge Evaluations (NUS 2025)](https://aicet.comp.nus.edu.sg/wp-content/uploads/2025/10/Beyond-Consensus-Mitigating-the-agreeableness-bias-in-LLM-judge-evaluations.pdf) — agreeableness bias mitigation
 
 ---
-*Feature research for: Brand Campaign Pre-testing / 推演 (Moody Lenses Internal Tool)*
-*Researched: 2026-03-17*
+*Feature research for: MiroFishmoody v2.0 — Frontend Rewrite + Multi-Agent Enhancement*
+*Researched: 2026-03-18*
