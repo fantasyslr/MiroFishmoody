@@ -96,12 +96,12 @@ Plans:
   3. devil's advocate judge 的异见投票在结果数据中独立标记（`dissent: true` 字段）
   4. 人格间评分标准差 >= 阈值的方案，EvaluateResultPage 展示"争议"badge
   5. ConsensusAgent 检测到离群评分时，结果 JSON 中对应人格评分带有 `suspect: true` 标记
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 16-01: MA-03 PersonaRegistry 扩展（6→9 / 5→8）+ MA-04 MultiJudge 位置交替 ensemble
-- [ ] 16-02: MA-05 Devil's advocate judge + MA-06 跨人格争议分数 + 前端 badge
-- [ ] 16-03: MA-07 ConsensusAgent 异常值检测（statistics.stdev）
+- [ ] 16-01-PLAN.md — MA-03 PersonaRegistry 扩展（moodyPlus 6→9, colored_lenses 5→8）+ MA-04 MultiJudge 位置交替 ensemble
+- [ ] 16-02-PLAN.md — MA-07 ConsensusAgent stdev 离群值检测 + EvaluationOrchestrator 接入
+- [ ] 16-03-PLAN.md — MA-05 Devil's advocate judge + MA-06 争议 badge 前端（dissent + suspect 双信号）
 
 ### Phase 17: Tech Debt Paydown
 **Goal**: threading.Lock 范围精确（I/O 和 LLM 调用不在锁内），BrandStateEngine 有表征测试覆盖且 BacktestEngine 已提取为独立类
