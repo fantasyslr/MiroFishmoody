@@ -10,7 +10,6 @@ Image Analyzer — 图片内容分析服务
   - 多张图片：逐张分析后聚合为 visual profile
 """
 
-import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Any, Optional
 
@@ -96,7 +95,6 @@ class ImageAnalyzer:
     def __init__(self, llm_client: LLMClient = None, max_workers: int = 3):
         self.llm = llm_client or LLMClient()
         self.max_workers = max_workers
-        self._semaphore = threading.Semaphore(max_workers)
 
     def analyze_single_image(self, image_path: str) -> Optional[Dict[str, Any]]:
         """分析单张图片，返回结构化视觉特征"""
@@ -128,14 +126,6 @@ class ImageAnalyzer:
         except Exception as e:
             logger.error(f"图片分析 LLM 调用失败: {e}")
             return None
-
-    def _safe_analyze_single(self, image_path: str) -> Optional[Dict[str, Any]]:
-        """Semaphore-wrapped single image analysis to limit concurrent LLM calls."""
-        self._semaphore.acquire()
-        try:
-            return self.analyze_single_image(image_path)
-        finally:
-            self._semaphore.release()
 
     def analyze_plan_images(
         self, image_paths: List[str]
@@ -172,7 +162,7 @@ class ImageAnalyzer:
         individual_results = []
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             future_to_path = {
-                executor.submit(self._safe_analyze_single, path): path
+                executor.submit(self.analyze_single_image, path): path
                 for path in valid_paths
             }
             for future in as_completed(future_to_path):

@@ -5,6 +5,7 @@ LLM客户端封装
 
 import json
 import re
+import threading
 from typing import Optional, Dict, Any, List
 from openai import OpenAI
 
@@ -31,6 +32,7 @@ class LLMClient:
             api_key=self.api_key,
             base_url=self.base_url
         )
+        self._semaphore = threading.Semaphore(Config.MAX_LLM_CONCURRENT)
     
     def chat(
         self,
@@ -61,12 +63,16 @@ class LLMClient:
         if response_format:
             kwargs["response_format"] = response_format
         
-        response = self.client.chat.completions.create(**kwargs)
+        self._semaphore.acquire()
+        try:
+            response = self.client.chat.completions.create(**kwargs)
+        finally:
+            self._semaphore.release()
         content = response.choices[0].message.content
         # 部分模型（如MiniMax M2.5）会在content中包含<think>思考内容，需要移除
         content = re.sub(r'<think>[\s\S]*?</think>', '', content).strip()
         return content
-    
+
     def chat_json(
         self,
         messages: List[Dict[str, str]],
@@ -117,7 +123,11 @@ class LLMClient:
         }
         if response_format:
             kwargs["response_format"] = response_format
-        response = self.client.chat.completions.create(**kwargs)
+        self._semaphore.acquire()
+        try:
+            response = self.client.chat.completions.create(**kwargs)
+        finally:
+            self._semaphore.release()
         content = response.choices[0].message.content
         content = re.sub(r'<think>[\s\S]*?</think>', '', content).strip()
         return content

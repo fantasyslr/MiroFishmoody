@@ -137,10 +137,19 @@ class TestConcurrentAnalysis:
         custom = ImageAnalyzer(llm_client=mock_llm, max_workers=5)
         assert custom.max_workers == 5
 
-    def test_has_semaphore(self, mock_llm):
-        """ImageAnalyzer instance has a threading.Semaphore."""
+    def test_semaphore_in_llm_client_not_image_analyzer(self, mock_llm):
+        """Semaphore-based rate limiting lives in LLMClient, not ImageAnalyzer.
+
+        After Phase 15-01, ImageAnalyzer no longer owns a local _semaphore;
+        concurrent control is centralised inside LLMClient._semaphore so that
+        all agent types (ImageAnalyzer, AudiencePanel, PairwiseJudge, …) share
+        the same global limit without duplicating logic.
+        """
         from app.services.image_analyzer import ImageAnalyzer
 
         analyzer = ImageAnalyzer(llm_client=mock_llm, max_workers=2)
-        assert hasattr(analyzer, "_semaphore")
-        assert isinstance(analyzer._semaphore, threading.Semaphore)
+        # ImageAnalyzer must NOT have its own semaphore anymore
+        assert not hasattr(analyzer, "_semaphore"), (
+            "ImageAnalyzer should not have a local _semaphore; "
+            "concurrency is controlled by LLMClient._semaphore"
+        )
