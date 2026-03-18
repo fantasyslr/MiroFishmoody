@@ -278,7 +278,7 @@ export function EvaluateResultPage() {
 
       {/* Tab Content */}
       {activeTab === 'ranking' && (
-        <RankingTab rankings={rankings} scoreboard={scoreboard} diagnosticsMap={diagnosticsMap} />
+        <RankingTab rankings={rankings} scoreboard={scoreboard} diagnosticsMap={diagnosticsMap} panelScores={result.panel_scores} pairwiseResults={result.pairwise_results} />
       )}
       {activeTab === 'persona' && (
         <PersonaTab panelScores={result.panel_scores} />
@@ -326,9 +326,36 @@ export function EvaluateResultPage() {
   )
 }
 
+/* ========== Controversy detection ========== */
+
+function isControversial(
+  campaignId: string,
+  panelScores: EvalPanelScore[],
+  pairwiseResults: EvalPairwiseResult[]
+): boolean {
+  // Signal 1: ConsensusAgent suspect flag
+  const hasSuspect = panelScores
+    .filter(ps => ps.campaign_id === campaignId)
+    .some(ps => (ps.dimension_scores as Record<string, unknown>)?.suspect === true)
+
+  // Signal 2: devil's advocate dissent vote
+  const hasDissent = pairwiseResults.some(pr =>
+    (pr.campaign_a_id === campaignId || pr.campaign_b_id === campaignId) &&
+    (pr.votes as Array<Record<string, unknown>>).some(v => v['dissent'] === true)
+  )
+
+  return hasSuspect || hasDissent
+}
+
 /* ========== Tab 1: Overall Ranking ========== */
 
-function RankingTab({ rankings, scoreboard, diagnosticsMap }: { rankings: EvalRanking[]; scoreboard?: EvalScoreboard; diagnosticsMap?: Record<string, VisualDiagnostics> }) {
+function RankingTab({ rankings, scoreboard, diagnosticsMap, panelScores, pairwiseResults }: {
+  rankings: EvalRanking[]
+  scoreboard?: EvalScoreboard
+  diagnosticsMap?: Record<string, VisualDiagnostics>
+  panelScores: EvalPanelScore[]
+  pairwiseResults: EvalPairwiseResult[]
+}) {
   return (
     <section className="space-y-8">
 
@@ -352,6 +379,11 @@ function RankingTab({ rankings, scoreboard, diagnosticsMap }: { rankings: EvalRa
                       <span className={`text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-sm border ${vs.bg} ${vs.text}`}>
                         {vs.label}
                       </span>
+                      {isControversial(entry.campaign_id, panelScores, pairwiseResults) && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-300">
+                          争议
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
                       <span>胜 {entry.pairwise_wins} / 负 {entry.pairwise_losses}</span>
@@ -560,8 +592,13 @@ function PersonaScoreCard({ score, colorIdx }: { score: EvalPanelScore; colorIdx
               <span className="font-semibold text-sm">{score.persona_name}</span>
               <span className="text-muted-foreground text-xs ml-2">{score.campaign_id}</span>
             </div>
-            <div className="font-mono text-xl font-medium shrink-0">
+            <div className="font-mono text-xl font-medium shrink-0 flex items-center gap-1.5">
               {score.score}<span className="text-muted-foreground text-sm">/10</span>
+              {(score.dimension_scores as Record<string, unknown>)?.suspect === true && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-orange-50 text-orange-600 border border-orange-200 ml-1">
+                  可疑评分
+                </span>
+              )}
             </div>
           </div>
 
