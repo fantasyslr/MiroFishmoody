@@ -16,15 +16,28 @@ Moody 内部 Campaign 推演引擎，帮助品牌/创意/媒介团队在 campaig
 
 ### 按品类独立人格
 
-- **moodyPlus（透明片）**：6 个评审人格，侧重功能性
-- **colored_lenses（彩片）**：5 个评审人格，侧重美学表达
+- **moodyPlus（透明片）**：9 个评审人格，侧重功能性
+- **colored_lenses（彩片）**：8 个评审人格，侧重美学表达
 - 选择品类后系统自动加载对应人格预设
+
+### Multi-Agent 评审
+
+- **MultiJudge 位置交替 ensemble**：多 judge 位置轮换消除 position bias
+- **Devil's advocate（品牌怀疑者）**：挑战正面结论，异见投票独立标记
+- **ConsensusAgent**：检测人格间评分离群值，标记可疑评分
+- **跨人格争议 badge**：评分分歧大的方案自动标记"争议"
+
+### Brief 类型权重
+
+- 发起推演时选择 Brief 类型：**品牌传播** / **达人种草** / **转化拉新**
+- 系统自动加载对应维度权重（品牌侧重 storytelling + emotional_resonance，转化侧重 conversion_readiness）
+- 权重混入最终 ranking，不仅是展示层
 
 ### 视觉分析
 
 - 上传 KV 主视觉、产品图、模特图（最多 5 张/方案）
-- ImageAnalyzer 多模态视觉评分 + 结构化诊断建议
-- 多张图片并行分析（ThreadPoolExecutor + Semaphore 控速）
+- ImageAnalyzer 多模态视觉评分 + 结构化诊断建议（qwen3.5-plus 视觉模型）
+- 多张图片并行分析（ThreadPoolExecutor + 全局 LLM Semaphore 控速）
 - PairwiseJudge 位置互换去偏
 
 ### 结果可视化与导出
@@ -33,7 +46,8 @@ Moody 内部 Campaign 推演引擎，帮助品牌/创意/媒介团队在 campaig
 - 多维度雷达图（recharts）
 - 历史基线分位展示（PercentileBar）
 - 诊断建议面板（DiagnosticsPanel）
-- **导出 PDF 报告** / **导出 PNG 截图**（适合微信/钉钉分享）
+- **导出 PDF 报告**（多页分页）/ **导出 PNG 截图**（适合微信/钉钉分享）
+- **跨路径一致性 badge**：Race 与 Evaluate 冠军不一致时自动告警
 
 ### 方案迭代推演
 
@@ -61,11 +75,12 @@ Moody 内部 Campaign 推演引擎，帮助品牌/创意/媒介团队在 campaig
 
 | 层 | 技术 |
 |----|------|
-| 前端 | React 19, TypeScript, Vite, Tailwind, recharts, html2canvas, jsPDF |
+| 前端 | React 19, TypeScript, Vite, Tailwind, recharts, html2canvas, jsPDF, motion |
 | 后端 | Flask, SQLite (WAL mode), Python 3.11+ |
-| LLM | 通义千问 via 百炼 OpenAI-compatible API |
-| 安全 | bcrypt 密码哈希, threading.Lock 并发保护 |
-| 部署 | Docker / docker-compose / Gunicorn |
+| LLM | 通义千问 via 百炼 Coding Plan（文本: qwen3-coder-plus, 视觉: qwen3.5-plus） |
+| 评审 | MultiJudge ensemble, Devil's advocate, ConsensusAgent, Brief-type 权重 |
+| 安全 | bcrypt 密码哈希, 全局 LLM Semaphore 并发保护 |
+| 部署 | Docker / Railway / Gunicorn |
 
 ## 目录结构
 
@@ -74,7 +89,7 @@ MiroFishmoody/
 ├── frontend/               # React 前端
 │   └── src/
 │       ├── pages/          # 页面组件
-│       ├── components/     # 可复用组件（雷达图、诊断面板等）
+│       ├── components/     # 可复用组件（雷达图、诊断面板、StepIndicator、SplitPanel 等）
 │       └── lib/            # API 客户端、导出工具
 ├── backend/                # Flask 后端
 │   ├── app/api/            # auth / campaign / brandiction API
@@ -112,7 +127,10 @@ cp .env.example .env
 至少配置：
 
 ```env
-LLM_API_KEY=your-api-key
+LLM_API_KEY=your-bailian-api-key
+LLM_BASE_URL=https://coding.dashscope.aliyuncs.com/v1
+LLM_MODEL_NAME=qwen3-coder-plus
+LLM_VISION_MODEL=qwen3.5-plus
 SECRET_KEY=replace-with-a-random-string
 MOODY_USERS=admin:StrongPassword123:Admin:admin,analyst:StrongPassword123:Analyst:user
 ```
@@ -133,7 +151,7 @@ npm run dev
 
 - 前端：<http://localhost:5173>
 - 后端 API：<http://localhost:5001>
-- Vite 已代理 `/api` 和 `/health` 到后端
+- Vite 已代理 `/api` 到后端
 
 ### 5. 生产部署
 
@@ -191,8 +209,10 @@ docker compose up -d --build
 | 变量 | 必填 | 用途 |
 |------|------|------|
 | `LLM_API_KEY` | 是 | 百炼 API Key |
-| `LLM_BASE_URL` | 否 | OpenAI 兼容接口地址 |
-| `LLM_MODEL_NAME` | 否 | 默认模型名 |
+| `LLM_BASE_URL` | 否 | 百炼端点（默认 `coding.dashscope.aliyuncs.com/v1`） |
+| `LLM_MODEL_NAME` | 否 | 文本模型（默认 `qwen3-coder-plus`） |
+| `LLM_VISION_MODEL` | 否 | 视觉模型（默认 `qwen3.5-plus`） |
+| `MAX_LLM_CONCURRENT` | 否 | LLM 并发上限（默认 `5`） |
 | `SECRET_KEY` | 是 | Flask Session 密钥 |
 | `MOODY_USERS` | 是 | 用户表（`username:password:display_name:role,...`） |
 | `FLASK_DEBUG` | 否 | 调试模式 |
@@ -224,6 +244,8 @@ docker compose up -d --build
 |------|------|---------|
 | v1.0 | 2026-03-17 | MVP — 双路径推演 + 品类人格 + 统一入口 + 可视化 |
 | v1.1 | 2026-03-17 | 加固与增强 — Bug fix + 线程安全 + bcrypt + 导出 + 迭代推演 + 趋势 Dashboard |
+| v2.0 | 2026-03-18 | 大改造 — 前端交互重写 + MultiJudge ensemble + Devil's advocate + 争议 badge + BacktestEngine 提取 |
+| v2.1 | 2026-03-18 | 部署修复 + 评审偏差修正 — Railway 部署 + Brief-type 权重接入 ranking + Benchmark 12 fixtures |
 
 ## 文档索引
 
