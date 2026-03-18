@@ -107,6 +107,23 @@ def create_app(config_class=Config):
         except Exception:
             checks["disk"] = "unknown"
 
+        # LLM connectivity
+        try:
+            from openai import OpenAI as _OpenAI
+            _client = _OpenAI(
+                api_key=Config.OPENAI_API_KEY,
+                base_url=Config.OPENAI_BASE_URL,
+            )
+            _client.chat.completions.create(
+                model=getattr(Config, 'OPENAI_MODEL', 'qwen-plus'),
+                messages=[{"role": "user", "content": "ping"}],
+                max_tokens=1,
+                timeout=10,
+            )
+            checks["llm"] = "ok"
+        except Exception as _e:
+            checks["llm"] = f"error: {_e}"
+
         overall = "ok" if all(
             v == "ok" or isinstance(v, (int, float))
             for k, v in checks.items() if k != "service"
