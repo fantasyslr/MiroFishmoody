@@ -3,18 +3,21 @@ import { jsPDF } from 'jspdf'
 
 /**
  * Capture a DOM element as PNG and trigger download.
+ * Uses 2x scale for Retina quality.
  * @param element - DOM element to capture
- * @param filename - Download filename (without extension)
+ * @param filename - Download filename (without .png extension)
  */
 export async function captureElementAsImage(
   element: HTMLElement,
-  filename: string
+  filename: string,
 ): Promise<void> {
   const canvas = await html2canvas(element, {
     scale: 2,
     backgroundColor: '#FFFFFF',
     useCORS: true,
     logging: false,
+    windowWidth: element.scrollWidth,
+    windowHeight: element.scrollHeight,
   })
   const link = document.createElement('a')
   link.download = `${filename}.png`
@@ -23,47 +26,91 @@ export async function captureElementAsImage(
 }
 
 /**
- * Capture a DOM element as PDF (A4 portrait) and trigger download.
- * Title line at top: "MiroFishmoody 推演报告 — {campaignName} — {date}"
- * Content is the captured element fitted to A4 width with margins.
+ * Capture a DOM element as a multi-page PDF (A4 portrait) and trigger download.
+ * Content is paginated: if the element is taller than one A4 page, additional
+ * pages are added automatically. No content is truncated.
+ *
  * @param element - DOM element to capture
- * @param filename - Download filename (without extension)
- * @param title - Report title line
+ * @param filename - Download filename (without .pdf extension)
+ * @param title - Report title displayed at top of first page
  */
 export async function captureElementAsPDF(
   element: HTMLElement,
   filename: string,
-  title: string
+  title: string,
 ): Promise<void> {
   const canvas = await html2canvas(element, {
     scale: 2,
     backgroundColor: '#FFFFFF',
     useCORS: true,
     logging: false,
+    windowWidth: element.scrollWidth,
+    windowHeight: element.scrollHeight,
   })
-  const imgData = canvas.toDataURL('image/png')
+
   const pdf = new jsPDF('p', 'mm', 'a4')
-  const pageWidth = pdf.internal.pageSize.getWidth()
-  const pageHeight = pdf.internal.pageSize.getHeight()
+
+  const pageWidth = pdf.internal.pageSize.getWidth()   // 210mm
+  const pageHeight = pdf.internal.pageSize.getHeight() // 297mm
   const margin = 10
   const contentWidth = pageWidth - margin * 2
 
-  // Title
-  pdf.setFontSize(12)
+  // Title on first page
+  pdf.setFontSize(11)
+  pdf.setTextColor(60, 60, 60)
   pdf.text(title, margin, margin + 5)
 
-  // Image below title
-  const titleHeight = 15
-  const imgWidth = contentWidth
-  const imgHeight = (canvas.height / canvas.width) * imgWidth
-  const availableHeight = pageHeight - margin * 2 - titleHeight
+  const titleAreaHeight = 14  // mm reserved for title
 
-  // If image is taller than one page, scale to fit
-  const finalHeight = Math.min(imgHeight, availableHeight)
-  const finalWidth = imgHeight > availableHeight
-    ? (canvas.width / canvas.height) * finalHeight
-    : imgWidth
+  // Calculate image dimensions to fit page width
+  const imgWidthMm = contentWidth
+  const imgHeightMm = (canvas.height / canvas.width) * imgWidthMm
 
-  pdf.addImage(imgData, 'PNG', margin, margin + titleHeight, finalWidth, finalHeight)
+  // Available content height per page (first page has title)
+  const firstPageContentHeight = pageHeight - margin * 2 - titleAreaHeight
+  const otherPageContentHeight = pageHeight - margin * 2
+
+  // Convert mm to canvas pixel ratio for slicing
+  // canvas pixel per mm = canvas.width / imgWidthMm
+  const pxPerMm = canvas.width / imgWidthMm
+
+  let remainingHeightMm = imgHeightMm
+  let canvasOffsetPx = 0
+  let isFirstPage = true
+
+  while (remainingHeightMm > 0) {
+    const availableHeightMm = isFirstPage ? firstPageContentHeight : otherPageContentHeight
+    const sliceHeightMm = Math.min(remainingHeightMm, availableHeightMm)
+    const sliceHeightPx = Math.round(sliceHeightMm * pxPerMm)
+
+    // Create a temporary canvas for this page slice
+    const sliceCanvas = document.createElement('canvas')
+    sliceCanvas.width = canvas.width
+    sliceCanvas.height = sliceHeightPx
+    const ctx = sliceCanvas.getContext('2d')
+    if (ctx) {
+      ctx.drawImage(
+        canvas,
+        0, canvasOffsetPx,                  // source x, y
+        canvas.width, sliceHeightPx,        // source width, height
+        0, 0,                               // dest x, y
+        canvas.width, sliceHeightPx,        // dest width, height
+      )
+    }
+
+    const sliceImgData = sliceCanvas.toDataURL('image/png')
+    const yPos = isFirstPage ? margin + titleAreaHeight : margin
+
+    pdf.addImage(sliceImgData, 'PNG', margin, yPos, imgWidthMm, sliceHeightMm)
+
+    canvasOffsetPx += sliceHeightPx
+    remainingHeightMm -= sliceHeightMm
+    isFirstPage = false
+
+    if (remainingHeightMm > 0.5) {  // 0.5mm tolerance to avoid blank trailing page
+      pdf.addPage()
+    }
+  }
+
   pdf.save(`${filename}.pdf`)
 }
