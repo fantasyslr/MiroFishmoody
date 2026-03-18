@@ -71,7 +71,17 @@
 
 ### Active
 
-(None — all v2.0 requirements shipped. Define next milestone.)
+(Defining v2.1 requirements — see REQUIREMENTS.md)
+
+## Current Milestone: v2.1 部署修复 + 评审偏差修正
+
+**Goal:** 修复生产入口 404，迁移到有状态部署平台，评审逻辑按 brief 类型切权重，建 benchmark 数据集回归测试
+
+**Target features:**
+- 修 server/index.ts 静态资源路径导致的 / 返回 404
+- 部署从 Vercel 迁移到 Railway/Docker（项目依赖长进程+SQLite+磁盘）
+- 评审权重按 brief 类型分层：品牌/种草/转化各有不同维度权重
+- 品牌部 benchmark 数据集 + 回归测试命中率
 
 ### Out of Scope
 
@@ -143,4 +153,4 @@
 | 趋势 API 聚合现有结果 JSON | 不需要新表，从已有推演结果文件提取趋势数据 | ✓ Good |
 
 ---
-*Last updated: 2026-03-18 after v2.0 milestone complete*
+*Last updated: 2026-03-18 after v2.1 milestone started*

@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: 大改造
-status: planning
-stopped_at: Completed 17-02-PLAN.md
-last_updated: "2026-03-18T05:40:10.783Z"
-last_activity: 2026-03-18 — Roadmap created, v2.0 phases 13-17 defined
+milestone: v2.1
+milestone_name: 部署修复 + 评审偏差修正
+status: active
+stopped_at: null
+last_updated: "2026-03-18"
+last_activity: 2026-03-18 — Milestone v2.1 started
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 13
-  completed_plans: 13
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** 让每一次 campaign 在上线前都能得到数据化的推演对比，用 AI 推演替代"拍脑袋"决策
-**Current focus:** Phase 13 — Critical Bug Fixes + API Contract Lock
+**Current focus:** Defining v2.1 requirements
 
 ## Current Position
 
-Phase: 13 of 17 (Critical Bug Fixes + API Contract Lock)
-Plan: — (not yet planned)
-Status: Ready to plan
-Last activity: 2026-03-18 — Roadmap created, v2.0 phases 13-17 defined
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-18 — Milestone v2.1 started
 
 Progress: [░░░░░░░░░░] 0%
 
