@@ -83,33 +83,40 @@ class MockLLMClient:
         return ""
 
     def _dispatch(self, messages: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """根据消息内容决定返回哪种 mock 响应。"""
+        """根据消息内容决定返回哪种 mock 响应。
+
+        优先级（从高到低）:
+        1. SummaryGenerator — prompt 包含 "confidence_notes" 字段定义（最特异）
+        2. AudiencePanel — prompt 包含 "dimension_scores" 字段定义
+        3. PairwiseJudge — prompt 包含 "reach_potential" 等维度名
+        4. Fallback
+        """
         text = self._get_last_text(messages).lower()
 
-        # PairwiseJudge：提示词包含「比较」「方案 A」「方案 B」「winner」「哪个更优」
-        is_pairwise = any(kw in text for kw in [
-            "winner", "pairwise", "哪个更优", "方案 a", "方案 b", "compare",
-            "reach_potential", "conversion_potential", "brand_alignment",
-            "risk_level", "feasibility",
-        ])
+        # SummaryGenerator：prompt 要求输出 confidence_notes 字段（最特异）
+        # 注意：SummaryGenerator prompt 也会包含 pairwise 词汇，所以必须先判断
+        is_summary = "confidence_notes" in text or (
+            "assumptions" in text and ("评审总结" in text or "总结报告" in text or
+                                       "营销策略顾问" in text)
+        )
 
-        # SummaryGenerator：提示词包含「总结」「assumptions」「confidence_notes」
-        is_summary = any(kw in text for kw in [
-            "summary", "assumptions", "confidence_notes", "总结", "评审总结",
-        ])
-
-        # AudiencePanel：提示词包含「dimension_scores」或「score」+「objections」
+        # AudiencePanel：prompt 要求输出 dimension_scores / objections
         is_panel = any(kw in text for kw in [
-            "dimension_scores", "objections", "thumb_stop", "claim_risk",
-            "conversion_readiness",
+            "dimension_scores", "thumb_stop", "claim_risk", "conversion_readiness",
         ])
 
-        if is_pairwise:
-            return self._pairwise_response()
+        # PairwiseJudge：prompt 包含 pairwise 评审维度名称
+        is_pairwise = any(kw in text for kw in [
+            "reach_potential", "conversion_potential", "brand_alignment",
+            "risk_level", "feasibility", "哪个更优", "方案 a", "方案 b",
+        ])
+
         if is_summary:
             return self._summary_response()
         if is_panel:
             return self._panel_response()
+        if is_pairwise:
+            return self._pairwise_response()
         return self._fallback_response()
 
     # ------------------------------------------------------------------ #
@@ -152,11 +159,13 @@ class MockLLMClient:
         }
 
     def _summary_response(self) -> Dict[str, Any]:
-        """SummaryGenerator 期望的格式：summary + assumptions + confidence_notes。"""
+        """SummaryGenerator 期望的格式：summary + assumptions + confidence_notes。
+        summary 必须 >=20 字，否则 SummaryGenerator 会触发质量警告并重试。
+        """
         return {
-            "summary": "本次评审完成，各方案已按综合得分排名。",
-            "assumptions": ["评审基于提供的文案和方向描述"],
-            "confidence_notes": ["mock环境，仅用于回归测试"],
+            "summary": "本次评审已完成，各方案已按综合得分完成排名，建议参考排名第一的方案进行后续投放决策。",
+            "assumptions": ["评审基于提供的文案和方向描述", "mock环境确定性响应，不代表真实用户偏好"],
+            "confidence_notes": ["mock环境，仅用于回归测试，实际效果需A/B测试验证"],
         }
 
     def _fallback_response(self) -> Dict[str, Any]:
