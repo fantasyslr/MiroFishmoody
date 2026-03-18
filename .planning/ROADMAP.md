@@ -80,11 +80,11 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. 5 方案 + 9 人格满载 Evaluate 推演中，LLM 并发调用数不超过 `MAX_LLM_CONCURRENT`（config.py 可配置），不出现 429 错误
   2. 新增一个 agent 类型并输出 `AgentScore` dataclass 后，CampaignScorer 自动将其纳入最终聚合（无需手工 wiring）
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 15-01: MA-01 全局 LLMSemaphore 从 ImageAnalyzer 层提升至 LLMClient 层
-- [ ] 15-02: MA-02 AgentScore schema dataclass + CampaignScorer 统一注册机制
+- [ ] 15-01-PLAN.md — MA-01 全局 LLMSemaphore 从 ImageAnalyzer 层提升至 LLMClient 层
+- [ ] 15-02-PLAN.md — MA-02 AgentScore schema dataclass + CampaignScorer 统一注册机制
 
 ### Phase 16: Multi-Agent Evaluation Enhancement
 **Goal**: 评审团规模扩大、位置偏差已消除、反面视角已引入、争议分数可见于前端
