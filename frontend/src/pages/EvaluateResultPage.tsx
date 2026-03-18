@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   getEvaluateState,
   clearEvaluateState,
+  getRaceState,
   type EvaluateResult,
   type EvalRanking,
   type EvalPanelScore,
@@ -191,6 +192,71 @@ export function EvaluateResultPage() {
 
       {/* Export capture area */}
       <div ref={exportRef}>
+
+      {/* Cross-path conflict badge */}
+      {(() => {
+        try {
+          const raceState = getRaceState()
+          const evalWinner = rankings[0]?.campaign_name
+          const raceWinner = raceState?.result?.observed_baseline?.ranking?.[0]?.plan?.name
+          if (!evalWinner || !raceWinner || evalWinner === raceWinner) return null
+          return (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-sm bg-amber-50 border border-amber-300 text-amber-800">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+              <span className="text-sm font-medium">
+                ⚠ Race 与 Evaluate 冠军不一致 — Race: <strong>{raceWinner}</strong> vs Evaluate: <strong>{evalWinner}</strong>
+              </span>
+            </div>
+          )
+        } catch {
+          return null
+        }
+      })()}
+
+      {/* Winner Hero Card — always visible, no tab switch needed */}
+      {rankings.length > 0 && (() => {
+        const champion = rankings[0]  // already sorted by rank asc
+        const sbChampion = scoreboard?.campaigns.find(c => c.campaign_id === champion.campaign_id)
+        const verdictStyle = VERDICT_STYLE[champion.verdict] ?? VERDICT_STYLE.revise
+        return (
+          <div
+            className="lab-card p-6 border-2 border-primary/20 bg-primary/5 space-y-3"
+            data-testid="winner-hero"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col items-center justify-center w-12 h-12 rounded-sm bg-primary text-primary-foreground font-display text-2xl font-semibold shrink-0">
+                  1
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h2 className="font-display text-2xl font-semibold text-primary">{champion.campaign_name}</h2>
+                    <span className={`text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-sm border ${verdictStyle.bg} ${verdictStyle.text}`}>
+                      {verdictStyle.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
+                    <span>综合分 <strong className="text-foreground">{champion.composite_score.toFixed(1)}</strong></span>
+                    <span>&bull;</span>
+                    <span>评审均分 {champion.panel_avg.toFixed(1)}</span>
+                    <span>&bull;</span>
+                    <span>胜 {champion.pairwise_wins} / 负 {champion.pairwise_losses}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">综合分</div>
+                <div className="font-mono text-3xl font-medium text-primary">{champion.composite_score.toFixed(1)}</div>
+              </div>
+            </div>
+            {sbChampion?.verdict_rationale && (
+              <p className="text-sm text-muted-foreground leading-relaxed border-t border-primary/10 pt-3">
+                {sbChampion.verdict_rationale}
+              </p>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Tab Navigation */}
       <div className="flex gap-2 border-b border-border pb-0">
