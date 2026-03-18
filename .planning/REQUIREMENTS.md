@@ -30,7 +30,7 @@
 - [ ] **MA-04**: MultiJudge 位置交替 ensemble — 每对方案多个独立 judge，强制轮换呈现顺序消除 position bias
 - [ ] **MA-05**: Devil's advocate judge perspective — JUDGE_PERSPECTIVES 新增反面视角，标记异见投票
 - [ ] **MA-06**: Cross-persona 争议分数 + badge — 人格评分标准差作为"争议"指标，前端展示 badge
-- [ ] **MA-07**: ConsensusAgent 异常值检测 — `statistics.stdev` 检测评分离群值，标记可疑评分
+- [x] **MA-07**: ConsensusAgent 异常值检测 — `statistics.stdev` 检测评分离群值，标记可疑评分
 
 ### Tech Debt
 
@@ -75,7 +75,7 @@
 | MA-04 | Phase 16 | Pending |
 | MA-05 | Phase 16 | Pending |
 | MA-06 | Phase 16 | Pending |
-| MA-07 | Phase 16 | Pending |
+| MA-07 | Phase 16 | Complete |
 | TD-01 | Phase 17 | Pending |
 | TD-02 | Phase 17 | Pending |
 
