@@ -1,36 +1,36 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: 加固与增强
-status: completed
-stopped_at: Completed 12-02-PLAN.md
-last_updated: "2026-03-17T09:33:12.722Z"
-last_activity: 2026-03-17 — Completed 12-02-PLAN.md
+milestone: v2.0
+milestone_name: 大改造
+status: active
+stopped_at: null
+last_updated: "2026-03-18"
+last_activity: 2026-03-18 — Milestone v2.0 started
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-17)
+See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** 让每一次 campaign 在上线前都能得到数据化的推演对比，用 AI 推演替代"拍脑袋"决策
-**Current focus:** Phase 12 — Iteration Analytics (campaign versioning and comparison)
+**Current focus:** Defining v2.0 requirements
 
 ## Current Position
 
-Phase: 12 of 12 (Iteration Analytics)
-Plan: 2 of 2 in current phase
-Status: Phase 12 complete — all plans done
-Last activity: 2026-03-17 — Completed 12-02-PLAN.md
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-18 — Milestone v2.0 started
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 

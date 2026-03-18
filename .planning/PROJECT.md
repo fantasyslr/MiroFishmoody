@@ -51,7 +51,16 @@
 
 ### Active
 
-(None — all v1.1 requirements shipped. Define next milestone.)
+(Defining v2.0 requirements — see REQUIREMENTS.md)
+
+## Current Milestone: v2.0 大改造
+
+**Goal:** 前端用 MiroFish 原版逻辑重写（修复当前 buggy 的交互），后端增加多 agent 并行推演提升精度
+
+**Target features:**
+- 前端：参考 https://github.com/666ghj/MiroFish 原版，重写页面逻辑和交互流程
+- 后端：增加更多推演 agent（多角色并行推演 + 交叉验证），"大力出奇迹"路线
+- 保留现有后端核心服务（Race/Evaluate 引擎、PersonaRegistry、历史基线等）
 
 ### Out of Scope
 
@@ -114,4 +123,4 @@
 | 趋势 API 聚合现有结果 JSON | 不需要新表，从已有推演结果文件提取趋势数据 | ✓ Good |
 
 ---
-*Last updated: 2026-03-17 after v1.1 milestone complete*
+*Last updated: 2026-03-18 after v2.0 milestone started*
