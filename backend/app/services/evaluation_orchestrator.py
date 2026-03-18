@@ -15,6 +15,8 @@ from ..services.judge_calibration import JudgeCalibration
 from ..services.resolution_tracker import ResolutionTracker
 from ..models.evaluation import EvaluationResult
 from ..services.image_analyzer import ImageAnalyzer
+from ..models.campaign import BriefType
+from ..services.brief_weights import WEIGHT_PROFILE_VERSIONS
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = get_logger('ranker.services.orchestrator')
@@ -30,7 +32,7 @@ class EvaluationOrchestrator:
         self.store_lock = store_lock
         self.calibration = JudgeCalibration()  # 只实例化一次
 
-    def run(self, task_id: str, campaign_set, category: str = None) -> dict:
+    def run(self, task_id: str, campaign_set, category: str = None, brief_type: BriefType = None) -> dict:
         """Execute the full evaluation pipeline"""
         try:
             self.task_manager.update_task(
@@ -111,6 +113,7 @@ class EvaluationOrchestrator:
             scorer = CampaignScorer(
                 judge_weights=judge_weights,
                 persona_weights=persona_weights,
+                brief_type=brief_type,
             )
             rankings, scoreboard = scorer.score(
                 campaigns, panel_scores, pairwise_results, bt_scores,
@@ -147,6 +150,7 @@ class EvaluationOrchestrator:
                 scoreboard=scoreboard.to_dict(),
                 resolution_ready_fields=resolver.get_resolution_ready_fields(),
                 visual_diagnostics=visual_diagnostics if visual_diagnostics else None,
+                weight_profile_version=WEIGHT_PROFILE_VERSIONS.get(brief_type.value) if brief_type else None,
             )
 
             # TD-01: step 1 — dict write under lock
