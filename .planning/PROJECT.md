@@ -49,18 +49,29 @@
 - ✓ 方案迭代推演（版本对比）— v1.1
 - ✓ 推演趋势 Dashboard — v1.1
 
+- ✓ Evaluate 模式 payload 字段映射修复（evaluate 端点可用）— v2.0
+- ✓ Both 模式 race condition 修复（await + try/finally）— v2.0
+- ✓ RunningPage 真实进度展示（假动画移除）— v2.0
+- ✓ API 契约锁定（contracts.ts）— v2.0
+- ✓ 表单状态 sessionStorage 持久化 — v2.0
+- ✓ Winner-first 结果页布局（hero card）— v2.0
+- ✓ 品类人格预览（sidebar 展示 9/8 人格）— v2.0
+- ✓ 跨路径一致性 badge（Race vs Evaluate 冠军矛盾警示）— v2.0
+- ✓ Step indicator + SplitPanel + LogBuffer 新组件 — v2.0
+- ✓ PDF 多页导出修复 — v2.0
+- ✓ 全局 LLM Semaphore（LLMClient 层）— v2.0
+- ✓ AgentScore 统一 schema + CampaignScorer 自动注册 — v2.0
+- ✓ PersonaRegistry 扩展（moodyPlus 9 / colored_lenses 8）— v2.0
+- ✓ MultiJudge 位置交替 ensemble — v2.0
+- ✓ Devil's advocate judge（品牌怀疑者）— v2.0
+- ✓ 跨人格争议分数 + 前端 badge — v2.0
+- ✓ ConsensusAgent 异常值检测 — v2.0
+- ✓ threading.Lock 范围审计注释 — v2.0
+- ✓ BrandStateEngine 表征测试 + BacktestEngine 提取 — v2.0
+
 ### Active
 
-(Defining v2.0 requirements — see REQUIREMENTS.md)
-
-## Current Milestone: v2.0 大改造
-
-**Goal:** 前端用 MiroFish 原版逻辑重写（修复当前 buggy 的交互），后端增加多 agent 并行推演提升精度
-
-**Target features:**
-- 前端：参考 https://github.com/666ghj/MiroFish 原版，重写页面逻辑和交互流程
-- 后端：增加更多推演 agent（多角色并行推演 + 交叉验证），"大力出奇迹"路线
-- 保留现有后端核心服务（Race/Evaluate 引擎、PersonaRegistry、历史基线等）
+(None — all v2.0 requirements shipped. Define next milestone.)
 
 ### Out of Scope
 
@@ -71,7 +82,8 @@
 - AI 自动生成创意素材 — 推演工具定位是评估，不是生成
 - 真人消费者 panel 调研 — 成本高，已有独立调研流程
 - 眼动追踪/注意力热力图 — 需专用模型，非通用 LLM 能力
-- BrandStateEngine 重构 — 当前能用，等 characterization tests 建好后再拆
+- BrandStateEngine 完整重构 — v2.0 已提取 BacktestEngine（第一刀），剩余方法待后续 milestone
+- AgentScore→CampaignScorer 生产者接入 — v2.0 建立了 schema 和 scorer 参数，但无 producer 输出 AgentScore
 
 ## Context
 
@@ -80,22 +92,25 @@
 - 品牌竞争点是功能+美学，绝不以折扣/价格为卖点
 - Campaign 以视觉素材为核心，推演已纳入视觉分析
 
-**技术现状（v1.1 shipped）：**
+**技术现状（v2.0 shipped）：**
 - 后端 Flask + SQLite (WAL mode) + Qwen（通过百炼 OpenAI-compatible API）
-- 前端 React 19 + TypeScript + Tailwind + Vite + recharts + html2canvas + jsPDF
-- 两条推演路径（Race + Evaluate）完整可用
-- 品类人格配置：moodyPlus 6 人格，colored_lenses 5 人格
-- 并发图片分析 + Judge 去偏 + 结构化诊断
-- 结果导出 PDF/图片
-- 方案迭代推演 + 版本对比
-- 推演趋势 Dashboard
+- 前端 React 19 + TypeScript + Tailwind + Vite + recharts + html2canvas + jsPDF + motion 12
+- 两条推演路径（Race + Evaluate）完整可用，Both 模式稳定
+- 品类人格配置：moodyPlus 9 人格，colored_lenses 8 人格
+- MultiJudge 位置交替 ensemble + Devil's advocate judge
+- 全局 LLM Semaphore（LLMClient 层，MAX_LLM_CONCURRENT=5）
+- AgentScore 统一 schema + CampaignScorer 自动注册
+- ConsensusAgent 异常值检测 + 前端争议 badge
+- 前端：sessionStorage 持久化、Winner hero card、跨路径 badge、SplitPanel + LogBuffer
+- 结果导出 PDF 多页 + 图片
+- 方案迭代推演 + 版本对比 + 趋势 Dashboard
 
 **已知技术债：**
-- BrandStateEngine God class (1319 lines)
+- BrandStateEngine 仍然较大（BacktestEngine 已提取，剩余方法待分解）
 - BaselineRanker 全量加载历史数据
-- Campaign.parent_campaign_id 字段未使用（版本链靠 set 级 parent_set_id）
-- Race→Evaluate 跨模式迭代 parentSetId 传空（Race 结果无 set_id）
-- Phase 11 导出功能 3 项人工验证待确认
+- AgentScore→CampaignScorer 生产者未接入（schema 就位但死代码）
+- contracts.ts 存在但无页面消费者（类型从 api.ts 直接导入）
+- test_phase56.py MagicMock JSON 序列化失败（pre-existing）
 
 ## Constraints
 
@@ -117,10 +132,15 @@
 | PersonaRegistry DI 模式 | 依赖注入让 AudiencePanel 可测试，人格配置可按品类切换 | ✓ Good |
 | ThreadPoolExecutor + Semaphore 并发 | 复用现有模式，Semaphore 统一控制 LLM 并发 | ✓ Good |
 | PairwiseJudge 位置互换去偏 | 正反序各评一次，标记不一致判断，不改变 winner 确定逻辑 | ✓ Good |
+| 全局 LLM Semaphore 在 LLMClient 层 | 统一并发控制，防止 Bailian 429，各服务不再各自管理 | ✓ Good |
+| MultiJudge 位置交替 ensemble | 奇偶 judge 收到不同顺序，消除 position bias | ✓ Good |
+| Devil's advocate "品牌怀疑者" | 挑战正面结论，dissent 标记独立追踪 | ✓ Good |
+| AgentScore schema + 自动注册 | 统一输出格式，新 agent 无需手工 wiring | ✓ Good (producer 待接入) |
+| BacktestEngine strangler fig | 先写表征测试再提取，现有测试不变 | ✓ Good |
 | recharts 用于雷达图可视化 | 轻量 SVG，React-native，适合多维度对比 | ✓ Good |
 | 前端导出（html2canvas + jsPDF） | 零后端依赖，Docker 不需 headless browser | ✓ Good |
 | 版本链靠 set 级 parent_set_id | Campaign 级 parent_campaign_id 过于复杂，set 级版本链够用 | ✓ Good |
 | 趋势 API 聚合现有结果 JSON | 不需要新表，从已有推演结果文件提取趋势数据 | ✓ Good |
 
 ---
-*Last updated: 2026-03-18 after v2.0 milestone started*
+*Last updated: 2026-03-18 after v2.0 milestone complete*

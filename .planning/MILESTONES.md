@@ -1,5 +1,14 @@
 # Milestones
 
+## v2.0 大改造 (Shipped: 2026-03-18)
+
+**Phases completed:** 5 phases, 13 plans, 0 tasks
+
+**Key accomplishments:**
+- (none recorded)
+
+---
+
 ## v1.1 加固与增强 (Shipped: 2026-03-17)
 
 **Phases completed:** 4 phases, 8 plans, 0 tasks
