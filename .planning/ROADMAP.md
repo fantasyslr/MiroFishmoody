@@ -186,4 +186,4 @@ Plans:
 | 17. Tech Debt | v2.0 | 2/2 | Complete | 2026-03-18 |
 | 18. Deployment Fix | 2/2 | Complete    | 2026-03-18 | - |
 | 19. Brief-Type Weight Profiles | 3/3 | Complete    | 2026-03-18 | - |
-| 20. Benchmark Dataset + Runner | 2/2 | Complete   | 2026-03-18 | - |
+| 20. Benchmark Dataset + Runner | 2/2 | Complete    | 2026-03-18 | - |
